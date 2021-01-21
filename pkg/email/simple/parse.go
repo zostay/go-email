@@ -6,6 +6,7 @@ import (
 	"github.com/zostay/go-email/pkg/email"
 )
 
+// Parse will turn the given string into an email message.
 func Parse(m string) (*email.Message, error) {
 	pos, crlf := SplitHeadFromBody(m)
 
@@ -25,6 +26,9 @@ func Parse(m string) (*email.Message, error) {
 	}, err
 }
 
+// SplitHeadFromBody will detect the index of the split between the message
+// header and the message body as well as the line break the email is using. It
+// returns both.
 func SplitHeadFromBody(m string) (int, string) {
 	var splits = []string{
 		"\x0a\x0d\x0a\x0d", // \r\n\r\n

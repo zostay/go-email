@@ -11,6 +11,8 @@ const (
 	ForcedFoldLength    = 1000
 )
 
+// UnfoldValue will take a folded header line from an email and unfold it for
+// reading. This gives you the proper header body value.
 func UnfoldValue(f, lb string) string {
 	var uf strings.Builder
 	folds := strings.Split(f, lb)
@@ -35,6 +37,10 @@ func UnfoldValue(f, lb string) string {
 
 func isSpace(c rune) bool { return c == ' ' || c == '\t' }
 
+// FoldValue will take an unfolded or perhaps partially folded value from an
+// email and fold it. It will make sure that every fold line is properly
+// indented, try to break lines on appropriate spaces, and force long lines to
+// be broken before the maximum line length.
 func FoldValue(f, lb string) string {
 	if len(f) < PreferredFoldLength {
 		return f
