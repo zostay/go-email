@@ -101,13 +101,55 @@ func (h *Header) String() string {
 	return out.String()
 }
 
+func (h *Header) Names() []string {
+	seen := map[string]struct{}{}
+	names := make([]string, 0, len(h.Fields))
+	for _, f := range h.Fields {
+		if _, ok := seen[f.Match()]; ok {
+			continue
+		}
+		names = append(names, f.Name())
+	}
+	return names
+}
+
+func (h *Header) Set(n, b string) error {
+	m := makeMatch(n)
+	for _, f := range h.Fields {
+		if f.Match() == m {
+			return f.SetBody(b, h.Break)
+		}
+	}
+
+	f := HeaderField{}
+
+	var err error
+	err = f.SetName(n)
+	if err != nil {
+		return err
+	}
+
+	err = f.SetBody(b, h.Break)
+	if err != nil {
+		return err
+	}
+
+	h.Fields = append(h.Fields, &f)
+
+	return nil
+}
+
 func (f *HeaderField) Match() string {
 	if f.match != "" {
 		return f.match
 	}
 
-	f.match = strings.ToLower(strings.TrimSpace(f.name))
+	f.match = makeMatch(f.name)
 	return f.match
+}
+
+func makeMatch(n string) string {
+	return strings.ToLower(strings.TrimSpace(n))
 }
 
 func (f *HeaderField) Name() string     { return f.name }
