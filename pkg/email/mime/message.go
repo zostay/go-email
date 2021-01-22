@@ -5,18 +5,18 @@ import (
 )
 
 type ContentType struct {
-	MediaType string
-	Params    map[string]string
+	mediaType string
+	params    map[string]string
 }
 
 type Message struct {
 	email.Message
-	EncodingCheck bool
-	Depth         int
-	ContentType   *ContentType
-	Preamble      []byte
-	Parts         []*Part
-	Epilogue      []byte
+	encodingCheck bool
+	depth         int
+	contentType   *ContentType
+	preamble      []byte
+	parts         []*Part
+	epilogue      []byte
 }
 
 type Part struct {

@@ -25,10 +25,10 @@ func (err *ParseError) Error() string {
 type option func(*Message)
 
 func WithEncodingCheck(ec bool) option {
-	return func(m *Message) { m.EncodingCheck = ec }
+	return func(m *Message) { m.encodingCheck = ec }
 }
 func withDepth(d int) option {
-	return func(m *Message) { m.Depth = d }
+	return func(m *Message) { m.depth = d }
 }
 
 func Parse(m []byte, o ...option) (*Message, error) {
@@ -38,8 +38,8 @@ func Parse(m []byte, o ...option) (*Message, error) {
 	if msg != nil {
 		mm = &Message{
 			Message:       *msg,
-			Depth:         0,
-			EncodingCheck: false,
+			depth:         0,
+			encodingCheck: false,
 		}
 	}
 
@@ -56,9 +56,9 @@ func Parse(m []byte, o ...option) (*Message, error) {
 		return mm, err
 	}
 
-	mm.ContentType = &ContentType{
-		MediaType: ct,
-		Params:    ps,
+	mm.contentType = &ContentType{
+		mediaType: ct,
+		params:    ps,
 	}
 
 	err = mm.FillParts()
@@ -70,8 +70,8 @@ func Parse(m []byte, o ...option) (*Message, error) {
 }
 
 func (m *Message) FillParts() error {
-	if strings.HasPrefix(m.ContentType.MediaType, "multipart/") ||
-		strings.HasPrefix(m.ContentType.MediaType, "message/") {
+	if strings.HasPrefix(m.contentType.mediaType, "multipart/") ||
+		strings.HasPrefix(m.contentType.mediaType, "message/") {
 		return m.FillPartsMultiPart()
 	} else {
 		return m.FillPartsSinglePart()
@@ -111,9 +111,9 @@ func (m *Message) finalBoundary(body []byte, boundary string) bool {
 }
 
 func (m *Message) FillPartsMultiPart() error {
-	boundary := m.ContentType.Params["boundary"]
+	boundary := m.contentType.params["boundary"]
 
-	if m.Depth > MaxMultipartDepth {
+	if m.depth > MaxMultipartDepth {
 		return fmt.Errorf("message is more than %d deep in parts", MaxMultipartDepth)
 	}
 
@@ -137,7 +137,7 @@ func (m *Message) FillPartsMultiPart() error {
 			// MIME, but extra text to be ignored by the reader. We keep it
 			// around for the purpose of round-tripping.
 			if b > 0 {
-				m.Preamble = m.Body()[0:b]
+				m.preamble = m.Body()[0:b]
 			}
 			lb = b
 			continue
@@ -150,7 +150,7 @@ func (m *Message) FillPartsMultiPart() error {
 				// Anything after the last boundary is the epilogue. This is
 				// also not a MIME part and we also keep it around for
 				// round-tripping.
-				m.Epilogue = m.Body()[b:]
+				m.epilogue = m.Body()[b:]
 				break
 			} else {
 				// This is badly formatted, but whatever. We did not find a
@@ -168,8 +168,8 @@ func (m *Message) FillPartsMultiPart() error {
 		prefix := bit[:bend]
 		postBoundary := bit[bend:]
 		m, err := Parse(postBoundary,
-			WithEncodingCheck(m.EncodingCheck),
-			withDepth(m.Depth+1),
+			WithEncodingCheck(m.encodingCheck),
+			withDepth(m.depth+1),
 		)
 		errs = append(errs, err)
 		parts[i] = &Part{*m, prefix}
@@ -183,6 +183,6 @@ func (m *Message) FillPartsMultiPart() error {
 }
 
 func (m *Message) FillPartsSinglePart() error {
-	m.Parts = []*Part{}
+	m.parts = []*Part{}
 	return nil
 }
