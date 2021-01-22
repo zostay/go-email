@@ -162,17 +162,19 @@ func (m *Message) FillPartsMultiPart() error {
 	}
 
 	errs := make([]error, 0)
-	parts := make([]*Part, len(bits))
+	parts := make([]*Message, len(bits))
 	for i, bit := range bits {
 		bend := bytes.Index(bit[2:], m.Break()) + 4
 		prefix := bit[:bend]
 		postBoundary := bit[bend:]
-		m, err := Parse(postBoundary,
+		pm, err := Parse(postBoundary,
 			WithEncodingCheck(m.encodingCheck),
 			withDepth(m.depth+1),
 		)
+		pm.prefix = prefix
+		pm.parent = m
 		errs = append(errs, err)
-		parts[i] = &Part{*m, prefix}
+		parts[i] = pm
 	}
 
 	if len(errs) > 0 {
@@ -183,6 +185,6 @@ func (m *Message) FillPartsMultiPart() error {
 }
 
 func (m *Message) FillPartsSinglePart() error {
-	m.parts = []*Part{}
+	m.parts = []*Message{}
 	return nil
 }
