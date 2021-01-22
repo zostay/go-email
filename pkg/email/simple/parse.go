@@ -22,7 +22,7 @@ func Parse(m string) (*email.Message, error) {
 	h, err := email.ParseHeaderLB(head, crlf)
 	return &email.Message{
 		Header: h,
-		Body:   strings.NewReader(body),
+		Body:   body,
 	}, err
 }
 

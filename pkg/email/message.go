@@ -1,7 +1,7 @@
 package email
 
 import (
-	"io"
+	"strings"
 )
 
 // Message represents an email message and body. The message object stores
@@ -10,5 +10,14 @@ import (
 // fields and other information.
 type Message struct {
 	Header *Header
-	Body   io.Reader
+	Body   string
+}
+
+func (m *Message) String() string {
+	var out strings.Builder
+	out.WriteString(m.Header.String())
+	out.WriteString(m.Header.Break)
+	out.WriteString(m.Header.Break)
+	out.WriteString(m.Body)
+	return out.String()
 }
