@@ -10,20 +10,20 @@ import (
 // fields and other information.
 type Message struct {
 	Header
-	body string
+	body []byte
 }
 
-func NewMessage(h *Header, body string) *Message {
+func NewMessage(h *Header, body []byte) *Message {
 	return &Message{*h, body}
 }
 
-func (m *Message) Body() string { return m.body }
+func (m *Message) Body() []byte { return m.body }
 
 func (m *Message) String() string {
 	var out strings.Builder
 	out.WriteString(m.Header.String())
-	out.WriteString(m.Header.lb)
-	out.WriteString(m.Header.lb)
-	out.WriteString(m.body)
+	out.Write(m.Header.lb)
+	out.Write(m.Header.lb)
+	out.Write(m.body)
 	return out.String()
 }

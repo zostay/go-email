@@ -1,6 +1,7 @@
 package mime
 
 import (
+	"bytes"
 	"fmt"
 	"mime"
 	"regexp"
@@ -30,7 +31,7 @@ func withDepth(d int) option {
 	return func(m *Message) { m.Depth = d }
 }
 
-func Parse(m string, o ...option) (*Message, error) {
+func Parse(m []byte, o ...option) (*Message, error) {
 	var mm *Message
 
 	msg, err := simple.Parse(m)
@@ -82,12 +83,12 @@ const (
 	MaxMultipartDepth = 10
 )
 
-func (m *Message) boundaries(body, boundary string) []int {
-	lbq := regexp.QuoteMeta(m.Break())
+func (m *Message) boundaries(body []byte, boundary string) []int {
+	lbq := regexp.QuoteMeta(string(m.Break()))
 	bq := regexp.QuoteMeta(boundary)
 	bmre := regexp.MustCompile("(?:^|" + lbq + ")--" + bq + "\\s*(?:" + lbq + "|$)")
 
-	matches := bmre.FindAllStringIndex(body, -1)
+	matches := bmre.FindAllIndex(body, -1)
 	res := make([]int, len(matches))
 	for i, m := range matches {
 		res[i] = m[0]
@@ -102,11 +103,11 @@ func (m *Message) boundaries(body, boundary string) []int {
 //
 // This assumes that the body given is the start of a boundary, so it doesn't
 // verify anything but the last part.
-func (m *Message) finalBoundary(body, boundary string) bool {
-	lbq := regexp.QuoteMeta(m.Break())
+func (m *Message) finalBoundary(body []byte, boundary string) bool {
+	lbq := regexp.QuoteMeta(string(m.Break()))
 	bq := regexp.QuoteMeta(boundary)
 	cmre := regexp.MustCompile("^(?:" + lbq + ")?--" + bq + "--\\s*(?:" + lbq + "|$)")
-	return cmre.MatchString(body)
+	return cmre.Match(body)
 }
 
 func (m *Message) FillPartsMultiPart() error {
@@ -128,7 +129,7 @@ func (m *Message) FillPartsMultiPart() error {
 		return m.FillPartsSinglePart()
 	}
 
-	bits := make([]string, 0, len(boundaries))
+	bits := make([][]byte, 0, len(boundaries))
 	lb := -1
 	for i, b := range boundaries {
 		if lb == -1 {
@@ -163,7 +164,7 @@ func (m *Message) FillPartsMultiPart() error {
 	errs := make([]error, 0)
 	parts := make([]*Part, len(bits))
 	for i, bit := range bits {
-		bend := strings.Index(bit[2:], m.Break()) + 4
+		bend := bytes.Index(bit[2:], m.Break()) + 4
 		prefix := bit[:bend]
 		postBoundary := bit[bend:]
 		m, err := Parse(postBoundary,

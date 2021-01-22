@@ -1,6 +1,7 @@
 package email
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -33,7 +34,7 @@ func (err *HeaderParseError) Error() string {
 // roundtripping.
 type Header struct {
 	fields []*HeaderField // The list of fields
-	lb     string         // The line break string to use
+	lb     []byte         // The line break string to use
 }
 
 // HeaderField represents an individual field in the message header. When taken
@@ -42,20 +43,20 @@ type HeaderField struct {
 	match    string
 	name     string
 	body     string
-	original string
+	original []byte
 }
 
 // ParseHeader will parse the given string into an email header. It assumes that
 // the entire string given represents the header. It will assume "\n" as the
 // line break character to use during parsing.
-func ParseHeader(m string) (*Header, error) {
-	return ParseHeaderLB(m, "\x0d")
+func ParseHeader(m []byte) (*Header, error) {
+	return ParseHeaderLB(m, []byte("\x0d"))
 }
 
 // ParseHeaderLB will parse the given string into an email header using the
 // given line break string. It will assume the entire string given represents
 // the header to be parsed.
-func ParseHeaderLB(m, lb string) (*Header, error) {
+func ParseHeaderLB(m, lb []byte) (*Header, error) {
 	lines, err := ParseHeaderLines(m, lb)
 	errs := make([]error, 0, 1)
 	if err != nil {
@@ -80,11 +81,11 @@ func ParseHeaderLB(m, lb string) (*Header, error) {
 // ParseHeaderLines is used by ParseHeader and ParseHeaderLB to create a list of
 // lines where each line represents a single field, including and folded
 // continuation lines.
-func ParseHeaderLines(m, lb string) ([]string, error) {
-	h := make([]string, 0, len(m)/80)
+func ParseHeaderLines(m, lb []byte) ([][]byte, error) {
+	h := make([][]byte, 0, len(m)/80)
 	var err error
-	for _, line := range strings.SplitAfter(m, lb) {
-		if strings.HasPrefix(line, " ") {
+	for _, line := range bytes.SplitAfter(m, lb) {
+		if bytes.HasPrefix(line, []byte(" ")) {
 			// Start with a continuation? Weird, uh...
 			if len(h) == 0 {
 				err = ErrContinuationStart
@@ -92,7 +93,7 @@ func ParseHeaderLines(m, lb string) ([]string, error) {
 				continue
 			}
 
-			h[len(h)-1] += line
+			h[len(h)-1] = append(h[len(h)-1], line...)
 		} else {
 			h = append(h, line)
 		}
@@ -103,20 +104,20 @@ func ParseHeaderLines(m, lb string) ([]string, error) {
 
 // ParseHeaderField will take a single header field, including any folded
 // continuation lines. This will then construct a header field object.
-func ParseHeaderField(f, lb string) (*HeaderField, error) {
-	parts := strings.SplitN(f, ":", 2)
+func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
+	parts := bytes.SplitN(f, []byte(":"), 2)
 	if len(parts) < 2 {
 		name := UnfoldValue(f, lb)
-		return &HeaderField{"", name, "", f}, fmt.Errorf("header field %q missing body", name)
+		return &HeaderField{"", string(name), "", f}, fmt.Errorf("header field %q missing body", name)
 	}
 
 	name := UnfoldValue(parts[0], lb)
 	body := UnfoldValue(parts[1], lb)
-	return &HeaderField{"", name, body, f}, nil
+	return &HeaderField{"", string(name), string(body), f}, nil
 }
 
 // Break returns the line break string associated with this header.
-func (h *Header) Break() string { return h.lb }
+func (h *Header) Break() []byte { return h.lb }
 
 // String will return the string representation of the header. If the header was
 // parsed from an email header and not modified, this will output the original
@@ -216,7 +217,7 @@ func (h *Header) Add(n, b string) error {
 
 // NewHeaderFields constructs a new header field using the given name, body, and
 // line break string.
-func NewHeaderField(n, b, lb string) (*HeaderField, error) {
+func NewHeaderField(n, b string, lb []byte) (*HeaderField, error) {
 	f := HeaderField{}
 
 	var err error
@@ -256,10 +257,10 @@ func (f *HeaderField) Body() string { return f.body }
 
 // Original returns the original text of the field or the newly set rendered
 // text for the field.
-func (f *HeaderField) Original() string { return f.original }
+func (f *HeaderField) Original() []byte { return f.original }
 
 // String is an alias for Original.
-func (f *HeaderField) String() string { return f.original }
+func (f *HeaderField) String() string { return string(f.original) }
 
 // SetName will rename a field. This first checks to make sure no illegal
 // characters are present in the field name. It will return an error if the
@@ -286,7 +287,7 @@ func (f *HeaderField) SetName(n string) error {
 
 // SetNameUnsafe will rename a field without checks.
 func (f *HeaderField) SetNameUnsafe(n string) {
-	f.original = n + f.original[len(f.name):]
+	f.original = append([]byte(n), f.original[len(f.name):]...)
 	f.name = n
 }
 
@@ -294,7 +295,7 @@ func (f *HeaderField) SetNameUnsafe(n string) {
 // be used for folding. Before setting the field, the value will be checked to
 // make sure it is legal. It is only permitted to contain printable ASCII,
 // space, and tab characters.
-func (f *HeaderField) SetBody(b, lb string) error {
+func (f *HeaderField) SetBody(b string, lb []byte) error {
 	allowedBodyChars := func(c rune) bool {
 		if c == ' ' || c == '\t' {
 			return true
@@ -316,14 +317,18 @@ func (f *HeaderField) SetBody(b, lb string) error {
 // SetBodyUnsafe will update the body of the field without checking to make sure
 // it is valid. This can be used to provide a prefolded body (though, it will
 // still be folded further if any long lines are found).
-func (f *HeaderField) SetBodyUnsafe(b, lb string) {
-	f.original = FoldValue(f.original[:len(f.name)+1]+" "+b, lb)
+func (f *HeaderField) SetBodyUnsafe(b string, lb []byte) {
+	newOrig := append(f.original[:len(f.name)+1], ' ')
+	newOrig = append(newOrig, []byte(b)...)
+	f.original = FoldValue(newOrig, lb)
 	f.body = b
 }
 
 // SetBodyNoFold will update the body of the field without checking to make sure
 // it is valid and without performing any folding.
 func (f *HeaderField) SetBodyNoFold(b string) {
-	f.original = f.original[:len(f.name)+1] + " " + b
+	newOrig := append(f.original[:len(f.name)+1], ' ')
+	newOrig = append(newOrig, []byte(b)...)
+	f.original = newOrig
 	f.body = b
 }

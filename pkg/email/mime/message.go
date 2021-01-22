@@ -14,14 +14,14 @@ type Message struct {
 	EncodingCheck bool
 	Depth         int
 	ContentType   *ContentType
-	Preamble      string
+	Preamble      []byte
 	Parts         []*Part
-	Epilogue      string
+	Epilogue      []byte
 }
 
 type Part struct {
 	Message
-	Prefix string
+	Prefix []byte
 }
 
 func (m *Message) RawContentType() string {
