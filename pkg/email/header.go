@@ -32,8 +32,8 @@ func (err *HeaderParseError) Error() string {
 // detail that the original header can be recreated byte for byte for
 // roundtripping.
 type Header struct {
-	Fields []*HeaderField // The list of fields
-	Break  string         // The line break string to use
+	fields []*HeaderField // The list of fields
+	lb     string         // The line break string to use
 }
 
 // HeaderField represents an individual field in the message header. When taken
@@ -63,12 +63,12 @@ func ParseHeaderLB(m, lb string) (*Header, error) {
 	}
 
 	h := Header{
-		Fields: make([]*HeaderField, len(lines)),
-		Break:  lb,
+		fields: make([]*HeaderField, len(lines)),
+		lb:     lb,
 	}
 
 	for i, line := range lines {
-		h.Fields[i], err = ParseHeaderField(line, lb)
+		h.fields[i], err = ParseHeaderField(line, lb)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -115,12 +115,15 @@ func ParseHeaderField(f, lb string) (*HeaderField, error) {
 	return &HeaderField{"", name, body, f}, nil
 }
 
+// Break returns the line break string associated with this header.
+func (h *Header) Break() string { return h.lb }
+
 // String will return the string representation of the header. If the header was
 // parsed from an email header and not modified, this will output the original
 // header, preserved byte-for-byte.
 func (h *Header) String() string {
 	var out strings.Builder
-	for _, f := range h.Fields {
+	for _, f := range h.fields {
 		out.WriteString(f.String())
 	}
 	return out.String()
@@ -129,8 +132,8 @@ func (h *Header) String() string {
 // Names will return the unique header names found in the mail header.
 func (h *Header) Names() []string {
 	seen := map[string]struct{}{}
-	names := make([]string, 0, len(h.Fields))
-	for _, f := range h.Fields {
+	names := make([]string, 0, len(h.fields))
+	for _, f := range h.fields {
 		if _, ok := seen[f.Match()]; ok {
 			continue
 		}
@@ -143,7 +146,7 @@ func (h *Header) Names() []string {
 // will return an empty string if no such header is present.
 func (h *Header) Get(n string) string {
 	m := makeMatch(n)
-	for _, f := range h.Fields {
+	for _, f := range h.fields {
 		if f.Match() == m {
 			return f.Body()
 		}
@@ -157,7 +160,7 @@ func (h *Header) Get(n string) string {
 func (h *Header) GetAll(n string) []string {
 	bs := make([]string, 0)
 	m := makeMatch(n)
-	for _, f := range h.Fields {
+	for _, f := range h.fields {
 		if f.Match() == m {
 			bs = append(bs, f.Body())
 		}
@@ -171,18 +174,18 @@ func (h *Header) GetAll(n string) []string {
 // that name and body.
 func (h *Header) Set(n, b string) error {
 	m := makeMatch(n)
-	for _, f := range h.Fields {
+	for _, f := range h.fields {
 		if f.Match() == m {
-			return f.SetBody(b, h.Break)
+			return f.SetBody(b, h.lb)
 		}
 	}
 
-	f, err := NewHeaderField(n, b, h.Break)
+	f, err := NewHeaderField(n, b, h.lb)
 	if err != nil {
 		return err
 	}
 
-	h.Fields = append(h.Fields, f)
+	h.fields = append(h.fields, f)
 
 	return nil
 }
@@ -191,23 +194,23 @@ func (h *Header) Set(n, b string) error {
 // header with the same value is already present, this will add the new field
 // before the first field with the same name.
 func (h *Header) Add(n, b string) error {
-	f, err := NewHeaderField(n, b, h.Break)
+	f, err := NewHeaderField(n, b, h.lb)
 	if err != nil {
 		return err
 	}
 
 	m := makeMatch(n)
-	for i, f := range h.Fields {
+	for i, f := range h.fields {
 		if f.Match() == m {
-			b := h.Fields[:i]
-			a := h.Fields[i:]
-			h.Fields = append(b, f)
-			h.Fields = append(h.Fields, a...)
+			b := h.fields[:i]
+			a := h.fields[i:]
+			h.fields = append(b, f)
+			h.fields = append(h.fields, a...)
 			return nil
 		}
 	}
 
-	h.Fields = append(h.Fields, f)
+	h.fields = append(h.fields, f)
 	return nil
 }
 

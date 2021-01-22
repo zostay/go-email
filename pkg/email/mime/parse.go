@@ -83,7 +83,7 @@ const (
 )
 
 func (m *Message) boundaries(body, boundary string) []int {
-	lbq := regexp.QuoteMeta(m.Header.Break)
+	lbq := regexp.QuoteMeta(m.Break())
 	bq := regexp.QuoteMeta(boundary)
 	bmre := regexp.MustCompile("(?:^|" + lbq + ")--" + bq + "\\s*(?:" + lbq + "|$)")
 
@@ -103,7 +103,7 @@ func (m *Message) boundaries(body, boundary string) []int {
 // This assumes that the body given is the start of a boundary, so it doesn't
 // verify anything but the last part.
 func (m *Message) finalBoundary(body, boundary string) bool {
-	lbq := regexp.QuoteMeta(m.Header.Break)
+	lbq := regexp.QuoteMeta(m.Break())
 	bq := regexp.QuoteMeta(boundary)
 	cmre := regexp.MustCompile("^(?:" + lbq + ")?--" + bq + "--\\s*(?:" + lbq + "|$)")
 	return cmre.MatchString(body)
@@ -121,7 +121,7 @@ func (m *Message) FillPartsMultiPart() error {
 		return m.FillPartsSinglePart()
 	}
 
-	boundaries := m.boundaries(m.Body, boundary)
+	boundaries := m.boundaries(m.Body(), boundary)
 
 	// There are no boundaries found, so it's not multipart
 	if len(boundaries) == 0 {
@@ -136,26 +136,26 @@ func (m *Message) FillPartsMultiPart() error {
 			// MIME, but extra text to be ignored by the reader. We keep it
 			// around for the purpose of round-tripping.
 			if b > 0 {
-				m.Preamble = m.Body[0:b]
+				m.Preamble = m.Body()[0:b]
 			}
 			lb = b
 			continue
 		}
 
-		bits = append(bits, m.Body[lb:b])
+		bits = append(bits, m.Body()[lb:b])
 
 		if i == len(boundaries)-1 {
-			if m.finalBoundary(m.Body, boundary) {
+			if m.finalBoundary(m.Body(), boundary) {
 				// Anything after the last boundary is the epilogue. This is
 				// also not a MIME part and we also keep it around for
 				// round-tripping.
-				m.Epilogue = m.Body[b:]
+				m.Epilogue = m.Body()[b:]
 				break
 			} else {
 				// This is badly formatted, but whatever. We did not find a
 				// final boundary, so the last boundary appears to be a part
 				// instead so keep it as one.
-				bits = append(bits, m.Body[b:])
+				bits = append(bits, m.Body()[b:])
 			}
 		}
 	}
@@ -163,7 +163,7 @@ func (m *Message) FillPartsMultiPart() error {
 	errs := make([]error, 0)
 	parts := make([]*Part, len(bits))
 	for i, bit := range bits {
-		bend := strings.Index(bit[2:], m.Header.Break) + 4
+		bend := strings.Index(bit[2:], m.Break()) + 4
 		prefix := bit[:bend]
 		postBoundary := bit[bend:]
 		m, err := Parse(postBoundary,

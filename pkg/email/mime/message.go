@@ -25,5 +25,5 @@ type Part struct {
 }
 
 func (m *Message) RawContentType() string {
-	return m.Header.Get("Content-type")
+	return m.Get("Content-type")
 }

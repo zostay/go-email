@@ -20,10 +20,7 @@ func Parse(m string) (*email.Message, error) {
 	}
 
 	h, err := email.ParseHeaderLB(head, crlf)
-	return &email.Message{
-		Header: h,
-		Body:   body,
-	}, err
+	return email.NewMessage(h, body), err
 }
 
 // SplitHeadFromBody will detect the index of the split between the message
