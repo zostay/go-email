@@ -33,7 +33,9 @@ func (m *Message) rebuildBody() {
 	}
 	a.Write(m.epilogue)
 	m.SetBodyString(a.String())
-	m.parent.rebuildBody()
+	if m.parent != nil {
+		m.parent.rebuildBody()
+	}
 }
 
 func (m *Message) RawContentType() string {
@@ -64,4 +66,27 @@ func (m *Message) Epilogue() string {
 func (m *Message) SetEpilogue(e string) {
 	m.epilogue = []byte(e)
 	m.rebuildBody()
+}
+
+func (m *Message) PartsLen() int          { return len(m.parts) }
+func (m *Message) GetPart(i int) *Message { return m.parts[i] }
+
+func (m *Message) Parent() *Message { return m.parent }
+
+func (m *Message) SetBody(b []byte) error {
+	m.preamble = nil
+	m.parts = nil
+	m.epilogue = nil
+	m.Message.SetBody(b)
+
+	return m.FillParts()
+}
+
+func (m *Message) SetBodyString(s string) error {
+	m.preamble = nil
+	m.parts = nil
+	m.epilogue = nil
+	m.Message.SetBodyString(s)
+
+	return m.FillParts()
 }
