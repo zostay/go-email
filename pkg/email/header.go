@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
+	"time"
+
+	"github.com/zostay/go-addr/pkg/addr"
 )
 
 var (
@@ -152,6 +156,36 @@ func (h *Header) Get(n string) string {
 		return f.Body()
 	}
 	return ""
+}
+
+// GetAddressList returns addresses for a header. If the header is not set or
+// empty, it will return nil and no error. If the header has a value, but cannot
+// be parsed as an address list, it will return nil and an error. If the header
+// can be parsed as an email list, the email addresses will be returned.
+//
+// This only returns the addresses for the first occurence of a header, as the
+// email address headers are only permitted a single time in email.
+func (h *Header) GetAddressList(n string) (addr.AddressList, error) {
+	b := h.Get(n)
+	if b == "" {
+		return nil, nil
+	}
+
+	return addr.ParseEmailAddressList(b)
+}
+
+// Date parses and returns the date in the email. This will read the header
+// named "Date". As this header is always required, it will return the time.Time
+// zero value and an error if this method is called and no value is present. If
+// the date header is present, it will returned the parsed value or an error if
+// the date cannot be parsed.
+func (h *Header) Date() (time.Time, error) {
+	b := h.Get("Date")
+	if b == "" {
+		return time.Time{}, nil
+	}
+
+	return mail.ParseDate(b)
 }
 
 // GetField will find the first header field and return the header field object
