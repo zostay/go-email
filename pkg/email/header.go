@@ -44,6 +44,7 @@ type HeaderField struct {
 	name     string
 	body     string
 	original []byte
+	cache    map[string]interface{}
 }
 
 // ParseHeader will parse the given string into an email header. It assumes that
@@ -108,12 +109,12 @@ func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
 	parts := bytes.SplitN(f, []byte(":"), 2)
 	if len(parts) < 2 {
 		name := UnfoldValue(f, lb)
-		return &HeaderField{"", string(name), "", f}, fmt.Errorf("header field %q missing body", name)
+		return &HeaderField{"", string(name), "", f, nil}, fmt.Errorf("header field %q missing body", name)
 	}
 
 	name := UnfoldValue(parts[0], lb)
 	body := UnfoldValue(parts[1], lb)
-	return &HeaderField{"", string(name), string(body), f}, nil
+	return &HeaderField{"", string(name), string(body), f, nil}, nil
 }
 
 // Break returns the line break string associated with this header.
@@ -143,31 +144,51 @@ func (h *Header) Names() []string {
 	return names
 }
 
-// Get will find the first header with a matching name and return body value. It
-// will return an empty string if no such header is present.
+// Get will find the first header field with a matching name and return body
+// value. It will return an empty string if no such header is present.
 func (h *Header) Get(n string) string {
-	m := makeMatch(n)
-	for _, f := range h.fields {
-		if f.Match() == m {
-			return f.Body()
-		}
+	f := h.GetField(n)
+	if f != nil {
+		return f.Body()
 	}
-
 	return ""
 }
 
-// GetAll will find all headers with a matching name and return a list of body
-// values. Returns nil if no matching headers are present.
-func (h *Header) GetAll(n string) []string {
-	bs := make([]string, 0)
+// GetField will find the first header field and return the header field object
+// itself. It will return nil if no such header is present.
+func (h *Header) GetField(n string) *HeaderField {
 	m := makeMatch(n)
 	for _, f := range h.fields {
 		if f.Match() == m {
-			bs = append(bs, f.Body())
+			return f
 		}
 	}
+	return nil
+}
 
+// GetAll will find all header fields with a matching name and return a list of body
+// values. Returns nil if no matching headers are present.
+func (h *Header) GetAll(n string) []string {
+	hfs := h.GetAllFields(n)
+	bs := make([]string, len(hfs))
+	for i, f := range hfs {
+		bs[i] = f.Body()
+	}
 	return bs
+}
+
+// GetAllFields will find all the header fields with a matching name and return
+// the list of field objects. It will return any empty slice if no headers with
+// this name are present.
+func (h *Header) GetAllFields(n string) []*HeaderField {
+	hfs := make([]*HeaderField, 0)
+	m := makeMatch(n)
+	for _, f := range h.fields {
+		if f.Match() == m {
+			hfs = append(hfs, f)
+		}
+	}
+	return hfs
 }
 
 // Set will find the first header with a matching name and replace it with the
@@ -259,6 +280,29 @@ func (f *HeaderField) Body() string { return f.body }
 // text for the field.
 func (f *HeaderField) Original() []byte { return f.original }
 
+// CacheGet retrieves a value from a structured data cache associated with the
+// header. Fields in the structured data cache are cleared when any setter
+// method is called on the header field
+func (f *HeaderField) CacheGet(k string) interface{} {
+	if f.cache == nil {
+		return nil
+	}
+
+	return f.cache[k]
+}
+
+// CacheSet sets a value in the structured data cache associated with the header
+// field. The intention is for this to be set to structured data associated with
+// the header value. If the name or body of the header is changed, this cache
+// will be cleared.
+func (f *HeaderField) CacheSet(k string, v interface{}) {
+	if f.cache == nil {
+		f.cache = make(map[string]interface{})
+	}
+
+	f.cache[k] = v
+}
+
 // String is an alias for Original.
 func (f *HeaderField) String() string { return string(f.original) }
 
@@ -287,6 +331,7 @@ func (f *HeaderField) SetName(n string) error {
 
 // SetNameUnsafe will rename a field without checks.
 func (f *HeaderField) SetNameUnsafe(n string) {
+	f.cache = nil
 	f.original = append([]byte(n), f.original[len(f.name):]...)
 	f.name = n
 }
@@ -320,6 +365,7 @@ func (f *HeaderField) SetBody(b string, lb []byte) error {
 func (f *HeaderField) SetBodyUnsafe(b string, lb []byte) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
 	newOrig = append(newOrig, []byte(b)...)
+	f.cache = nil
 	f.original = FoldValue(newOrig, lb)
 	f.body = b
 }
@@ -329,6 +375,7 @@ func (f *HeaderField) SetBodyUnsafe(b string, lb []byte) {
 func (f *HeaderField) SetBodyNoFold(b string) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
 	newOrig = append(newOrig, []byte(b)...)
+	f.cache = nil
 	f.original = newOrig
 	f.body = b
 }

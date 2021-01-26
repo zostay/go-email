@@ -2,18 +2,20 @@ package mime
 
 import (
 	"bytes"
-	"fmt"
-	"mime"
+	"errors"
 	"regexp"
 	"strings"
 
 	"github.com/zostay/go-email/pkg/email/simple"
 )
 
+// ParseError is returned when one or more errors occur while parsing an email
+// message. It collects all the errors and returns them as a group.
 type ParseError struct {
-	Errs []error
+	Errs []error // the list of errors that occurred during parsing
 }
 
+// Error returns the list of errors encounted while parsing an email message.
 func (err *ParseError) Error() string {
 	errs := make([]string, len(err.Errs))
 	for i, e := range err.Errs {
@@ -22,24 +24,35 @@ func (err *ParseError) Error() string {
 	return "error parsing MIME message: " + strings.Join(errs, ", ")
 }
 
+const (
+	// MaxMultipartDepth is the default depth the parser will recurse into a
+	// message.
+	DefaultMaxMultipartDepth = 10
+)
+
 type option func(*Message)
 
-func WithEncodingCheck(ec bool) option {
-	return func(m *Message) { m.encodingCheck = ec }
-}
-func withDepth(d int) option {
-	return func(m *Message) { m.depth = d }
+// WithMaxDepth sets the maximum depth the parse is allowed to descend
+// recursively within subparts. This value is saved as part of the object and
+// future calls to FillParts will obey it. If this option is not passed, it will
+// use DefaultMaxMultipartDepth.
+func WithMaxDepth(d int) option {
+	return func(m *Message) { m.MaxDepth = d }
 }
 
+// Parse parses the given bytes as an email message and returns the message
+// object. As much of the message as can be parsed will be returned even if an
+// error is returned.
+//
+// Options may be passed to modify the construction and parsing of the object.
 func Parse(m []byte, o ...option) (*Message, error) {
 	var mm *Message
 
 	msg, err := simple.Parse(m)
 	if msg != nil {
 		mm = &Message{
-			Message:       *msg,
-			depth:         0,
-			encodingCheck: false,
+			Message:  *msg,
+			MaxDepth: DefaultMaxMultipartDepth,
 		}
 	}
 
@@ -51,16 +64,6 @@ func Parse(m []byte, o ...option) (*Message, error) {
 		return mm, err
 	}
 
-	ct, ps, err := mime.ParseMediaType(mm.RawContentType())
-	if err != nil {
-		return mm, err
-	}
-
-	mm.contentType = &ContentType{
-		mediaType: ct,
-		params:    ps,
-	}
-
 	err = mm.FillParts()
 	if err != nil {
 		return mm, err
@@ -69,19 +72,22 @@ func Parse(m []byte, o ...option) (*Message, error) {
 	return mm, nil
 }
 
+// FillParts performs the work of parsing the message body into preamble,
+// sub-parts, and epilogue.
 func (m *Message) FillParts() error {
-	if strings.HasPrefix(m.contentType.mediaType, "multipart/") ||
-		strings.HasPrefix(m.contentType.mediaType, "message/") {
-		return m.FillPartsMultiPart()
+	m.Preamble = nil
+	m.Parts = nil
+	m.Epilogue = nil
+
+	mt := m.ContentType()
+	if strings.HasPrefix(mt, "multipart/") ||
+		strings.HasPrefix(mt, "message/") {
+		return m.fillPartsMultiPart()
 	} else {
-		return m.FillPartsSinglePart()
+		return m.fillPartsSinglePart()
 	}
 
 }
-
-const (
-	MaxMultipartDepth = 10
-)
 
 func (m *Message) boundaries(body []byte, boundary string) []int {
 	lbq := regexp.QuoteMeta(string(m.Break()))
@@ -110,24 +116,26 @@ func (m *Message) finalBoundary(body []byte, boundary string) bool {
 	return cmre.Match(body)
 }
 
-func (m *Message) FillPartsMultiPart() error {
-	boundary := m.contentType.params["boundary"]
+func (m *Message) fillPartsMultiPart() error {
+	boundary := m.Boundary()
 
-	if m.depth > MaxMultipartDepth {
-		return fmt.Errorf("message is more than %d deep in parts", MaxMultipartDepth)
+	if m.MaxDepth <= 0 {
+		return errors.New("message is nested too deeply")
 	}
 
 	// No boundary set, so it's not multipart
 	if boundary == "" {
-		return m.FillPartsSinglePart()
+		return m.fillPartsSinglePart()
 	}
 
 	boundaries := m.boundaries(m.Body(), boundary)
 
 	// There are no boundaries found, so it's not multipart
 	if len(boundaries) == 0 {
-		return m.FillPartsSinglePart()
+		return m.fillPartsSinglePart()
 	}
+
+	m.boundary = boundary
 
 	bits := make([][]byte, 0, len(boundaries))
 	lb := -1
@@ -137,7 +145,7 @@ func (m *Message) FillPartsMultiPart() error {
 			// MIME, but extra text to be ignored by the reader. We keep it
 			// around for the purpose of round-tripping.
 			if b > 0 {
-				m.preamble = m.Body()[0:b]
+				m.Preamble = m.Body()[0:b]
 			}
 			lb = b
 			continue
@@ -150,7 +158,7 @@ func (m *Message) FillPartsMultiPart() error {
 				// Anything after the last boundary is the epilogue. This is
 				// also not a MIME part and we also keep it around for
 				// round-tripping.
-				m.epilogue = m.Body()[b:]
+				m.Epilogue = m.Body()[b:]
 				break
 			} else {
 				// This is badly formatted, but whatever. We did not find a
@@ -168,11 +176,9 @@ func (m *Message) FillPartsMultiPart() error {
 		prefix := bit[:bend]
 		postBoundary := bit[bend:]
 		pm, err := Parse(postBoundary,
-			WithEncodingCheck(m.encodingCheck),
-			withDepth(m.depth+1),
+			WithMaxDepth(m.MaxDepth-1),
 		)
 		pm.prefix = prefix
-		pm.parent = m
 		errs = append(errs, err)
 		parts[i] = pm
 	}
@@ -184,7 +190,7 @@ func (m *Message) FillPartsMultiPart() error {
 	return nil
 }
 
-func (m *Message) FillPartsSinglePart() error {
-	m.parts = []*Message{}
+func (m *Message) fillPartsSinglePart() error {
+	m.Parts = []*Message{}
 	return nil
 }
