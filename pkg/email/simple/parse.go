@@ -12,8 +12,8 @@ func Parse(m []byte) (*email.Message, error) {
 
 	var head, body []byte
 	if pos > -1 {
-		head = m[0 : pos-len(crlf)]
-		body = m[pos:]
+		head = m[0:pos]
+		body = m[2*len(crlf)+pos:]
 	} else {
 		head = m
 		body = []byte{}

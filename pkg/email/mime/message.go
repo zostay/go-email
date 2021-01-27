@@ -72,14 +72,14 @@ func (m *Message) UpdateBody() error {
 // RawContentType is shorthand for
 //  m.Get("Content-type")
 func (m *Message) RawContentType() string {
-	return m.Get("Content-type")
+	return m.HeaderGet("Content-type")
 }
 
 func (m *Message) structuredContentType() (*contentType, error) {
 	const CTCK = "github.com/zostay/go-email/pkg/email/mime.ContentType"
 
 	// header set
-	hf := m.GetField("Content-type")
+	hf := m.HeaderGetField("Content-type")
 	if hf == nil {
 		return nil, nil
 	}
@@ -155,7 +155,7 @@ func (m *Message) BodyBinary() ([]byte, error) {
 		return nil, errors.New("cannot treat multipart MIME message as single part")
 	}
 
-	cte := m.Get("Content-transfer-encoding")
+	cte := m.HeaderGet("Content-transfer-encoding")
 	td, _ := SelectTransferDecoder(cte)
 	decode := td.From
 	return decode(m.Body())
@@ -186,7 +186,7 @@ func (m *Message) SetBodyUnicode(s string) error {
 		return err
 	}
 
-	cte := m.Get("Content-transfer-encoding")
+	cte := m.HeaderGet("Content-transfer-encoding")
 	td, _ := SelectTransferDecoder(cte)
 	decode := td.To
 
@@ -217,7 +217,7 @@ func (m *Message) SetBodyBinary(b []byte) error {
 		return errors.New("cannot treat multipart MIME message as single part")
 	}
 
-	cte := m.Get("Content-transfer-encoding")
+	cte := m.HeaderGet("Content-transfer-encoding")
 	td, _ := SelectTransferDecoder(cte)
 	decode := td.To
 

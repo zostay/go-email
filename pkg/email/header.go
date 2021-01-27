@@ -80,7 +80,10 @@ func ParseHeaderLB(m, lb []byte) (*Header, error) {
 		}
 	}
 
-	return &h, &HeaderParseError{errs}
+	if len(errs) > 0 {
+		return &h, &HeaderParseError{errs}
+	}
+	return &h, nil
 }
 
 // ParseHeaderLines is used by ParseHeader and ParseHeaderLB to create a list of
@@ -116,9 +119,9 @@ func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
 		return &HeaderField{"", string(name), "", f, nil}, fmt.Errorf("header field %q missing body", name)
 	}
 
-	name := UnfoldValue(parts[0], lb)
-	body := UnfoldValue(parts[1], lb)
-	return &HeaderField{"", string(name), string(body), f, nil}, nil
+	name := strings.TrimSpace(string(UnfoldValue(parts[0], lb)))
+	body := strings.TrimSpace(string(UnfoldValue(parts[1], lb)))
+	return &HeaderField{"", name, body, f, nil}, nil
 }
 
 // Break returns the line break string associated with this header.
@@ -135,8 +138,8 @@ func (h *Header) String() string {
 	return out.String()
 }
 
-// Names will return the unique header names found in the mail header.
-func (h *Header) Names() []string {
+// HeaderNames will return the unique header names found in the mail header.
+func (h *Header) HeaderNames() []string {
 	seen := map[string]struct{}{}
 	names := make([]string, 0, len(h.fields))
 	for _, f := range h.fields {
@@ -148,25 +151,25 @@ func (h *Header) Names() []string {
 	return names
 }
 
-// Get will find the first header field with a matching name and return body
+// HeaderGet will find the first header field with a matching name and return body
 // value. It will return an empty string if no such header is present.
-func (h *Header) Get(n string) string {
-	f := h.GetField(n)
+func (h *Header) HeaderGet(n string) string {
+	f := h.HeaderGetField(n)
 	if f != nil {
 		return f.Body()
 	}
 	return ""
 }
 
-// GetAddressList returns addresses for a header. If the header is not set or
+// HeaderGetAddressList returns addresses for a header. If the header is not set or
 // empty, it will return nil and no error. If the header has a value, but cannot
 // be parsed as an address list, it will return nil and an error. If the header
 // can be parsed as an email list, the email addresses will be returned.
 //
 // This only returns the addresses for the first occurence of a header, as the
 // email address headers are only permitted a single time in email.
-func (h *Header) GetAddressList(n string) (addr.AddressList, error) {
-	b := h.Get(n)
+func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
+	b := h.HeaderGet(n)
 	if b == "" {
 		return nil, nil
 	}
@@ -174,13 +177,13 @@ func (h *Header) GetAddressList(n string) (addr.AddressList, error) {
 	return addr.ParseEmailAddressList(b)
 }
 
-// Date parses and returns the date in the email. This will read the header
+// HeaderDate parses and returns the date in the email. This will read the header
 // named "Date". As this header is always required, it will return the time.Time
 // zero value and an error if this method is called and no value is present. If
 // the date header is present, it will returned the parsed value or an error if
 // the date cannot be parsed.
-func (h *Header) Date() (time.Time, error) {
-	b := h.Get("Date")
+func (h *Header) HeaderDate() (time.Time, error) {
+	b := h.HeaderGet("Date")
 	if b == "" {
 		return time.Time{}, nil
 	}
@@ -188,9 +191,9 @@ func (h *Header) Date() (time.Time, error) {
 	return mail.ParseDate(b)
 }
 
-// GetField will find the first header field and return the header field object
+// HeaderGetField will find the first header field and return the header field object
 // itself. It will return nil if no such header is present.
-func (h *Header) GetField(n string) *HeaderField {
+func (h *Header) HeaderGetField(n string) *HeaderField {
 	m := makeMatch(n)
 	for _, f := range h.fields {
 		if f.Match() == m {
@@ -200,10 +203,10 @@ func (h *Header) GetField(n string) *HeaderField {
 	return nil
 }
 
-// GetAll will find all header fields with a matching name and return a list of body
+// HeaderGetAll will find all header fields with a matching name and return a list of body
 // values. Returns nil if no matching headers are present.
-func (h *Header) GetAll(n string) []string {
-	hfs := h.GetAllFields(n)
+func (h *Header) HeaderGetAll(n string) []string {
+	hfs := h.HeaderGetAllFields(n)
 	bs := make([]string, len(hfs))
 	for i, f := range hfs {
 		bs[i] = f.Body()
@@ -211,10 +214,10 @@ func (h *Header) GetAll(n string) []string {
 	return bs
 }
 
-// GetAllFields will find all the header fields with a matching name and return
+// HeaderGetAllFields will find all the header fields with a matching name and return
 // the list of field objects. It will return any empty slice if no headers with
 // this name are present.
-func (h *Header) GetAllFields(n string) []*HeaderField {
+func (h *Header) HeaderGetAllFields(n string) []*HeaderField {
 	hfs := make([]*HeaderField, 0)
 	m := makeMatch(n)
 	for _, f := range h.fields {
@@ -225,10 +228,10 @@ func (h *Header) GetAllFields(n string) []*HeaderField {
 	return hfs
 }
 
-// Set will find the first header with a matching name and replace it with the
+// HeaderSet will find the first header with a matching name and replace it with the
 // given body. If no header by that name is set, it will add a new header with
 // that name and body.
-func (h *Header) Set(n, b string) error {
+func (h *Header) HeaderSet(n, b string) error {
 	m := makeMatch(n)
 	for _, f := range h.fields {
 		if f.Match() == m {
@@ -246,10 +249,10 @@ func (h *Header) Set(n, b string) error {
 	return nil
 }
 
-// Add will add a new header with the given name and body value. If an existing
+// HeaderAdd will add a new header with the given name and body value. If an existing
 // header with the same value is already present, this will add the new field
 // before the first field with the same name.
-func (h *Header) Add(n, b string) error {
+func (h *Header) HeaderAdd(n, b string) error {
 	f, err := NewHeaderField(n, b, h.lb)
 	if err != nil {
 		return err
@@ -345,17 +348,17 @@ func (f *HeaderField) String() string { return string(f.original) }
 // given string contains a colon or any character outside the printable ASCII
 // range.
 func (f *HeaderField) SetName(n string) error {
-	allowedNameChars := func(c rune) bool {
+	forbiddenNameChars := func(c rune) bool {
 		if c == ':' {
-			return false
-		}
-		if c >= 33 && c <= 126 {
 			return true
 		}
-		return false
+		if c >= 33 && c <= 126 {
+			return false
+		}
+		return true
 	}
 
-	if strings.IndexFunc(n, allowedNameChars) > -1 {
+	if strings.IndexFunc(n, forbiddenNameChars) > -1 {
 		return errors.New("header name contains illegal character")
 	}
 
@@ -375,17 +378,17 @@ func (f *HeaderField) SetNameUnsafe(n string) {
 // make sure it is legal. It is only permitted to contain printable ASCII,
 // space, and tab characters.
 func (f *HeaderField) SetBody(b string, lb []byte) error {
-	allowedBodyChars := func(c rune) bool {
+	forbiddenBodyChars := func(c rune) bool {
 		if c == ' ' || c == '\t' {
-			return true
+			return false
 		}
 		if c >= 33 && c <= 126 {
-			return true
+			return false
 		}
-		return false
+		return true
 	}
 
-	if strings.IndexFunc(b, allowedBodyChars) > -1 {
+	if strings.IndexFunc(b, forbiddenBodyChars) > -1 {
 		return errors.New("body name contains illegal character")
 	}
 
@@ -399,6 +402,7 @@ func (f *HeaderField) SetBody(b string, lb []byte) error {
 func (f *HeaderField) SetBodyUnsafe(b string, lb []byte) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
 	newOrig = append(newOrig, []byte(b)...)
+	newOrig = append(newOrig, lb...)
 	f.cache = nil
 	f.original = FoldValue(newOrig, lb)
 	f.body = b

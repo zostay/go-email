@@ -28,7 +28,9 @@ func UnfoldValue(f, lb []byte) []byte {
 		}
 		uf.Write(fold)
 
-		needsSpace = unicode.IsPrint(rune(fold[len(fold)-1]))
+		if len(fold) > 0 {
+			needsSpace = unicode.IsPrint(rune(fold[len(fold)-1]))
+		}
 		trim = true
 	}
 
