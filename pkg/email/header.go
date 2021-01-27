@@ -89,11 +89,17 @@ func ParseHeaderLB(m, lb []byte) (*Header, error) {
 // ParseHeaderLines is used by ParseHeader and ParseHeaderLB to create a list of
 // lines where each line represents a single field, including and folded
 // continuation lines.
+//
+// Often, mail tools (like some versions of Microsoft Outlook or Exchange
+// *eyeroll*) will incorrectly fold a line. As such, a field line is consider
+// the start of a field when it does not start with a space AND it contains a
+// colon. Otherwise, we will treat it as a fold even though this is not correct
+// according to RFC 5322.
 func ParseHeaderLines(m, lb []byte) ([][]byte, error) {
 	h := make([][]byte, 0, len(m)/80)
 	var err error
 	for _, line := range bytes.SplitAfter(m, lb) {
-		if bytes.HasPrefix(line, []byte(" ")) {
+		if line[0] == '\t' || line[0] == ' ' || !bytes.Contains(line, []byte(":")) {
 			// Start with a continuation? Weird, uh...
 			if len(h) == 0 {
 				err = ErrContinuationStart

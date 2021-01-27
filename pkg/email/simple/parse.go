@@ -35,11 +35,21 @@ func SplitHeadFromBody(m []byte) (int, []byte) {
 	}
 
 	// Find the split between header/body
+	var (
+		epos  int
+		ecrlf []byte
+	)
 	for _, s := range splits {
 		if pos := bytes.Index(m, s); pos > -1 {
-			crlf := s[0 : len(s)/2]
-			return pos, crlf
+			if ecrlf == nil || pos < epos {
+				epos = pos
+				ecrlf = s[0 : len(s)/2]
+			}
 		}
+	}
+
+	if ecrlf != nil {
+		return epos, ecrlf
 	}
 
 	// Assume the entire message is the header

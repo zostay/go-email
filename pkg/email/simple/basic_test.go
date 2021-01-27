@@ -18,14 +18,18 @@ func readTestFile(n string) []byte {
 	return data
 }
 
-var fc = readTestFile("josey-nofold")
+var (
+	joseyNoFold         = readTestFile("josey-nofold")
+	badlyFolded         = readTestFile("badly-folded")
+	badlyFoldedNoIndent = readTestFile("badly-folded-noindent")
+)
 
 func TestBasic(t *testing.T) {
 	t.Parallel()
 
-	assert.NotZero(t, len(fc))
+	assert.NotZero(t, len(joseyNoFold))
 
-	mail, err := Parse(fc)
+	mail, err := Parse(joseyNoFold)
 	if !assert.NoError(t, err) && assert.NotNil(t, mail) {
 		return
 	}
@@ -55,7 +59,7 @@ func TestBasic(t *testing.T) {
 
 	mail.SetBody(oldBody)
 
-	assert.Equal(t, string(fc), mail.String())
+	assert.Equal(t, string(joseyNoFold), mail.String())
 
 	const (
 		pu = "Previously-Unknown"
@@ -67,6 +71,8 @@ func TestBasic(t *testing.T) {
 }
 
 func TestNastyNewline(t *testing.T) {
+	t.Parallel()
+
 	const nasty = "Subject: test\n\rTo: foo\n\r\n\rfoo\n\r"
 
 	mail, err := Parse([]byte(nasty))
@@ -78,4 +84,29 @@ func TestNastyNewline(t *testing.T) {
 	assert.Equal(t, []byte("\n\r"), crlf)
 
 	assert.Equal(t, nasty, mail.String())
+}
+
+func TestBadlyFolded(t *testing.T) {
+	t.Parallel()
+
+	m1, err := Parse(badlyFolded)
+	assert.NoError(t, err)
+
+	m2, err := Parse([]byte(m1.String()))
+	assert.NoError(t, err)
+
+	t.Log(m2.HeaderNames())
+
+	assert.Equal(t, "CMU Sieve 2.2", m2.HeaderGet("X-Sieve"))
+}
+
+func TestBadlyFoldedNoIndent(t *testing.T) {
+	t.Parallel()
+
+	m, err := Parse(badlyFoldedNoIndent)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "Bar", m.HeaderGet("Bar"))
+	assert.Equal(t, "This header is badly folded because even though it goes onto the second line, it has no indent.", m.HeaderGet("Badly-Folded"))
+	assert.Equal(t, "Foo", m.HeaderGet("Foo"))
 }
