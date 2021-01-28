@@ -131,7 +131,13 @@ func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
 }
 
 // Break returns the line break string associated with this header.
-func (h *Header) Break() []byte { return h.lb }
+func (h *Header) Break() []byte {
+	if h.lb == nil {
+		return []byte{'\n', '\r'}
+	} else {
+		return h.lb
+	}
+}
 
 // String will return the string representation of the header. If the header was
 // parsed from an email header and not modified, this will output the original
@@ -241,11 +247,11 @@ func (h *Header) HeaderSet(n, b string) error {
 	m := makeMatch(n)
 	for _, f := range h.fields {
 		if f.Match() == m {
-			return f.SetBody(b, h.lb)
+			return f.SetBody(b, h.Break())
 		}
 	}
 
-	f, err := NewHeaderField(n, b, h.lb)
+	f, err := NewHeaderField(n, b, h.Break())
 	if err != nil {
 		return err
 	}
@@ -259,7 +265,7 @@ func (h *Header) HeaderSet(n, b string) error {
 // header with the same value is already present, this will add the new field
 // before the first field with the same name.
 func (h *Header) HeaderAdd(n, b string) error {
-	f, err := NewHeaderField(n, b, h.lb)
+	f, err := NewHeaderField(n, b, h.Break())
 	if err != nil {
 		return err
 	}

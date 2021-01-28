@@ -50,7 +50,7 @@ func FoldValue(f, lb []byte) []byte {
 
 	var out bytes.Buffer
 	foldSpace := false
-	writeFold := func(f []byte, end int) {
+	writeFold := func(f []byte, end int) []byte {
 		if foldSpace {
 			out.WriteString(FoldIndent)
 		}
@@ -58,24 +58,45 @@ func FoldValue(f, lb []byte) []byte {
 		out.Write(lb)
 		f = f[end:]
 		foldSpace = true
+
+		return f
 	}
 
 	lines := bytes.Split(f, lb)
 	for _, line := range lines {
+		// Will we be forced to fold?
+		fforced := len(line) > ForcedFoldLength-2
+
+	FoldingSingle:
 		for len(line) > 0 {
-			if ix := bytes.LastIndexFunc(line[0:PreferredFoldLength-2], isSpace); ix > -1 {
-				// best case, we find a space in the first 78 chars, break there
-				writeFold(line, ix)
-			} else if ix := bytes.IndexFunc(line, isSpace); ix > -1 && ix < ForcedFoldLength-2 {
-				// barring that, try to find a space after the 78 char mark
-				writeFold(line, ix)
-			} else if len(line) > PreferredFoldLength-2 {
-				// but if it's really long with no space, force a break at 78
-				writeFold(line, PreferredFoldLength-2)
-			} else {
-				// write the last bit out
-				writeFold(line, len(line))
+			// Do we need to fold lines?
+			fneed := len(line) > PreferredFoldLength-2
+			if !fneed {
+				line = writeFold(line, len(line))
+				continue FoldingSingle
 			}
+
+			// best case, we find a space in the first 78 chars, break there
+			if ix := bytes.LastIndexFunc(line[0:PreferredFoldLength-2], isSpace); ix > -1 {
+				line = writeFold(line, ix)
+				continue FoldingSingle
+			}
+
+			// barring that, try to find a space after the 78 char mark
+			if ix := bytes.IndexFunc(line, isSpace); ix > -1 && ix < ForcedFoldLength-2 {
+				line = writeFold(line, ix)
+				continue FoldingSingle
+			}
+
+			// but if it's really long with no space, force a break at 78
+			if fforced {
+				line = writeFold(line, PreferredFoldLength-2)
+				continue FoldingSingle
+			}
+
+			// We're not forced to fold this line. Allow it to be longer than we
+			// prefer.
+			line = writeFold(line, len(line))
 		}
 	}
 

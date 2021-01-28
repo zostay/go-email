@@ -4,9 +4,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/zostay/go-email/pkg/email"
 )
 
 func readTestFile(n string) []byte {
@@ -19,6 +22,7 @@ func readTestFile(n string) []byte {
 }
 
 var (
+	joseyFold           = readTestFile("josey-fold")
 	joseyNoFold         = readTestFile("josey-nofold")
 	badlyFolded         = readTestFile("badly-folded")
 	badlyFoldedNoIndent = readTestFile("badly-folded-noindent")
@@ -95,8 +99,6 @@ func TestBadlyFolded(t *testing.T) {
 	m2, err := Parse([]byte(m1.String()))
 	assert.NoError(t, err)
 
-	t.Log(m2.HeaderNames())
-
 	assert.Equal(t, "CMU Sieve 2.2", m2.HeaderGet("X-Sieve"))
 }
 
@@ -109,4 +111,55 @@ func TestBadlyFoldedNoIndent(t *testing.T) {
 	assert.Equal(t, "Bar", m.HeaderGet("Bar"))
 	assert.Equal(t, "This header is badly folded because even though it goes onto the second line, it has no indent.", m.HeaderGet("Badly-Folded"))
 	assert.Equal(t, "Foo", m.HeaderGet("Foo"))
+}
+
+func TestFolding(t *testing.T) {
+	t.Parallel()
+
+	m, err := Parse(joseyFold)
+	assert.NoError(t, err)
+
+	const refs = "<200211120937.JAA28130@xoneweb.opengroup.org>  <1021112125524.ZM7503@skye.rdg.opengroup.org>  <3DD221BB.13116D47@sun.com>"
+	assert.Equal(t, refs, m.HeaderGet("References"))
+	assert.Equal(t, refs, m.HeaderGet("reFerEnceS"))
+
+	var recvd = []string{
+		"from mailman.opengroup.org ([192.153.166.9]) by deep-dark-truthful-mirror.pad with smtp (Exim 3.36 #1 (Debian)) id 18Buh5-0006Zr-00 for <posix@simon-cozens.org>; Wed, 13 Nov 2002 10:24:23 +0000",
+		"(qmail 1679 invoked by uid 503); 13 Nov 2002 10:10:49 -0000",
+	}
+	assert.Equal(t, recvd, m.HeaderGetAll("Received"))
+}
+
+func TestFoldingHeaderFormatting(t *testing.T) {
+	t.Parallel()
+
+	const text = `Fold-1: 1
+ 2 3
+Fold-2: 0
+ 1 2
+
+Body
+`
+
+	m, err := Parse([]byte(text))
+	assert.NoError(t, err)
+	assert.Equal(t, "0 1 2", m.HeaderGet("Fold-2"))
+}
+
+func TestFoldingLongLine(t *testing.T) {
+	t.Parallel()
+
+	const (
+		to   = "to@example.com"
+		from = "from@example.com"
+	)
+
+	subject := strings.Repeat("A ", 50)
+
+	var h email.Header
+	h.HeaderSet("To", to)
+	h.HeaderSet("From", from)
+	h.HeaderSet("Subject", subject)
+
+	assert.NotEqual(t, subject, h.HeaderGetField("Subject").String())
 }
