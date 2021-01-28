@@ -11,6 +11,13 @@ import (
 	"github.com/zostay/go-addr/pkg/addr"
 )
 
+const (
+	StandardLineBreak   = "\x0d\x0a"
+	LinuxLineBreak      = "\x0a"
+	ClassicMacLineBreak = "\x0d"
+	WeirdoLineBreak     = "\x0a\x0d"
+)
+
 var (
 	// ErrContinuationStart error is returned by ParseHeader when the first line
 	// in the message is prefixed with space. The email header will still be
@@ -128,6 +135,11 @@ func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
 	name := strings.TrimSpace(string(UnfoldValue(parts[0], lb)))
 	body := strings.TrimSpace(string(UnfoldValue(parts[1], lb)))
 	return &HeaderField{"", name, body, f, nil}, nil
+}
+
+// NewHeader creates a new header.
+func NewHeader(lb string) *Header {
+	return &Header{lb: []byte(lb)}
 }
 
 // Break returns the line break string associated with this header.
@@ -288,7 +300,9 @@ func (h *Header) HeaderAdd(n, b string) error {
 // NewHeaderFields constructs a new header field using the given name, body, and
 // line break string.
 func NewHeaderField(n, b string, lb []byte) (*HeaderField, error) {
-	f := HeaderField{}
+	f := HeaderField{
+		original: []byte(": "),
+	}
 
 	var err error
 	err = f.SetName(n)

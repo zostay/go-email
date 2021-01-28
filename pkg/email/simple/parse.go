@@ -28,10 +28,10 @@ func Parse(m []byte) (*email.Message, error) {
 // returns both.
 func SplitHeadFromBody(m []byte) (int, []byte) {
 	var splits = [][]byte{
-		[]byte("\x0a\x0d\x0a\x0d"), // \r\n\r\n
-		[]byte("\x0d\x0a\x0d\x0a"), // \n\r\n\r, extremely unlikely, possibly never
-		[]byte("\x0d\x0d"),         // \n\n
-		[]byte("\x0a\x0a"),         // \r\r
+		[]byte("\x0d\x0a\x0d\x0a"), // \r\n\r\n
+		[]byte("\x0a\x0d\x0a\x0d"), // \n\r\n\r, extremely unlikely, possibly never
+		[]byte("\x0a\x0a"),         // \n\n
+		[]byte("\x0d\x0d"),         // \r\r
 	}
 
 	// Find the split between header/body

@@ -48,6 +48,15 @@ func FoldValue(f, lb []byte) []byte {
 		return f
 	}
 
+	findNextNS := func(f []byte, start, limit int) int {
+		for i := start; i < limit; i++ {
+			if f[i] != ' ' && f[i] != '\t' {
+				return i
+			}
+		}
+		return limit
+	}
+
 	var out bytes.Buffer
 	foldSpace := false
 	writeFold := func(f []byte, end int) []byte {
@@ -78,13 +87,27 @@ func FoldValue(f, lb []byte) []byte {
 
 			// best case, we find a space in the first 78 chars, break there
 			if ix := bytes.LastIndexFunc(line[0:PreferredFoldLength-2], isSpace); ix > -1 {
-				line = writeFold(line, ix)
+				limit := len(line)
+				if ForcedFoldLength-2 < limit {
+					limit = ForcedFoldLength - 2
+				}
+
+				// keep as much space as possible before the break
+				nix := findNextNS(line, ix, limit)
+				line = writeFold(line, nix)
 				continue FoldingSingle
 			}
 
 			// barring that, try to find a space after the 78 char mark
 			if ix := bytes.IndexFunc(line, isSpace); ix > -1 && ix < ForcedFoldLength-2 {
-				line = writeFold(line, ix)
+				limit := len(line)
+				if ForcedFoldLength-2 < limit {
+					limit = ForcedFoldLength - 2
+				}
+
+				// keep as much space as possible before the break
+				nix := findNextNS(line, ix, limit)
+				line = writeFold(line, nix)
 				continue FoldingSingle
 			}
 

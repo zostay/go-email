@@ -156,10 +156,12 @@ func TestFoldingLongLine(t *testing.T) {
 
 	subject := strings.Repeat("A ", 50)
 
-	var h email.Header
+	h := email.NewHeader(email.LinuxLineBreak)
 	h.HeaderSet("To", to)
 	h.HeaderSet("From", from)
 	h.HeaderSet("Subject", subject)
 
 	assert.NotEqual(t, subject, h.HeaderGetField("Subject").String())
+
+	assert.Equal(t, "To: to@example.com\nFrom: from@example.com\nSubject: A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A \n A A A A A A A A A A A A A A A A \n", h.String())
 }
