@@ -26,6 +26,7 @@ var (
 	joseyNoFold         = readTestFile("josey-nofold")
 	badlyFolded         = readTestFile("badly-folded")
 	badlyFoldedNoIndent = readTestFile("badly-folded-noindent")
+	junkInHeader        = readTestFile("junk-in-header")
 )
 
 func TestBasic(t *testing.T) {
@@ -174,4 +175,20 @@ func TestHeaderCase(t *testing.T) {
 
 	m.HeaderSet("Foo-bar", "quux")
 	assert.Equal(t, "Foo-Bar: quux\n", m.HeaderGetField("FOO-BAR").String())
+}
+
+func TestHeaderJunk(t *testing.T) {
+	t.Parallel()
+
+	m, err := Parse(junkInHeader)
+	var hpErr *email.HeaderParseError
+	if assert.ErrorAs(t, err, &hpErr) {
+		assert.Equal(t, 1, len(hpErr.Errs))
+		var bsErr *email.BadStartError
+		if assert.ErrorAs(t, hpErr.Errs[0], &bsErr) {
+			assert.Contains(t, string(bsErr.BadStart), "linden")
+		}
+	}
+
+	assert.NotContains(t, m.String(), "linden")
 }

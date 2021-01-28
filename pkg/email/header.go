@@ -18,12 +18,16 @@ const (
 	WeirdoLineBreak     = "\x0a\x0d"
 )
 
-var (
-	// ErrContinuationStart error is returned by ParseHeader when the first line
-	// in the message is prefixed with space. The email header will still be
-	// parsed, but the contents of the parse may be suspicious.
-	ErrContinuationStart = errors.New("header starts with a continuation")
-)
+// BadStartError is returned when the header begins with junk text that does not
+// appear to be a header. This text is preserved in the error object.
+type BadStartError struct {
+	BadStart []byte // the text skipped at the start of header
+}
+
+// Error returns the error message.
+func (err *BadStartError) Error() string {
+	return "header starts with text that does not appear to be a header"
+}
 
 // HeaderParseError is returned when an error occurs during parse. This may
 // include multiple errors. These errors will be accumulated in this error.
@@ -102,15 +106,22 @@ func ParseHeaderLB(m, lb []byte) (*Header, error) {
 // the start of a field when it does not start with a space AND it contains a
 // colon. Otherwise, we will treat it as a fold even though this is not correct
 // according to RFC 5322.
+//
+// If the header starts with text that does not appear to be a header. The start
+// text will be skipped for header parsing. However, it will be accumulated into
+// a BadStartError and returned with the parsed header.
 func ParseHeaderLines(m, lb []byte) ([][]byte, error) {
 	h := make([][]byte, 0, len(m)/80)
-	var err error
+	var err *BadStartError
 	for _, line := range bytes.SplitAfter(m, lb) {
 		if line[0] == '\t' || line[0] == ' ' || !bytes.Contains(line, []byte(":")) {
 			// Start with a continuation? Weird, uh...
 			if len(h) == 0 {
-				err = ErrContinuationStart
-				h = append(h, line)
+				if err != nil {
+					err.BadStart = append(err.BadStart, line...)
+				} else {
+					err = &BadStartError{line}
+				}
 				continue
 			}
 
@@ -120,7 +131,11 @@ func ParseHeaderLines(m, lb []byte) ([][]byte, error) {
 		}
 	}
 
-	return h, err
+	if err != nil {
+		return h, err
+	} else {
+		return h, nil
+	}
 }
 
 // ParseHeaderField will take a single header field, including any folded
