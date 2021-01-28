@@ -165,3 +165,13 @@ func TestFoldingLongLine(t *testing.T) {
 
 	assert.Equal(t, "To: to@example.com\nFrom: from@example.com\nSubject: A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A \n A A A A A A A A A A A A A A A A \n", h.String())
 }
+
+func TestHeaderCase(t *testing.T) {
+	t.Parallel()
+
+	m, err := Parse([]byte("Foo-Bar: Baz\n\ntest\n"))
+	assert.NoError(t, err)
+
+	m.HeaderSet("Foo-bar", "quux")
+	assert.Equal(t, "Foo-Bar: quux\n", m.HeaderGetField("FOO-BAR").String())
+}
