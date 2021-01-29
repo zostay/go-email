@@ -252,4 +252,33 @@ The body is irrelevant.
 		myParseField("Alpha: one is the loneliest header"),
 		myParseField("Bravo: this header comes second"),
 	}, m.HeaderFields())
+
+	m.HeaderSetAll("Gamma", "gammalon")
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: one is the loneliest header"),
+		myParseField("Bravo: this header comes second"),
+		myParseFieldNew("Gamma: gammalon"),
+	}, m.HeaderFields())
+
+	m.HeaderSetAll("alpha", "header one", "header omega")
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: header one"),
+		myParseField("Bravo: this header comes second"),
+		myParseField("Gamma: gammalon"),
+		myParseFieldNew("alpha: header omega"),
+	}, m.HeaderFields())
+
+	m.HeaderSetAll("bravo")
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: header one"),
+		myParseField("Gamma: gammalon"),
+		myParseField("alpha: header omega"),
+	}, m.HeaderFields())
+
+	m.HeaderSetAll("Omega")
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: header one"),
+		myParseField("Gamma: gammalon"),
+		myParseField("alpha: header omega"),
+	}, m.HeaderFields())
 }
