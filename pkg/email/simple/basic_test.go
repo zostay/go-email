@@ -211,18 +211,26 @@ The body is irrelevant.
 		"this header comes third",
 	}, m.HeaderGetAll("alpha"))
 
+	const mylb = email.LinuxLineBreak
 	myParseField := func(f string) *email.HeaderField {
-		hf, err := email.ParseHeaderField([]byte(f), []byte(email.LinuxLineBreak))
+		hf, err := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
 		hf.Match() // make sure the match is cached
 		assert.NoError(t, err)
 		return hf
 	}
 
 	assert.Equal(t, []*email.HeaderField{
-		myParseField("Alpha: this header comes first\n"),
-		myParseField("Bravo: this header comes second\n"),
+		myParseField("Alpha: this header comes first"),
+		myParseField("Bravo: this header comes second"),
 		myParseField("Alpha: this header comes third"),
 	}, m.HeaderFields())
 
 	assert.Equal(t, []string{"Alpha", "Bravo"}, m.HeaderNames())
+
+	m.HeaderSetAll("Alpha", "header one", "header three")
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: header one"),
+		myParseField("Bravo: this header comes second"),
+		myParseField("Alpha: header three"),
+	}, m.HeaderFields())
 }

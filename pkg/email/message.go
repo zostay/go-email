@@ -35,7 +35,6 @@ func (m *Message) String() string {
 	var out strings.Builder
 	out.WriteString(m.Header.String())
 	out.Write(m.Header.lb)
-	out.Write(m.Header.lb)
 	out.Write(m.body)
 	return out.String()
 }

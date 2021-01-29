@@ -116,6 +116,9 @@ func ParseHeaderLines(m, lb []byte) ([][]byte, error) {
 	h := make([][]byte, 0, len(m)/80)
 	var err *BadStartError
 	for _, line := range bytes.SplitAfter(m, lb) {
+		if len(line) == 0 {
+			break
+		}
 		if line[0] == '\t' || line[0] == ' ' || !bytes.Contains(line, []byte(":")) {
 			// Start with a continuation? Weird, uh...
 			if len(h) == 0 {
@@ -194,14 +197,26 @@ func (h *Header) HeaderNames() []string {
 	return names
 }
 
-// HeaderGet will find the first header field with a matching name and return body
-// value. It will return an empty string if no such header is present.
+// HeaderGet will find the first header field with a matching name and return
+// the body value. It will return an empty string if no such header is present.
 func (h *Header) HeaderGet(n string) string {
-	f := h.HeaderGetField(n)
-	if f != nil {
-		return f.Body()
+	hf, _ := h.HeaderGetFieldN(n, 0)
+	if hf != nil {
+		return hf.Body()
 	}
 	return ""
+}
+
+// HeaderGetN will find the (ix+1)th header field with a matching name and
+// return the body value. It will return an empty string with an error if no
+// such header is present.
+func (h *Header) HeaderGetN(n string, ix int) (string, error) {
+	hf, err := h.HeaderGetFieldN(n, ix)
+	if hf != nil {
+		return hf.Body(), err
+	}
+
+	return "", err
 }
 
 // HeaderGetAddressList returns addresses for a header. If the header is not set or
@@ -246,6 +261,22 @@ func (h *Header) HeaderGetField(n string) *HeaderField {
 	return nil
 }
 
+// HeaderGetFieldN locates the (ix+1)th named header and returns the header
+// field object. If no such header exists, the field is returned as nil and an
+// error is returned.
+func (h *Header) HeaderGetFieldN(n string, ix int) (*HeaderField, error) {
+	m := makeMatch(n)
+	count := 0
+	for _, f := range h.fields {
+		if f.Match() == m {
+			if count == ix {
+				return f, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("unable to find index %d of header named %q", ix, n)
+}
+
 // HeaderGetAll will find all header fields with a matching name and return a list of body
 // values. Returns nil if no matching headers are present.
 func (h *Header) HeaderGetAll(n string) []string {
@@ -271,9 +302,9 @@ func (h *Header) HeaderGetAllFields(n string) []*HeaderField {
 	return hfs
 }
 
-// HeaderSet will find the first header with a matching name and replace it with the
-// given body. If no header by that name is set, it will add a new header with
-// that name and body.
+// HeaderSet will find the first header with a matching name and replace it
+// with the given body. If no header by that name is set, it will add a new
+// header with that name and body.
 func (h *Header) HeaderSet(n, b string) error {
 	m := makeMatch(n)
 	for _, f := range h.fields {
@@ -290,6 +321,47 @@ func (h *Header) HeaderSet(n, b string) error {
 	h.fields = append(h.fields, f)
 
 	return nil
+}
+
+// HeaderSetAll does a full header replacement. This performs a number of
+// combined operations.
+//
+// 1. If no body values are given, this is equivalent to HeaderDeleteAll.
+//
+// 2. If some body values are given and there are some headers already present.
+//    This is equivalent to calling HeaderSet for each of those values.
+//
+// 3. If there are fewer body values than headers already present, the remaining
+//    headers will be deleted.
+//
+// 4. If there are more body values than headers already present, this is
+//    equivalent to calling HeaderAdd for each of those headers.
+//
+// Basically, it's going to make sure all the given headers are set and will
+// start by changing the ones already in place, removing any additional ones
+// that aren't updated, and adding new ones if necessary.
+func (h *Header) HeaderSetAll(n string, bs ...string) {
+	if len(bs) == 0 {
+		h.HeaderDeleteAll(n)
+		return
+	}
+
+	hfs := make([]*HeaderField, 0, len(h.fields))
+	m := makeMatch(n)
+	bi := 0
+	for _, hf := range h.fields {
+		if hf.Match() == m {
+			if bi <= len(bs) {
+				hf.SetBody(bs[bi], h.lb)
+				hfs = append(hfs, hf)
+				bi++
+			}
+			// else, skip and delete the field
+		} else {
+			// unrelated field, copy it through
+			hfs = append(hfs, hf)
+		}
+	}
 }
 
 // HeaderAdd will add a new header with the given name and body value. If an existing
