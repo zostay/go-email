@@ -302,4 +302,8 @@ HELP!
 `))
 	assert.NoError(t, err)
 	assert.Equal(t, m.HeaderNames(), []string{"From", "To", "Subject"})
+
+	m, err = Parse([]byte{})
+	assert.NoError(t, err)
+	assert.Equal(t, m.HeaderNames(), []string{})
 }
