@@ -246,4 +246,10 @@ The body is irrelevant.
 		myParseField("Alpha: h3"),
 		myParseFieldNew("Alpha: h4"),
 	}, m.HeaderFields())
+
+	m.HeaderSetAll("alpha", "one is the loneliest header")
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: one is the loneliest header"),
+		myParseField("Bravo: this header comes second"),
+	}, m.HeaderFields())
 }

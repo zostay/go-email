@@ -353,7 +353,7 @@ func (h *Header) HeaderSetAll(n string, bs ...string) {
 	for _, hf := range h.fields {
 		if hf.Match() == m {
 			// Set existing field
-			if bi <= len(bs) {
+			if bi < len(bs) {
 				hf.SetBody(bs[bi], h.lb)
 				hfs = append(hfs, hf)
 				bi++
@@ -364,6 +364,8 @@ func (h *Header) HeaderSetAll(n string, bs ...string) {
 			hfs = append(hfs, hf)
 		}
 	}
+
+	h.fields = hfs
 
 	// Add a new field
 	for i := bi; i < len(bs); i++ {
@@ -382,6 +384,50 @@ func (h *Header) HeaderAdd(n, b string) error {
 	}
 
 	h.fields = append(h.fields, f)
+	return nil
+}
+
+// HeaderAddN will add a new header field at the specified location in the
+// header. Passing a value of -1 to ix will add a new field immediately before
+// the first header of the same name or at the top of the header. A non-negative
+// value will add the header immediately after the nth header of the same name
+// or at the bottom of the header if there is no such header.
+//
+// If the given field name is not legal, an error will be returned and the
+// header will not be modified.
+func (h *Header) HeaderAddN(n, b string, ix int) error {
+	f, err := NewHeaderField(n, b, h.Break())
+	if err != nil {
+		return err
+	}
+
+	count := 0
+	m := makeMatch(n)
+	previ := -1
+	for i, f := range h.fields {
+		if f.Match() == m {
+			if count > ix {
+				b := h.fields[:i]
+				a := h.fields[i:]
+				h.fields = append(b, f)
+				h.fields = append(h.fields, a...)
+				return nil
+			}
+			previ = i
+			count++
+		}
+	}
+
+	if ix < 0 {
+		h.fields = append([]*HeaderField{f}, h.fields...)
+	} else if previ >= 0 && previ+1 < len(h.fields) {
+		b := h.fields[:previ+1]
+		a := h.fields[previ+1:]
+		h.fields = append(b, f)
+		h.fields = append(h.fields, a...)
+	} else {
+		h.fields = append(h.fields, f)
+	}
 	return nil
 }
 
