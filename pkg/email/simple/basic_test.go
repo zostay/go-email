@@ -218,6 +218,11 @@ The body is irrelevant.
 		assert.NoError(t, err)
 		return hf
 	}
+	myParseFieldNew := func(f string) *email.HeaderField {
+		hf, err := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
+		assert.NoError(t, err)
+		return hf
+	}
 
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: this header comes first"),
@@ -232,5 +237,13 @@ The body is irrelevant.
 		myParseField("Alpha: header one"),
 		myParseField("Bravo: this header comes second"),
 		myParseField("Alpha: header three"),
+	}, m.HeaderFields())
+
+	m.HeaderSetAll("Alpha", "h1", "h3", "h4")
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: h1"),
+		myParseField("Bravo: this header comes second"),
+		myParseField("Alpha: h3"),
+		myParseFieldNew("Alpha: h4"),
 	}, m.HeaderFields())
 }

@@ -341,6 +341,7 @@ func (h *Header) HeaderSet(n, b string) error {
 // start by changing the ones already in place, removing any additional ones
 // that aren't updated, and adding new ones if necessary.
 func (h *Header) HeaderSetAll(n string, bs ...string) {
+	// no values, so delete all
 	if len(bs) == 0 {
 		h.HeaderDeleteAll(n)
 		return
@@ -351,6 +352,7 @@ func (h *Header) HeaderSetAll(n string, bs ...string) {
 	bi := 0
 	for _, hf := range h.fields {
 		if hf.Match() == m {
+			// Set existing field
 			if bi <= len(bs) {
 				hf.SetBody(bs[bi], h.lb)
 				hfs = append(hfs, hf)
@@ -362,26 +364,21 @@ func (h *Header) HeaderSetAll(n string, bs ...string) {
 			hfs = append(hfs, hf)
 		}
 	}
+
+	// Add a new field
+	for i := bi; i < len(bs); i++ {
+		h.HeaderAdd(n, bs[i])
+	}
 }
 
 // HeaderAdd will add a new header with the given name and body value. If an existing
 // header with the same value is already present, this will add the new field
-// before the first field with the same name.
+// to the bottom of the header. Returns an error if the given header name is not
+// legal.
 func (h *Header) HeaderAdd(n, b string) error {
 	f, err := NewHeaderField(n, b, h.Break())
 	if err != nil {
 		return err
-	}
-
-	m := makeMatch(n)
-	for i, f := range h.fields {
-		if f.Match() == m {
-			b := h.fields[:i]
-			a := h.fields[i:]
-			h.fields = append(b, f)
-			h.fields = append(h.fields, a...)
-			return nil
-		}
 	}
 
 	h.fields = append(h.fields, f)
