@@ -52,10 +52,11 @@ func SplitHeadFromBody(m []byte) (int, []byte) {
 		return epos, ecrlf
 	}
 
-	// Assume the entire message is the header
+	// Assume the entire message is the header, but we still need to figure out
+	// what the line breaks are...
 	for _, s := range splits {
 		crlf := s[0 : len(s)/2]
-		if bytes.Index(m, s) > -1 {
+		if bytes.Index(m, crlf) > -1 {
 			return -1, crlf
 		}
 	}

@@ -282,3 +282,24 @@ The body is irrelevant.
 		myParseField("alpha: header omega"),
 	}, m.HeaderFields())
 }
+
+func TestHeaderNames(t *testing.T) {
+	t.Parallel()
+
+	m, err := Parse([]byte(`From: casey@geeknest.com
+To: drain@example.com
+Subject: Message in a bottle
+`))
+	assert.NoError(t, err)
+	assert.Equal(t, m.HeaderNames(), []string{"From", "To", "Subject"})
+
+	m, err = Parse([]byte(`From: casey@geeknest.com
+To: drain@example.com
+Subject: Message in a bottle
+subject: second subject!
+
+HELP!
+`))
+	assert.NoError(t, err)
+	assert.Equal(t, m.HeaderNames(), []string{"From", "To", "Subject"})
+}
