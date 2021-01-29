@@ -192,3 +192,37 @@ func TestHeaderJunk(t *testing.T) {
 
 	assert.NotContains(t, m.String(), "linden")
 }
+
+func TestHeaderMany(t *testing.T) {
+	t.Parallel()
+
+	const emailText = `Alpha: this header comes first
+Bravo: this header comes second
+Alpha: this header comes third
+
+The body is irrelevant.
+`
+
+	m, err := Parse([]byte(emailText))
+	assert.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"this header comes first",
+		"this header comes third",
+	}, m.HeaderGetAll("alpha"))
+
+	myParseField := func(f string) *email.HeaderField {
+		hf, err := email.ParseHeaderField([]byte(f), []byte(email.LinuxLineBreak))
+		hf.Match() // make sure the match is cached
+		assert.NoError(t, err)
+		return hf
+	}
+
+	assert.Equal(t, []*email.HeaderField{
+		myParseField("Alpha: this header comes first\n"),
+		myParseField("Bravo: this header comes second\n"),
+		myParseField("Alpha: this header comes third"),
+	}, m.HeaderFields())
+
+	assert.Equal(t, []string{"Alpha", "Bravo"}, m.HeaderNames())
+}

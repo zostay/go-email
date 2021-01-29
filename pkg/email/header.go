@@ -184,9 +184,11 @@ func (h *Header) HeaderNames() []string {
 	seen := map[string]struct{}{}
 	names := make([]string, 0, len(h.fields))
 	for _, f := range h.fields {
-		if _, ok := seen[f.Match()]; ok {
+		m := f.Match()
+		if _, ok := seen[m]; ok {
 			continue
 		}
+		seen[m] = struct{}{}
 		names = append(names, f.Name())
 	}
 	return names
@@ -343,7 +345,12 @@ func (h *Header) HeaderDeleteAll(n string) {
 	h.fields = nf
 }
 
-// NewHeaderFields constructs a new header field using the given name, body, and
+// HeaderFields will return a slice containing all header fields.
+func (h *Header) HeaderFields() []*HeaderField {
+	return h.fields
+}
+
+// NewHeaderField constructs a new header field using the given name, body, and
 // line break string.
 func NewHeaderField(n, b string, lb []byte) (*HeaderField, error) {
 	f := HeaderField{
