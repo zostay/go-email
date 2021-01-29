@@ -11,6 +11,8 @@ import (
 	"github.com/zostay/go-addr/pkg/addr"
 )
 
+// Constants for use when selecting a line break to use with a new header. If
+// you don't know what to pick, choose the StandardLineBreak.
 const (
 	StandardLineBreak   = "\x0d\x0a"
 	LinuxLineBreak      = "\x0a"
@@ -310,6 +312,35 @@ func (h *Header) HeaderAdd(n, b string) error {
 
 	h.fields = append(h.fields, f)
 	return nil
+}
+
+// HeaderDelete will remove the (ix+1)th header matching the given name. Returns
+// an error if no such header exists.
+func (h *Header) HeaderDelete(n string, ix int) error {
+	count := 0
+	m := makeMatch(n)
+	for i, f := range h.fields {
+		if f.Match() == m {
+			if count == ix {
+				h.fields = append(h.fields[:i-1], h.fields[i+1:]...)
+				return nil
+			}
+			count++
+		}
+	}
+	return fmt.Errorf("cannot delete index %d of the %q header", ix, n)
+}
+
+// HeaderDeleteAll will remove all headers matching the given name.
+func (h *Header) HeaderDeleteAll(n string) {
+	m := makeMatch(n)
+	nf := make([]*HeaderField, 0, len(h.fields))
+	for _, f := range h.fields {
+		if f.Match() != m {
+			nf = append(nf, f)
+		}
+	}
+	h.fields = nf
 }
 
 // NewHeaderFields constructs a new header field using the given name, body, and
