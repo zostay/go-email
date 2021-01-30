@@ -210,6 +210,8 @@ func (h *Header) HeaderGet(n string) string {
 // HeaderGetN will find the (ix+1)th header field with a matching name and
 // return the body value. It will return an empty string with an error if no
 // such header is present.
+//
+// If ix is negative, it will return the (-ix)th body value from the end.
 func (h *Header) HeaderGetN(n string, ix int) (string, error) {
 	hf, err := h.HeaderGetFieldN(n, ix)
 	if hf != nil {
@@ -264,15 +266,30 @@ func (h *Header) HeaderGetField(n string) *HeaderField {
 // HeaderGetFieldN locates the (ix+1)th named header and returns the header
 // field object. If no such header exists, the field is returned as nil and an
 // error is returned.
+//
+// If ix is negative, it will return the (-ix)th header from the end.
 func (h *Header) HeaderGetFieldN(n string, ix int) (*HeaderField, error) {
 	m := makeMatch(n)
-	count := 0
-	for _, f := range h.fields {
-		if f.Match() == m {
-			if count == ix {
-				return f, nil
+	if ix < 0 {
+		count := -1
+		for i := len(h.fields) - 1; i >= 0; i-- {
+			f := h.fields[i]
+			if f.Match() == m {
+				if count == ix {
+					return f, nil
+				}
+				count--
 			}
-			count++
+		}
+	} else {
+		count := 0
+		for _, f := range h.fields {
+			if f.Match() == m {
+				if count == ix {
+					return f, nil
+				}
+				count++
+			}
 		}
 	}
 	return nil, fmt.Errorf("unable to find index %d of header named %q", ix, n)
@@ -321,6 +338,24 @@ func (h *Header) HeaderSet(n, b string) error {
 
 	h.fields = append(h.fields, f)
 
+	return nil
+}
+
+// HeaderSetN will find the (ix+1)th header matching the given name and replace
+// the body value with the new value given.
+//
+// If ix is negative, it will replace the body value of the (-ix)th value from
+// the end.
+//
+// If no header with that number is available, no change will be made and an
+// error will be returned.
+func (h *Header) HeaderSetN(n, b string, ix int) error {
+	hf, err := h.HeaderGetFieldN(n, ix)
+	if err != nil {
+		return err
+	}
+
+	hf.SetBody(b, h.lb)
 	return nil
 }
 

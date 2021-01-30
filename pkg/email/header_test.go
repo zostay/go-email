@@ -20,19 +20,35 @@ Baz: 1
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 
-	assert.Equal(t, "1", h.HeaderGet("Foo"))
+	assert.Equal(t, "1", h.HeaderGet("foo"))
 
-	b, err := h.HeaderGetN("Foo", 0)
+	b, err := h.HeaderGetN("foo", 0)
 	assert.NoError(t, err)
 	assert.Equal(t, "1", b)
 
-	b, err = h.HeaderGetN("Foo", 1)
+	b, err = h.HeaderGetN("foo", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, "2", b)
 
-	b, err = h.HeaderGetN("Foo", 2)
+	b, err = h.HeaderGetN("foo", 2)
 	assert.NoError(t, err)
 	assert.Equal(t, "3", b)
+
+	b, err = h.HeaderGetN("foo", 3)
+	assert.Error(t, err)
+	assert.Equal(t, "", b)
+
+	b, err = h.HeaderGetN("foo", -1)
+	assert.NoError(t, err)
+	assert.Equal(t, "3", b)
+
+	b, err = h.HeaderGetN("foo", -3)
+	assert.NoError(t, err)
+	assert.Equal(t, "1", b)
+
+	b, err = h.HeaderGetN("foo", -4)
+	assert.Error(t, err)
+	assert.Equal(t, "", b)
 
 	assert.Equal(t, []string{"1", "2", "3"}, h.HeaderGetAll("Foo"))
 }
