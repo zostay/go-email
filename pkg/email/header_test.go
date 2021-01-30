@@ -89,3 +89,49 @@ AAA: B2A
 
 	assert.Equal(t, basicRenamed, m.String())
 }
+
+func TestReanameN(t *testing.T) {
+	t.Parallel()
+
+	const emailText = `Foo: F1
+fOO: F2
+bar: B1
+FoO: F3
+Baz: Z1
+FOO: F4
+BAR: B2
+`
+
+	m, err := ParseHeaderLB([]byte(emailText), []byte(UnixLineBreak))
+	assert.NoError(t, err)
+
+	err = m.HeaderRenameN("Foo", "XYZ", -1)
+	assert.NoError(t, err)
+	assert.Equal(t, "F4", m.HeaderGet("XYZ"))
+
+	err = m.HeaderRenameN("Foo", "XYZ", 3)
+	assert.Error(t, err) // too high
+
+	err = m.HeaderRenameN("Foo", "XYZ", -4)
+	assert.Error(t, err) // too low
+
+	err = m.HeaderRenameN("Foo", "Two", 2)
+	assert.NoError(t, err)
+
+	err = m.HeaderRenameN("Foo", "One", 1)
+	assert.NoError(t, err)
+
+	err = m.HeaderRenameN("Foo", "Zero", 0)
+	assert.NoError(t, err)
+
+	const wantHeader = `Zero: F1
+One: F2
+bar: B1
+Two: F3
+Baz: Z1
+XYZ: F4
+BAR: B2
+`
+
+	assert.Equal(t, wantHeader, m.String())
+}
