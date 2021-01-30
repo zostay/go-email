@@ -110,7 +110,7 @@ func TestBadlyFoldedNoIndent(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "Bar", m.HeaderGet("Bar"))
-	assert.Equal(t, "This header is badly folded because even though it goes onto the second line, it has no indent.", m.HeaderGet("Badly-Folded"))
+	assert.Equal(t, "This header is badly folded because even though it goes onto thesecond line, it has no indent.", m.HeaderGet("Badly-Folded"))
 	assert.Equal(t, "Foo", m.HeaderGet("Foo"))
 }
 
@@ -120,12 +120,12 @@ func TestFolding(t *testing.T) {
 	m, err := Parse(joseyFold)
 	assert.NoError(t, err)
 
-	const refs = "<200211120937.JAA28130@xoneweb.opengroup.org>  <1021112125524.ZM7503@skye.rdg.opengroup.org>  <3DD221BB.13116D47@sun.com>"
+	const refs = "<200211120937.JAA28130@xoneweb.opengroup.org> \t<1021112125524.ZM7503@skye.rdg.opengroup.org> \t<3DD221BB.13116D47@sun.com>"
 	assert.Equal(t, refs, m.HeaderGet("References"))
 	assert.Equal(t, refs, m.HeaderGet("reFerEnceS"))
 
 	var recvd = []string{
-		"from mailman.opengroup.org ([192.153.166.9]) by deep-dark-truthful-mirror.pad with smtp (Exim 3.36 #1 (Debian)) id 18Buh5-0006Zr-00 for <posix@simon-cozens.org>; Wed, 13 Nov 2002 10:24:23 +0000",
+		"from mailman.opengroup.org ([192.153.166.9])\tby deep-dark-truthful-mirror.pad with smtp (Exim 3.36 #1 (Debian))\tid 18Buh5-0006Zr-00\tfor <posix@simon-cozens.org>; Wed, 13 Nov 2002 10:24:23 +0000",
 		"(qmail 1679 invoked by uid 503); 13 Nov 2002 10:10:49 -0000",
 	}
 	assert.Equal(t, recvd, m.HeaderGetAll("Received"))
@@ -169,7 +169,7 @@ func TestFoldingLongLine(t *testing.T) {
 
 	assert.NotEqual(t, subject, h.HeaderGetField("Subject").String())
 
-	assert.Equal(t, "To: to@example.com\nFrom: from@example.com\nSubject: A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A \n A A A A A A A A A A A A A A A A \n", h.String())
+	assert.Equal(t, "To: to@example.com\nFrom: from@example.com\nSubject: A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A\n A A A A A A A A A A A A A A A A \n", h.String())
 }
 
 func TestHeaderCase(t *testing.T) {

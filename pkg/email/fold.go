@@ -2,7 +2,6 @@ package email
 
 import (
 	"bytes"
-	"unicode"
 )
 
 const (
@@ -13,30 +12,17 @@ const (
 
 // UnfoldValue will take a folded header line from an email and unfold it for
 // reading. This gives you the proper header body value.
-func UnfoldValue(f, lb []byte) []byte {
-	var uf bytes.Buffer
-	folds := bytes.Split(f, lb)
-	needsSpace := false
-	trim := false
-	for _, fold := range folds {
-		if trim {
-			fold = bytes.TrimLeft(fold, " \t")
+func UnfoldValue(f []byte) []byte {
+	uf := make([]byte, 0, len(f))
+	for _, b := range f {
+		if !isCRLF(rune(b)) {
+			uf = append(uf, b)
 		}
-
-		if needsSpace {
-			uf.WriteRune(' ')
-		}
-		uf.Write(fold)
-
-		if len(fold) > 0 {
-			needsSpace = unicode.IsPrint(rune(fold[len(fold)-1]))
-		}
-		trim = true
 	}
-
-	return uf.Bytes()
+	return uf
 }
 
+func isCRLF(c rune) bool  { return c == '\r' || c == '\n' }
 func isSpace(c rune) bool { return c == ' ' || c == '\t' }
 
 // FoldValue will take an unfolded or perhaps partially folded value from an
@@ -48,19 +34,11 @@ func FoldValue(f, lb []byte) []byte {
 		return f
 	}
 
-	findNextNS := func(f []byte, start, limit int) int {
-		for i := start; i < limit; i++ {
-			if f[i] != ' ' && f[i] != '\t' {
-				return i
-			}
-		}
-		return limit
-	}
-
 	var out bytes.Buffer
 	foldSpace := false
 	writeFold := func(f []byte, end int) []byte {
-		if foldSpace {
+		// only indent if there's no space already present at the break
+		if foldSpace && !isSpace(rune(f[0])) {
 			out.WriteString(FoldIndent)
 		}
 		out.Write(f[:end])
@@ -78,6 +56,7 @@ func FoldValue(f, lb []byte) []byte {
 
 	FoldingSingle:
 		for len(line) > 0 {
+
 			// Do we need to fold lines?
 			fneed := len(line) > PreferredFoldLength-2
 			if !fneed {
@@ -92,9 +71,7 @@ func FoldValue(f, lb []byte) []byte {
 					limit = ForcedFoldLength - 2
 				}
 
-				// keep as much space as possible before the break
-				nix := findNextNS(line, ix, limit)
-				line = writeFold(line, nix)
+				line = writeFold(line, ix)
 				continue FoldingSingle
 			}
 
@@ -105,9 +82,7 @@ func FoldValue(f, lb []byte) []byte {
 					limit = ForcedFoldLength - 2
 				}
 
-				// keep as much space as possible before the break
-				nix := findNextNS(line, ix, limit)
-				line = writeFold(line, nix)
+				line = writeFold(line, ix)
 				continue FoldingSingle
 			}
 

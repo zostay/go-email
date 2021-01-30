@@ -135,3 +135,32 @@ BAR: B2
 
 	assert.Equal(t, wantHeader, m.String())
 }
+
+func TestHeaderWrapping(t *testing.T) {
+	const emailText = `Foo: Wrapped
+  Needlessly
+Foo: Not wrapped, but may need wrapping if the field name becomes long.
+Foo: Wrapped, and will generally need to be wrapped again, if the field
+  name stays long.
+`
+
+	m, err := ParseHeaderLB([]byte(emailText), []byte(UnixLineBreak))
+	assert.NoError(t, err)
+
+	// round-tripping
+	assert.Equal(t, emailText, m.String())
+
+	err = m.HeaderRenameAll("Foo", "The-Field-Formerly-Known-As-Foo")
+	assert.NoError(t, err)
+
+	const rewrappedText = `The-Field-Formerly-Known-As-Foo: Wrapped
+  Needlessly
+The-Field-Formerly-Known-As-Foo: Not wrapped, but may need wrapping if the
+ field name becomes long.
+The-Field-Formerly-Known-As-Foo: Wrapped, and will generally need to be
+ wrapped again, if the field
+  name stays long.
+`
+
+	assert.Equal(t, rewrappedText, m.String())
+}

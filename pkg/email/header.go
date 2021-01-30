@@ -148,12 +148,12 @@ func ParseHeaderLines(m, lb []byte) ([][]byte, error) {
 func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
 	parts := bytes.SplitN(f, []byte(":"), 2)
 	if len(parts) < 2 {
-		name := UnfoldValue(f, lb)
+		name := UnfoldValue(f)
 		return &HeaderField{"", string(name), "", f, nil}, fmt.Errorf("header field %q missing body", name)
 	}
 
-	name := strings.TrimSpace(string(UnfoldValue(parts[0], lb)))
-	body := strings.TrimSpace(string(UnfoldValue(parts[1], lb)))
+	name := strings.TrimSpace(string(UnfoldValue(parts[0])))
+	body := strings.TrimSpace(string(UnfoldValue(parts[1])))
 	return &HeaderField{"", name, body, f, nil}, nil
 }
 
@@ -343,7 +343,7 @@ func (h *Header) HeaderRename(oldName, newName string) error {
 		return err
 	}
 
-	return hf.SetName(newName)
+	return hf.SetName(newName, h.Break())
 }
 
 // HeaderRenameN will find the (ix+1)th from the top or the (-ix)th from the
@@ -357,7 +357,7 @@ func (h *Header) HeaderRenameN(oldName, newName string, ix int) error {
 		return err
 	}
 
-	return hf.SetName(newName)
+	return hf.SetName(newName, h.Break())
 }
 
 // HeaderRenameAll will rename all headers with the first name to have the name
@@ -372,7 +372,7 @@ func (h *Header) HeaderRenameAll(oldName, newName string) error {
 	for _, hf := range h.fields {
 		if hf.Match() == m {
 			found = true
-			err := hf.SetName(newName)
+			err := hf.SetName(newName, h.Break())
 			if err != nil {
 				return err
 			}
@@ -419,7 +419,7 @@ func (h *Header) HeaderSetN(n, b string, ix int) error {
 		return err
 	}
 
-	return hf.SetBody(b, h.lb)
+	return hf.SetBody(b, h.Break())
 }
 
 // HeaderSetAll does a full header replacement. This performs a number of
@@ -456,7 +456,7 @@ func (h *Header) HeaderSetAll(n string, bs ...string) error {
 		if hf.Match() == m {
 			// Set existing field
 			if bi < len(bs) {
-				err := hf.SetBody(bs[bi], h.lb)
+				err := hf.SetBody(bs[bi], h.Break())
 				if err != nil {
 					return err
 				}
@@ -628,7 +628,7 @@ func NewHeaderField(n, b string, lb []byte) (*HeaderField, error) {
 	}
 
 	var err error
-	err = f.SetName(n)
+	err = f.SetName(n, lb)
 	if err != nil {
 		return nil, err
 	}
@@ -693,10 +693,12 @@ func (f *HeaderField) CacheSet(k string, v interface{}) {
 func (f *HeaderField) String() string { return string(f.original) }
 
 // SetName will rename a field. This first checks to make sure no illegal
-// characters are present in the field name. It will return an error if the
-// given string contains a colon or any character outside the printable ASCII
-// range.
-func (f *HeaderField) SetName(n string) error {
+// characters are present in the field name. The line break parameter must be
+// passed so it can refold the line as needed.
+//
+// It will return an error if the given string contains a colon or any character
+// outside the printable ASCII range.
+func (f *HeaderField) SetName(n string, lb []byte) error {
 	forbiddenNameChars := func(c rune) bool {
 		if c == ':' {
 			return true
@@ -711,12 +713,22 @@ func (f *HeaderField) SetName(n string) error {
 		return errors.New("header name contains illegal character")
 	}
 
-	f.SetNameUnsafe(n)
+	f.SetNameUnsafe(n, lb)
 	return nil
 }
 
-// SetNameUnsafe will rename a field without checks.
-func (f *HeaderField) SetNameUnsafe(n string) {
+// SetNameUnsafe will rename a field without checks. You must supply the line
+// break to be used for folding.
+func (f *HeaderField) SetNameUnsafe(n string, lb []byte) {
+	f.cache = nil
+	f.match = ""
+	f.original = FoldValue(append([]byte(n), f.original[len(f.name):]...), lb)
+	f.name = n
+}
+
+// SetNameNoFold will rename a field without checks and without folding. The
+// name will be set as is.
+func (f *HeaderField) SetNameNoFold(n string) {
 	f.cache = nil
 	f.match = ""
 	f.original = append([]byte(n), f.original[len(f.name):]...)
