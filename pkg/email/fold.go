@@ -66,22 +66,12 @@ func FoldValue(f, lb []byte) []byte {
 
 			// best case, we find a space in the first 78 chars, break there
 			if ix := bytes.LastIndexFunc(line[0:PreferredFoldLength-2], isSpace); ix > -1 {
-				limit := len(line)
-				if ForcedFoldLength-2 < limit {
-					limit = ForcedFoldLength - 2
-				}
-
 				line = writeFold(line, ix)
 				continue FoldingSingle
 			}
 
 			// barring that, try to find a space after the 78 char mark
 			if ix := bytes.IndexFunc(line, isSpace); ix > -1 && ix < ForcedFoldLength-2 {
-				limit := len(line)
-				if ForcedFoldLength-2 < limit {
-					limit = ForcedFoldLength - 2
-				}
-
 				line = writeFold(line, ix)
 				continue FoldingSingle
 			}
