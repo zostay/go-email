@@ -272,6 +272,7 @@ func (h *Header) HeaderGetFieldN(n string, ix int) (*HeaderField, error) {
 			if count == ix {
 				return f, nil
 			}
+			count++
 		}
 	}
 	return nil, fmt.Errorf("unable to find index %d of header named %q", ix, n)
