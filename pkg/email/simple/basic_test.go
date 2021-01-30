@@ -199,6 +199,19 @@ func TestHeaderJunk(t *testing.T) {
 	assert.NotContains(t, m.String(), "linden")
 }
 
+const mylb = email.LinuxLineBreak
+
+func myParseField(f string) *email.HeaderField {
+	hf, _ := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
+	hf.Match() // make sure the match is cached
+	return hf
+}
+
+func myParseFieldNew(f string) *email.HeaderField {
+	hf, _ := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
+	return hf
+}
+
 func TestHeaderMany(t *testing.T) {
 	t.Parallel()
 
@@ -216,19 +229,6 @@ The body is irrelevant.
 		"this header comes first",
 		"this header comes third",
 	}, m.HeaderGetAll("alpha"))
-
-	const mylb = email.LinuxLineBreak
-	myParseField := func(f string) *email.HeaderField {
-		hf, err := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
-		hf.Match() // make sure the match is cached
-		assert.NoError(t, err)
-		return hf
-	}
-	myParseFieldNew := func(f string) *email.HeaderField {
-		hf, err := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
-		assert.NoError(t, err)
-		return hf
-	}
 
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: this header comes first"),
@@ -319,4 +319,68 @@ HELP!
 	m, err = Parse([]byte{})
 	assert.NoError(t, err)
 	assert.Equal(t, m.HeaderNames(), []string{})
+}
+
+func TestHeaderFields(t *testing.T) {
+	const emailText = `From: casey@geeknest.example.com
+X-Your-Face: your face is your face
+To: drain@example.com
+X-Your-Face: your face is my face
+X-Your-Face: from california
+Reply-To: xyzzy@plugh.example.net
+X-Your-Face: to the new york islface
+Subject: Message in a bottle
+
+HELP!
+`
+	m, err := Parse([]byte(emailText))
+	assert.NoError(t, err)
+	assert.NotNil(t, m)
+
+	assert.Equal(t, []*email.HeaderField{
+		myParseFieldNew("From: casey@geeknest.example.com"),
+		myParseFieldNew("X-Your-Face: your face is your face"),
+		myParseFieldNew("To: drain@example.com"),
+		myParseFieldNew("X-Your-Face: your face is my face"),
+		myParseFieldNew("X-Your-Face: from california"),
+		myParseFieldNew("Reply-To: xyzzy@plugh.example.net"),
+		myParseFieldNew("X-Your-Face: to the new york islface"),
+		myParseFieldNew("Subject: Message in a bottle"),
+	}, m.HeaderFields())
+}
+
+func TestHeaderAddBefore(t *testing.T) {
+	const emailText = `Alpha: this header comes first
+Bravo: this header comes second
+Alpha: this header comes third
+
+The body is irrelevant.
+`
+
+	m, err := Parse([]byte(emailText))
+	assert.NoError(t, err)
+
+	err = m.HeaderAddBefore("Alpha", "this header comes firstest")
+	assert.NoError(t, err)
+	assert.Equal(t, []*email.HeaderField{
+		myParseFieldNew("Alpha: this header comes firstest"),
+		myParseFieldNew("Alpha: this header comes first"),
+		myParseFieldNew("Bravo: this header comes second"),
+		myParseFieldNew("Alpha: this header comes third"),
+	}, m.HeaderFields())
+
+	err = m.HeaderAddBefore("Zero", "and 0+1th")
+	assert.NoError(t, err)
+
+	err = m.HeaderAddBefore("Zero", "this header comes zeroth")
+	assert.NoError(t, err)
+
+	assert.Equal(t, []*email.HeaderField{
+		myParseFieldNew("Zero: this header comes zeroth"),
+		myParseFieldNew("Zero: and 0+1th"),
+		myParseFieldNew("Alpha: this header comes firstest"),
+		myParseFieldNew("Alpha: this header comes first"),
+		myParseFieldNew("Bravo: this header comes second"),
+		myParseFieldNew("Alpha: this header comes third"),
+	}, m.HeaderFields())
 }

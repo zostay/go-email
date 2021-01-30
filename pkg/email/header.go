@@ -254,13 +254,45 @@ func (h *Header) HeaderDate() (time.Time, error) {
 // HeaderGetField will find the first header field and return the header field object
 // itself. It will return nil if no such header is present.
 func (h *Header) HeaderGetField(n string) *HeaderField {
-	m := makeMatch(n)
-	for _, f := range h.fields {
-		if f.Match() == m {
-			return f
-		}
+	if i := h.headerFieldIndex(n, 0, false); i > -1 {
+		return h.fields[i]
 	}
 	return nil
+}
+
+func (h *Header) headerFieldIndex(n string, ix int, fb bool) int {
+	m := makeMatch(n)
+	lasti := -1
+	if ix < 0 {
+		count := -1
+		for i := len(h.fields) - 1; i >= 0; i-- {
+			f := h.fields[i]
+			if f.Match() == m {
+				lasti = i
+				if count == ix {
+					return i
+				}
+				count--
+			}
+		}
+	} else {
+		count := 0
+		for i, f := range h.fields {
+			if f.Match() == m {
+				lasti = i
+				if count == ix {
+					return i
+				}
+				count++
+			}
+		}
+	}
+
+	if fb {
+		return lasti
+	} else {
+		return -1
+	}
 }
 
 // HeaderGetFieldN locates the (ix+1)th named header and returns the header
@@ -269,28 +301,8 @@ func (h *Header) HeaderGetField(n string) *HeaderField {
 //
 // If ix is negative, it will return the (-ix)th header from the end.
 func (h *Header) HeaderGetFieldN(n string, ix int) (*HeaderField, error) {
-	m := makeMatch(n)
-	if ix < 0 {
-		count := -1
-		for i := len(h.fields) - 1; i >= 0; i-- {
-			f := h.fields[i]
-			if f.Match() == m {
-				if count == ix {
-					return f, nil
-				}
-				count--
-			}
-		}
-	} else {
-		count := 0
-		for _, f := range h.fields {
-			if f.Match() == m {
-				if count == ix {
-					return f, nil
-				}
-				count++
-			}
-		}
+	if i := h.headerFieldIndex(n, ix, false); i > -1 {
+		return h.fields[i], nil
 	}
 	return nil, fmt.Errorf("unable to find index %d of header named %q", ix, n)
 }
@@ -324,11 +336,9 @@ func (h *Header) HeaderGetAllFields(n string) []*HeaderField {
 // with the given body. If no header by that name is set, it will add a new
 // header with that name and body.
 func (h *Header) HeaderSet(n, b string) error {
-	m := makeMatch(n)
-	for _, f := range h.fields {
-		if f.Match() == m {
-			return f.SetBody(b, h.Break())
-		}
+	if i := h.headerFieldIndex(n, 0, false); i > -1 {
+		f := h.fields[i]
+		return f.SetBody(b, h.Break())
 	}
 
 	f, err := NewHeaderField(n, b, h.Break())
@@ -422,10 +432,10 @@ func (h *Header) HeaderSetAll(n string, bs ...string) error {
 	return nil
 }
 
-// HeaderAdd will add a new header with the given name and body value. If an existing
-// header with the same value is already present, this will add the new field
-// to the bottom of the header. Returns an error if the given header name is not
-// legal.
+// HeaderAdd will add a new header field with the given name and body value to
+// the bottom of the header. Existing headers will be left alone as-is.
+//
+// Returns an error if the given header name or body value is not legal.
 func (h *Header) HeaderAdd(n, b string) error {
 	f, err := NewHeaderField(n, b, h.Break())
 	if err != nil {
@@ -436,47 +446,89 @@ func (h *Header) HeaderAdd(n, b string) error {
 	return nil
 }
 
-// HeaderAddN will add a new header field at the specified location in the
-// header. Passing a value of -1 to ix will add a new field immediately before
-// the first header of the same name or at the top of the header. A non-negative
-// value will add the header immediately after the nth header of the same name
-// or at the bottom of the header if there is no such header.
+// HeaderAddBefore will add a new header field with the given name and body value to
+// teh top of the header. Existing headers will be left alone as-is.
 //
-// If the given field name is not legal, an error will be returned and the
-// header will not be modified.
+// Returns an error if the given header name or body value is not legal.
+func (h *Header) HeaderAddBefore(n, b string) error {
+	f, err := NewHeaderField(n, b, h.Break())
+	if err != nil {
+		return err
+	}
+
+	h.fields = append([]*HeaderField{f}, h.fields...)
+	return nil
+}
+
+// HeaderAddN will add a new header field after the (ix+1)th instance of the
+// given header. If there is any header field with the given name, but not
+// a (ix+1)th header, it will be added after the lsat one.
+//
+// If ix is negative, then it will be added after the (-ix)th header field from
+// the end. If there is at least one header field with the given name, but no
+// (-ix)th header, it will be added after the first one.
+//
+// If no header field with the given name is present, the header will be added
+// to the bottom of the header.
+//
+// If the given field name or body value is not legal, an error will be returned
+// and the header will not be modified.
 func (h *Header) HeaderAddN(n, b string, ix int) error {
 	f, err := NewHeaderField(n, b, h.Break())
 	if err != nil {
 		return err
 	}
 
-	count := 0
-	m := makeMatch(n)
-	previ := -1
-	for i, f := range h.fields {
-		if f.Match() == m {
-			if count > ix {
-				b := h.fields[:i]
-				a := h.fields[i:]
-				h.fields = append(b, f)
-				h.fields = append(h.fields, a...)
-				return nil
-			}
-			previ = i
-			count++
+	if i := h.headerFieldIndex(n, ix, true); i > -1 {
+		var a, b []*HeaderField
+		b = h.fields[:i]
+		if len(h.fields) > i+1 {
+			a = h.fields[i+1:]
+		} else {
+			a = []*HeaderField{}
 		}
-	}
-
-	if ix < 0 {
-		h.fields = append([]*HeaderField{f}, h.fields...)
-	} else if previ >= 0 && previ+1 < len(h.fields) {
-		b := h.fields[:previ+1]
-		a := h.fields[previ+1:]
 		h.fields = append(b, f)
 		h.fields = append(h.fields, a...)
-	} else {
-		h.fields = append(h.fields, f)
+		return nil
 	}
+
+	h.fields = append(h.fields, f)
+	return nil
+}
+
+// HeaderAddBeforeN will add a new header field before the (ix+1)th instance of the
+// given header. If there is any header field with the given name, but not
+// a (ix+1)th header, it will be added before the lsat one.
+//
+// If ix is negative, then it will be added before the (-ix)th header field from
+// the end. If there is at least one header field with the given name, but no
+// (-ix)th header, it will be added before the first one.
+//
+// If no header field with the given name is present, the header will be added
+// to the top of the header.
+//
+// If the given field name or body value is not legal, an error will be returned
+// and the header will not be modified.
+func (h *Header) HeaderAddBeforeN(n, b string, ix int) error {
+	f, err := NewHeaderField(n, b, h.Break())
+	if err != nil {
+		return err
+	}
+
+	if i := h.headerFieldIndex(n, ix, true); i > -1 {
+		var a, b []*HeaderField
+		if i > 0 {
+			b = h.fields[:i-1]
+		} else {
+			b = []*HeaderField{}
+		}
+		a = h.fields[i:]
+		h.fields = append(b, f)
+		h.fields = append(h.fields, a...)
+		return nil
+	}
+
+	h.fields = append(h.fields, f)
 	return nil
 }
 
