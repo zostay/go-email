@@ -16,7 +16,7 @@ Bar: 3
 Baz: 1
 `
 
-	h, err := ParseHeaderLB([]byte(headerStr), []byte(LinuxLineBreak))
+	h, err := ParseHeaderLB([]byte(headerStr), []byte(UnixLineBreak))
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 
@@ -51,4 +51,41 @@ Baz: 1
 	assert.Equal(t, "", b)
 
 	assert.Equal(t, []string{"1", "2", "3"}, h.HeaderGetAll("Foo"))
+}
+
+func TestRename(t *testing.T) {
+	t.Parallel()
+
+	const basic = `Foo: F1
+fOO: F2
+bar: B1
+FoO: F3
+Baz: Z1
+BAR: B2
+`
+
+	m, err := ParseHeaderLB([]byte(basic), []byte(UnixLineBreak))
+	assert.NoError(t, err)
+
+	err = m.HeaderSetAll("Bar", "B1A", "B2A")
+	assert.NoError(t, err)
+
+	err = m.HeaderRenameAll("Foo", "XYZ")
+	assert.NoError(t, err)
+
+	err = m.HeaderRenameAll("XYZ", "ZZZ")
+	assert.NoError(t, err)
+
+	err = m.HeaderRenameAll("Bar", "AAA")
+	assert.NoError(t, err)
+
+	const basicRenamed = `ZZZ: F1
+ZZZ: F2
+AAA: B1A
+ZZZ: F3
+Baz: Z1
+AAA: B2A
+`
+
+	assert.Equal(t, basicRenamed, m.String())
 }

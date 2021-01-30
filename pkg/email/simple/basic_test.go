@@ -157,7 +157,7 @@ func TestFoldingLongLine(t *testing.T) {
 
 	subject := strings.Repeat("A ", 50)
 
-	h := email.NewHeader(email.LinuxLineBreak)
+	h := email.NewHeader(email.UnixLineBreak)
 	err := h.HeaderSet("To", to)
 	assert.NoError(t, err)
 
@@ -199,7 +199,7 @@ func TestHeaderJunk(t *testing.T) {
 	assert.NotContains(t, m.String(), "linden")
 }
 
-const mylb = email.LinuxLineBreak
+const mylb = email.UnixLineBreak
 
 func myParseField(f string) *email.HeaderField {
 	hf, _ := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
@@ -322,6 +322,8 @@ HELP!
 }
 
 func TestHeaderFields(t *testing.T) {
+	t.Parallel()
+
 	const emailText = `From: casey@geeknest.example.com
 X-Your-Face: your face is your face
 To: drain@example.com

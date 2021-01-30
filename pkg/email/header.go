@@ -15,7 +15,7 @@ import (
 // you don't know what to pick, choose the StandardLineBreak.
 const (
 	StandardLineBreak   = "\x0d\x0a"
-	LinuxLineBreak      = "\x0a"
+	UnixLineBreak       = "\x0a"
 	ClassicMacLineBreak = "\x0d"
 	WeirdoLineBreak     = "\x0a\x0d"
 )
@@ -330,6 +330,60 @@ func (h *Header) HeaderGetAllFields(n string) []*HeaderField {
 		}
 	}
 	return hfs
+}
+
+// HeaderRename will find the first header with a matching name and give it a
+// new name.
+//
+// Returns an error if that name is not legal or if no header with the given
+// name is found.
+func (h *Header) HeaderRename(oldName, newName string) error {
+	hf, err := h.HeaderGetFieldN(oldName, 0)
+	if err != nil {
+		return err
+	}
+
+	return hf.SetName(newName)
+}
+
+// HeaderRenameN will find the (ix+1)th from the top or the (-ix)th from the
+// bottom and give it a new name.
+//
+// Returns an error if that name is not legal or if no header with the given
+// name is found.
+func (h *Header) HeaderRenameN(oldName, newName string, ix int) error {
+	hf, err := h.HeaderGetFieldN(oldName, ix)
+	if err != nil {
+		return err
+	}
+
+	return hf.SetName(newName)
+}
+
+// HeaderRenameAll will rename all headers with the first name to have the name
+// given second. If no headers with the given name are found, this method does
+// nothing.
+//
+// Returns an error if the name is not legal of if no header wwith the given
+// name is found.
+func (h *Header) HeaderRenameAll(oldName, newName string) error {
+	found := false
+	m := makeMatch(oldName)
+	for _, hf := range h.fields {
+		if hf.Match() == m {
+			found = true
+			err := hf.SetName(newName)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("No header named %q found for renaming.", oldName)
+	}
+
+	return nil
 }
 
 // HeaderSet will find the first header with a matching name and replace it
@@ -664,6 +718,7 @@ func (f *HeaderField) SetName(n string) error {
 // SetNameUnsafe will rename a field without checks.
 func (f *HeaderField) SetNameUnsafe(n string) {
 	f.cache = nil
+	f.match = ""
 	f.original = append([]byte(n), f.original[len(f.name):]...)
 	f.name = n
 }
