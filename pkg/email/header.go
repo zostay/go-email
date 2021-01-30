@@ -355,8 +355,7 @@ func (h *Header) HeaderSetN(n, b string, ix int) error {
 		return err
 	}
 
-	hf.SetBody(b, h.lb)
-	return nil
+	return hf.SetBody(b, h.lb)
 }
 
 // HeaderSetAll does a full header replacement. This performs a number of
@@ -376,11 +375,14 @@ func (h *Header) HeaderSetN(n, b string, ix int) error {
 // Basically, it's going to make sure all the given headers are set and will
 // start by changing the ones already in place, removing any additional ones
 // that aren't updated, and adding new ones if necessary.
-func (h *Header) HeaderSetAll(n string, bs ...string) {
+//
+// If the operation is successful, it returns nil. If there is an error, then
+// the object will be unchanged and an error returned.
+func (h *Header) HeaderSetAll(n string, bs ...string) error {
 	// no values, so delete all
 	if len(bs) == 0 {
 		h.HeaderDeleteAll(n)
-		return
+		return nil
 	}
 
 	hfs := make([]*HeaderField, 0, len(h.fields))
@@ -390,7 +392,11 @@ func (h *Header) HeaderSetAll(n string, bs ...string) {
 		if hf.Match() == m {
 			// Set existing field
 			if bi < len(bs) {
-				hf.SetBody(bs[bi], h.lb)
+				err := hf.SetBody(bs[bi], h.lb)
+				if err != nil {
+					return err
+				}
+
 				hfs = append(hfs, hf)
 				bi++
 			}
@@ -401,12 +407,19 @@ func (h *Header) HeaderSetAll(n string, bs ...string) {
 		}
 	}
 
+	orig := h.fields
 	h.fields = hfs
 
 	// Add a new field
 	for i := bi; i < len(bs); i++ {
-		h.HeaderAdd(n, bs[i])
+		err := h.HeaderAdd(n, bs[i])
+		if err != nil {
+			h.fields = orig
+			return err
+		}
 	}
+
+	return nil
 }
 
 // HeaderAdd will add a new header with the given name and body value. If an existing

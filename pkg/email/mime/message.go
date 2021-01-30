@@ -37,6 +37,9 @@ type Message struct {
 // parts has changed. If so, it will update the boundaries between MIME parts.
 // This can trigger an error if the boundary is missing or contains a space. In
 // that case an error will be returned.
+//
+// If an error occurs, the body will not have been updated. It is possible that
+// some of the sub-parts will have had their body updated.
 func (m *Message) UpdateBody() error {
 	// Ruh-roh, we need to rewrite the boundary
 	if len(m.Parts) > 0 && m.boundary != m.Boundary() {
@@ -59,7 +62,10 @@ func (m *Message) UpdateBody() error {
 	a.Write(m.prefix)
 	a.Write(m.Preamble)
 	for _, p := range m.Parts {
-		p.UpdateBody()
+		err := p.UpdateBody()
+		if err != nil {
+			return err
+		}
 		a.Write(p.Body())
 	}
 	a.Write(m.Epilogue)

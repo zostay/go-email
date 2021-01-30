@@ -56,7 +56,7 @@ func SplitHeadFromBody(m []byte) (int, []byte) {
 	// what the line breaks are...
 	for _, s := range splits {
 		crlf := s[0 : len(s)/2]
-		if bytes.Index(m, crlf) > -1 {
+		if bytes.Contains(m, crlf) {
 			return -1, crlf
 		}
 	}

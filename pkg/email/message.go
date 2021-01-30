@@ -1,3 +1,11 @@
+// Package email is provides generic tools for representing an email and for
+// parsing email headers. This is used in conjuncion with the simple and mime
+// packages to provide simple email parsing and MIME message handling.
+//
+// None of the operations of this library are intended to be thread safe. No
+// guarantees are made that the object will be kept in a consistent state while
+// within a method, so you shouldn't try to manipulate or access the data of
+// these objects concurrently.
 package email
 
 import (

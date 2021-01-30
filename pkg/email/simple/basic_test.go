@@ -158,9 +158,14 @@ func TestFoldingLongLine(t *testing.T) {
 	subject := strings.Repeat("A ", 50)
 
 	h := email.NewHeader(email.LinuxLineBreak)
-	h.HeaderSet("To", to)
-	h.HeaderSet("From", from)
-	h.HeaderSet("Subject", subject)
+	err := h.HeaderSet("To", to)
+	assert.NoError(t, err)
+
+	err = h.HeaderSet("From", from)
+	assert.NoError(t, err)
+
+	err = h.HeaderSet("Subject", subject)
+	assert.NoError(t, err)
 
 	assert.NotEqual(t, subject, h.HeaderGetField("Subject").String())
 
@@ -173,7 +178,8 @@ func TestHeaderCase(t *testing.T) {
 	m, err := Parse([]byte("Foo-Bar: Baz\n\ntest\n"))
 	assert.NoError(t, err)
 
-	m.HeaderSet("Foo-bar", "quux")
+	err = m.HeaderSet("Foo-bar", "quux")
+	assert.NoError(t, err)
 	assert.Equal(t, "Foo-Bar: quux\n", m.HeaderGetField("FOO-BAR").String())
 }
 
@@ -232,14 +238,16 @@ The body is irrelevant.
 
 	assert.Equal(t, []string{"Alpha", "Bravo"}, m.HeaderNames())
 
-	m.HeaderSetAll("Alpha", "header one", "header three")
+	err = m.HeaderSetAll("Alpha", "header one", "header three")
+	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: header one"),
 		myParseField("Bravo: this header comes second"),
 		myParseField("Alpha: header three"),
 	}, m.HeaderFields())
 
-	m.HeaderSetAll("Alpha", "h1", "h3", "h4")
+	err = m.HeaderSetAll("Alpha", "h1", "h3", "h4")
+	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: h1"),
 		myParseField("Bravo: this header comes second"),
@@ -247,20 +255,23 @@ The body is irrelevant.
 		myParseFieldNew("Alpha: h4"),
 	}, m.HeaderFields())
 
-	m.HeaderSetAll("alpha", "one is the loneliest header")
+	err = m.HeaderSetAll("alpha", "one is the loneliest header")
+	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: one is the loneliest header"),
 		myParseField("Bravo: this header comes second"),
 	}, m.HeaderFields())
 
-	m.HeaderSetAll("Gamma", "gammalon")
+	err = m.HeaderSetAll("Gamma", "gammalon")
+	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: one is the loneliest header"),
 		myParseField("Bravo: this header comes second"),
 		myParseFieldNew("Gamma: gammalon"),
 	}, m.HeaderFields())
 
-	m.HeaderSetAll("alpha", "header one", "header omega")
+	err = m.HeaderSetAll("alpha", "header one", "header omega")
+	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: header one"),
 		myParseField("Bravo: this header comes second"),
@@ -268,14 +279,16 @@ The body is irrelevant.
 		myParseFieldNew("alpha: header omega"),
 	}, m.HeaderFields())
 
-	m.HeaderSetAll("bravo")
+	err = m.HeaderSetAll("bravo")
+	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: header one"),
 		myParseField("Gamma: gammalon"),
 		myParseField("alpha: header omega"),
 	}, m.HeaderFields())
 
-	m.HeaderSetAll("Omega")
+	err = m.HeaderSetAll("Omega")
+	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: header one"),
 		myParseField("Gamma: gammalon"),
