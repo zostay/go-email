@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -157,7 +158,7 @@ func TestFoldingLongLine(t *testing.T) {
 
 	subject := strings.Repeat("A ", 50)
 
-	h := email.NewHeader(email.UnixLineBreak)
+	h := email.NewHeader(email.LF)
 	err := h.HeaderSet("To", to)
 	assert.NoError(t, err)
 
@@ -199,7 +200,7 @@ func TestHeaderJunk(t *testing.T) {
 	assert.NotContains(t, m.String(), "linden")
 }
 
-const mylb = email.UnixLineBreak
+const mylb = email.LF
 
 func myParseField(f string) *email.HeaderField {
 	hf, _ := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
@@ -385,4 +386,24 @@ The body is irrelevant.
 		myParseFieldNew("Bravo: this header comes second"),
 		myParseFieldNew("Alpha: this header comes third"),
 	}, m.HeaderFields())
+}
+
+func TestLineBreakDetection(t *testing.T) {
+	crlf := []string{email.CR, email.CRLF, email.LF, email.LFCR}
+
+	for _, lb := range crlf {
+		emailText := fmt.Sprintf("Foo-Bar: Baz%s%stest%s", lb, lb, lb)
+
+		m, err := Parse([]byte(emailText))
+		assert.NoError(t, err)
+
+		assert.Equal(t, []byte(lb), m.Break())
+
+		emailText = fmt.Sprintf("Foo-Bar: Baz%s", lb)
+
+		m, err = Parse([]byte(emailText))
+		assert.NoError(t, err)
+
+		assert.Equal(t, []byte(lb), m.Break())
+	}
 }

@@ -14,10 +14,10 @@ import (
 // Constants for use when selecting a line break to use with a new header. If
 // you don't know what to pick, choose the StandardLineBreak.
 const (
-	StandardLineBreak   = "\x0d\x0a"
-	UnixLineBreak       = "\x0a"
-	ClassicMacLineBreak = "\x0d"
-	WeirdoLineBreak     = "\x0a\x0d"
+	CRLF = "\x0d\x0a"
+	LF   = "\x0a"
+	CR   = "\x0d"
+	LFCR = "\x0a\x0d"
 )
 
 // BadStartError is returned when the header begins with junk text that does not

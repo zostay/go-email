@@ -16,7 +16,7 @@ Bar: 3
 Baz: 1
 `
 
-	h, err := ParseHeaderLB([]byte(headerStr), []byte(UnixLineBreak))
+	h, err := ParseHeaderLB([]byte(headerStr), []byte(LF))
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 
@@ -64,7 +64,7 @@ Baz: Z1
 BAR: B2
 `
 
-	m, err := ParseHeaderLB([]byte(basic), []byte(UnixLineBreak))
+	m, err := ParseHeaderLB([]byte(basic), []byte(LF))
 	assert.NoError(t, err)
 
 	err = m.HeaderSetAll("Bar", "B1A", "B2A")
@@ -102,7 +102,7 @@ FOO: F4
 BAR: B2
 `
 
-	m, err := ParseHeaderLB([]byte(emailText), []byte(UnixLineBreak))
+	m, err := ParseHeaderLB([]byte(emailText), []byte(LF))
 	assert.NoError(t, err)
 
 	err = m.HeaderRenameN("Foo", "XYZ", -1)
@@ -144,7 +144,7 @@ Foo: Wrapped, and will generally need to be wrapped again, if the field
   name stays long.
 `
 
-	m, err := ParseHeaderLB([]byte(emailText), []byte(UnixLineBreak))
+	m, err := ParseHeaderLB([]byte(emailText), []byte(LF))
 	assert.NoError(t, err)
 
 	// round-tripping
