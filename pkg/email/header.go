@@ -20,6 +20,11 @@ const (
 	LFCR = "\x0a\x0d"
 )
 
+const (
+	ALCK = "github.com/zostay/go-email/pkg/email.AddressList"
+	DTCK = "github.com/zostay/go-email/pkg/email.Date"
+)
+
 // BadStartError is returned when the header begins with junk text that does not
 // appear to be a header. This text is preserved in the error object.
 type BadStartError struct {
@@ -229,12 +234,22 @@ func (h *Header) HeaderGetN(n string, ix int) (string, error) {
 // This only returns the addresses for the first occurence of a header, as the
 // email address headers are only permitted a single time in email.
 func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
-	b := h.HeaderGet(n)
-	if b == "" {
+	hf := h.HeaderGetField(n)
+	if hf == nil {
 		return nil, nil
 	}
 
-	return addr.ParseEmailAddressList(b)
+	if addrs := hf.CacheGet(ALCK); addrs != nil {
+		return addrs.(addr.AddressList), nil
+	}
+
+	addrs, err := addr.ParseEmailAddressList(hf.Body())
+	if err != nil {
+		return addrs, err
+	}
+
+	hf.CacheSet(ALCK, addrs)
+	return addrs, nil
 }
 
 // HeaderDate parses and returns the date in the email. This will read the header
@@ -243,12 +258,22 @@ func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
 // the date header is present, it will returned the parsed value or an error if
 // the date cannot be parsed.
 func (h *Header) HeaderDate() (time.Time, error) {
-	b := h.HeaderGet("Date")
-	if b == "" {
+	hf := h.HeaderGetField("Date")
+	if hf == nil {
 		return time.Time{}, nil
 	}
 
-	return mail.ParseDate(b)
+	if date := hf.CacheGet(DTCK); date != nil {
+		return date.(time.Time), nil
+	}
+
+	date, err := mail.ParseDate(hf.Body())
+	if err != nil {
+		return date, err
+	}
+
+	hf.CacheSet(DTCK, date)
+	return date, nil
 }
 
 // HeaderGetField will find the first header field and return the header field object
