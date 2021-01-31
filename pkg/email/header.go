@@ -252,6 +252,16 @@ func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
 	return addrs, nil
 }
 
+// HeaderSetAddressList will update an address list header with the given
+// address list.
+func (h *Header) HeaderSetAddressList(n string, addrs addr.AddressList) {
+	as := addrs.String()
+	_ = h.HeaderSetAll(n, as)
+
+	hf := h.HeaderGetField(n)
+	hf.CacheSet(ALCK, addrs)
+}
+
 // HeaderDate parses and returns the date in the email. This will read the header
 // named "Date". As this header is always required, it will return the time.Time
 // zero value and an error if this method is called and no value is present. If
@@ -274,6 +284,17 @@ func (h *Header) HeaderDate() (time.Time, error) {
 
 	hf.CacheSet(DTCK, date)
 	return date, nil
+}
+
+// HeaderSetDate takes a time.Time input and sets the header field named "Date"
+// to an RFC5322 formatted date from that input. This uses the built-in RFC1123Z
+// format.
+func (h *Header) HeaderSetDate(d time.Time) {
+	df := d.Format(time.RFC1123Z)
+	_ = h.HeaderSetAll("Date", df)
+
+	hf := h.HeaderGetField("Date")
+	hf.CacheSet(DTCK, d)
 }
 
 // HeaderGetField will find the first header field and return the header field object
