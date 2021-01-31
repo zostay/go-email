@@ -8,8 +8,8 @@ import (
 	"github.com/zostay/go-email/pkg/email"
 )
 
-// ContentType represents a parsed Content-type header.
-type contentType struct {
+// mediaType represents a parsed Content-type or Content-disposition header.
+type mediaType struct {
 	mediaType string            // the content-type itself
 	params    map[string]string // additional content-type parameters, like charset, boundary, etc.
 }
@@ -81,55 +81,68 @@ func (m *Message) RawContentType() string {
 	return m.HeaderGet("Content-type")
 }
 
-func (m *Message) structuredContentType() (*contentType, error) {
-	const CTCK = "github.com/zostay/go-email/pkg/email/mime.ContentType"
+func (m *Message) structuredMediaType(n string) (*mediaType, error) {
+	const MTCK = "github.com/zostay/go-email/pkg/email/mime.mediaType"
 
 	// header set
-	hf := m.HeaderGetField("Content-type")
+	hf := m.HeaderGetField(n)
 	if hf == nil {
 		return nil, nil
 	}
 
 	// parsed content type cached on header?
-	cti := hf.CacheGet(CTCK)
-	var ct *contentType
-	if ct, ok := cti.(*contentType); ok {
-		return ct, nil
+	mti := hf.CacheGet(MTCK)
+	var mt *mediaType
+	if mt, ok := mti.(*mediaType); ok {
+		return mt, nil
 	}
 
 	// still nothing? parse the content type
-	if ct == nil {
-		mt, ps, err := mime.ParseMediaType(hf.Body())
+	if mt == nil {
+		medt, ps, err := mime.ParseMediaType(hf.Body())
 		if err != nil {
 			return nil, err
 		}
 
-		ct = &contentType{mt, ps}
-		hf.CacheSet(CTCK, ct)
+		mt = &mediaType{medt, ps}
+		hf.CacheSet(MTCK, mt)
 	}
 
-	return ct, nil
+	return mt, nil
 }
 
 // ContentType retrieves only the media-type of the Content-type header (i.e.,
 // the parameters are stripped.)
 func (m *Message) ContentType() string {
-	ct, _ := m.structuredContentType()
+	ct, _ := m.structuredMediaType("Content-type")
 	return ct.mediaType
 }
 
 // Charset retrieves the character set on the Content-type header or an empty
 // string.
 func (m *Message) Charset() string {
-	ct, _ := m.structuredContentType()
+	ct, _ := m.structuredMediaType("Content-type")
 	return ct.params["charset"]
 }
 
 // Boundary is the boundary set on the Content-type header for multipart
 // messages.
 func (m *Message) Boundary() string {
-	ct, _ := m.structuredContentType()
+	ct, _ := m.structuredMediaType("Content-type")
 	return ct.params["boundary"]
+}
+
+// Disposition is the value of the Content-dispotion header value.
+func (m *Message) Disposition() string {
+	cd, _ := m.structuredMediaType("Content-disposition")
+	return cd.mediaType
+}
+
+// Filename is the filename set in the Content-disposition header, if set.
+// Otherwise, it returns an empty string.
+func (m *Message) Filename() string {
+	cd, _ := m.structuredMediaType("Content-disposition")
+	return cd.params["filename"]
 }
 
 // BodyUnicode is for retrieving a MIME single part body after having the
