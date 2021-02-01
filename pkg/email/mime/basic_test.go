@@ -29,7 +29,7 @@ func TestBasic(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
 
-	assert.NotNil(t, m.Parts)
+	assert.Empty(t, m.Parts)
 	assert.NotEmpty(t, m.Body())
 
 	bb, err := m.BodyBinary()
