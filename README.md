@@ -3,9 +3,10 @@
 This is a package primarily aimed at parsing, manipulating, and outputting email
 message documents. It is aimed at being very flexible and is loosely based on
 the work of Simon Cozens, Ric Signes, and others on their Perl based
-Email::Simple and Email::MIME libraries. I wouldn't go so far as to call it a
-port of these libraries. However, the style and shape of the parser and other
-features do bear some resemblance.
+[Email::Simple](https://metacpan.org/pod/Email::Simple) and
+[Email::MIME](https://metacpan.org/pod/Email::MIME) libraries. I wouldn't go so
+far as to call it a port of these libraries.  However, the style and shape of
+the parser and other features do bear some resemblance.
 
 These libraries have been workhorses for email processing for decades and are
 good repositories of practical knowledge when it comes to how things actually

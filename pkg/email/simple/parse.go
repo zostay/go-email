@@ -1,3 +1,14 @@
+// Package simple provides tools for basic email parsing. This primarily means
+// splitting the header from the body, and parsing the header in full. It does
+// not do anything special with the body.
+//
+// This is primarily useful in cases where you want to work with message
+// headers. You can read and modify these headers and roundtrip the file without
+// making any changes to the body.
+//
+// If you need to work with the parts of the body, you probably ought to
+// consider using the MIME parser in "github.com/zostay/go-email/pkg/email/mime"
+// instead.
 package simple
 
 import (

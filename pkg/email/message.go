@@ -9,6 +9,7 @@
 package email
 
 import (
+	"bytes"
 	"strings"
 )
 
@@ -45,4 +46,13 @@ func (m *Message) String() string {
 	out.Write(m.Header.lb)
 	out.Write(m.body)
 	return out.String()
+}
+
+// Bytes returns the email message as a slice of bytes.
+func (m *Message) Bytes() []byte {
+	var out bytes.Buffer
+	out.WriteString(m.Header.String())
+	out.Write(m.Header.lb)
+	out.Write(m.body)
+	return out.Bytes()
 }
