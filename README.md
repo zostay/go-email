@@ -19,79 +19,93 @@ Here's a quick example showing some code that is just interested in manipulating
 headers:
 
 ```Go
-import (
-    "io/ioutil"
-    "strings"
+package main
 
-    "github.com/zostay/go-email/simple"
+import (
+	"io/ioutil"
+	"strings"
+
+	"github.com/zostay/go-email/pkg/email/simple"
 )
 
 func main() {
-    msg := ioutil.ReadFile("input.msg")
-    m, err := simple.Parse(msg)
-    if err != nil {
-        panic(err)
-    }
+	msg, err := ioutil.ReadFile("input.msg")
+	if err != nil {
+		panic(err)
+	}
 
-    if kw := m.HeaderGet("Keywords"); kw != "" {
-        kws := strings.Split(kw, ",")
-        for _, k := range kws {
-            if strings.TrimSpace(k) == "Snuffle" {
-                kw += ", Upagus"
-                m.HeaderSet("Keywords", kw)
-                ioutil.WriteFile("output.msg", m.Bytes(), 0644)
-            }
-        }
-    }
+	m, err := simple.Parse(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	if kw := m.HeaderGet("Keywords"); kw != "" {
+		kws := strings.Split(kw, ",")
+		for _, k := range kws {
+			if strings.TrimSpace(k) == "Snuffle" {
+				kw += ", Upagus"
+				_ = m.HeaderSet("Keywords", kw)
+				_ = ioutil.WriteFile("output.msg", m.Bytes(), 0644)
+			}
+		}
+	}
 }
 ```
 
 Or if you are interested in message bodies:
 
 ```Go
-import (
-    "fmt"
-    "io/ioutil"
-    "path/filepath"
-    "strings"
+package main
 
-    "github.com/zostay/go-email/mime"
+import (
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+	"unicode"
+
+	"github.com/zostay/go-email/pkg/email/mime"
 )
 
 var fileCount = 0
 
 func isUnsafeExt(c rune) bool {
-    return !unicode.IsLetter(c) && !unicode.IsDigit(c)
+	return !unicode.IsLetter(c) && !unicode.IsDigit(c)
 }
 
 func outputSafeFilename(fn string) string {
-    safeExt := filepath.Ext(fn)
-    if strings.IndexFunc(safeExt, isUnsafeExt) > -1 {
-        safeExt := ".wasnotsafe" // CHECK INPUT YOU CRAZY PERSON
-    }
-    fileCount++
-    return fmt.Sprintf("%d%s", fileCount, filepath.Ext(fn))
+	safeExt := filepath.Ext(fn)
+	if strings.IndexFunc(safeExt, isUnsafeExt) > -1 {
+		safeExt = ".wasnotsafe" // CHECK INPUT YOU CRAZY PERSON
+	}
+	fileCount++
+	return fmt.Sprintf("%d%s", fileCount, safeExt)
 }
 
 func saveAttachments(m *mime.Message) {
-    if fn := m.Filename(); fn != "" {
-        of := outputSafeFilename(fn)
-        ioutil.WriteFile(of, m.BodyDecoded(), 0644)
-    } else {
-        for _, p := range m.Parts {
-            saveAttachments(p)
-        }
-    }
+	if fn := m.Filename(); fn != "" {
+		of := outputSafeFilename(fn)
+		b, _ := m.BodyUnicode()
+		_ = ioutil.WriteFile(of, []byte(b), 0644)
+	} else {
+		for _, p := range m.Parts {
+			saveAttachments(p)
+		}
+	}
 }
 
 func main() {
-    msg := ioutil.ReadFile("input.msg")
-    m, err := simple.Parse(msg)
-    if err != nil {
-        panic(err)
-    }
+	msg, err := ioutil.ReadFile("input.msg")
+	if err != nil {
+		panic(err)
+	}
 
-    saveAttachments(m)
+	m, err := mime.Parse(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	saveAttachments(m)
 }
 ```
 
