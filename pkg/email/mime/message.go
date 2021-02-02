@@ -1,3 +1,10 @@
+// Package mime provides tools for parsing and processing MIME email messages.
+// If you are just looking to work with the primary headers, you might prefer to
+// use the parse in "github.com/zostay/go-email/pkg/email/simple".
+//
+// This provides tools for reading the headers and bodies of subparts and the
+// header and messages of those subparts and so on. This will also perform email
+// decoding for base64, quotedprintable, and charset encodings.
 package mime
 
 import (

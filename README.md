@@ -184,26 +184,32 @@ following:
 There are also some things I deliberately avoided trying to solve when writing
 this library. This includes:
 
-1. **Memory Performance.** In memory performance of this library is absolutely
+1. **Unattended Production Use.** I recommend using this library in an
+   unattended production situation. It makes several decisions that will make
+   production use in a server or other automated situation risk. I'm intending
+   to use this library in a command-line tool I run by hand and monitor the
+   output of directly.
+
+2. **Memory Performance.** In memory performance of this library is absolutely
    abysmal. I haven't measured it, but I wouldn't be surprised if the parsed the
    structures are 3 or 4 times larger than the original file. If you parse a 100
    MB email, you might need 1 GB of memory available to complete the operation.
    I might look into ways of avoiding this to some extent, but it is not a
    priority.
 
-2. **Rigid Strictness.** I'm not going to enforce rigid strictness on output. If
+3. **Rigid Strictness.** I'm not going to enforce rigid strictness on output. If
    you are a terrible developer or have need of doing terrible things with your
    email, so be it. I ain't your momma. I am not going to give you any support
    either, so don't file an issue if you're doing something broken or weird.
    You're on your own.
 
-3. **Support.** Speaking of support. I'm just a guy doing this in my spare time.
+4. **Support.** Speaking of support. I'm just a guy doing this in my spare time.
    I don't do much email messaging for work, so I'm not going to support this
    very well.  Patches welcome. I will apply them if they make sense, have good
    docs and tests, and don't break anything I need, but I'm not likely to tinker
    with these packages.
 
-4. **Email Creation.** It should be possible to create email messages
+5. **Email Creation.** It should be possible to create email messages
    programmatically, but this aspect of things is pretty skimpy right now. This
    library is primarily aimed at parse-modify-format operations.
 
