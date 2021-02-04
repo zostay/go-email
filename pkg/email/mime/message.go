@@ -122,34 +122,49 @@ func (m *Message) structuredMediaType(n string) (*mediaType, error) {
 // the parameters are stripped.)
 func (m *Message) ContentType() string {
 	ct, _ := m.structuredMediaType("Content-type")
-	return ct.mediaType
+	if ct != nil {
+		return ct.mediaType
+	}
+	return ""
 }
 
 // Charset retrieves the character set on the Content-type header or an empty
 // string.
 func (m *Message) Charset() string {
 	ct, _ := m.structuredMediaType("Content-type")
-	return ct.params["charset"]
+	if ct != nil {
+		return ct.params["charset"]
+	}
+	return ""
 }
 
 // Boundary is the boundary set on the Content-type header for multipart
 // messages.
 func (m *Message) Boundary() string {
 	ct, _ := m.structuredMediaType("Content-type")
-	return ct.params["boundary"]
+	if ct != nil {
+		return ct.params["boundary"]
+	}
+	return ""
 }
 
 // Disposition is the value of the Content-dispotion header value.
 func (m *Message) Disposition() string {
 	cd, _ := m.structuredMediaType("Content-disposition")
-	return cd.mediaType
+	if cd != nil {
+		return cd.mediaType
+	}
+	return ""
 }
 
 // Filename is the filename set in the Content-disposition header, if set.
 // Otherwise, it returns an empty string.
 func (m *Message) Filename() string {
 	cd, _ := m.structuredMediaType("Content-disposition")
-	return cd.params["filename"]
+	if cd != nil {
+		return cd.params["filename"]
+	}
+	return ""
 }
 
 // BodyUnicode is for retrieving a MIME single part body after having the

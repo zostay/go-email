@@ -159,6 +159,7 @@ func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
 
 	name := strings.TrimSpace(string(UnfoldValue(parts[0])))
 	body := strings.TrimSpace(string(UnfoldValue(parts[1])))
+
 	return &HeaderField{"", name, body, f, nil}, nil
 }
 
@@ -185,6 +186,17 @@ func (h *Header) String() string {
 		out.WriteString(f.String())
 	}
 	return out.String()
+}
+
+// Bytes will return the byte representation of the header. If the header was
+// parsed from an email header and not modified, this will output the original
+// header, preserved byte-for-byte.
+func (h *Header) Bytes() []byte {
+	var out bytes.Buffer
+	for _, f := range h.fields {
+		out.Write(f.Bytes())
+	}
+	return out.Bytes()
 }
 
 // HeaderNames will return the unique header names found in the mail header.
@@ -737,6 +749,9 @@ func (f *HeaderField) CacheSet(k string, v interface{}) {
 
 // String is an alias for Original.
 func (f *HeaderField) String() string { return string(f.original) }
+
+// Bytes returns the original as bytes.
+func (f *HeaderField) Bytes() []byte { return f.original }
 
 // SetName will rename a field. This first checks to make sure no illegal
 // characters are present in the field name. The line break parameter must be
