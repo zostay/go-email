@@ -73,7 +73,7 @@ type HeaderField struct {
 // the entire string given represents the header. It will assume "\n" as the
 // line break character to use during parsing.
 func ParseHeader(m []byte) (*Header, error) {
-	return ParseHeaderLB(m, []byte("\x0d"))
+	return ParseHeaderLB(m, []byte(LF))
 }
 
 // ParseHeaderLB will parse the given string into an email header using the
@@ -171,7 +171,7 @@ func NewHeader(lb string) *Header {
 // Break returns the line break string associated with this header.
 func (h *Header) Break() []byte {
 	if h.lb == nil {
-		return []byte{'\n', '\r'}
+		return []byte(CRLF)
 	} else {
 		return h.lb
 	}
