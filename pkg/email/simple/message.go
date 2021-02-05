@@ -6,7 +6,7 @@
 // guarantees are made that the object will be kept in a consistent state while
 // within a method, so you shouldn't try to manipulate or access the data of
 // these objects concurrently.
-package email
+package simple
 
 import (
 	"bytes"
@@ -17,39 +17,42 @@ import (
 // enough detail that the original message can be roundtripped and preserved
 // byte-for-byte while still providing useful tools for reading the header
 // fields and other information.
-type Message interface {
-	// Header will return the header object for the message.
+type Message struct {
 	Header
+	body []byte
+}
 
-	// Body will return the body for the message as a string.
-	Body() []byte
-
-	// ReplaceBody allows the body to be changed out with a new one.
+// NewMessage builds a new basic email message from the given header and body.
+func NewMessage(h *Header, body []byte) *Message {
+	return &Message{*h, body}
 }
 
 // BodyString returns the message body as a string.
-func (m Message) BodyString() string { return string(m.Body()) }
+func (m *Message) BodyString() string { return string(m.body) }
+
+// Body returns the message body.
+func (m *Message) Body() []byte { return []byte(m.BodyString()) }
 
 // SetBody sets the message body.
-func (m Message) SetBody(b []byte) { m.ReplaceBody(b) }
+func (m *Message) SetBody(b []byte) { m.body = b }
 
 // SetBodyString sets the message body from a string.
-func (m Message) SetBodyString(s string) { m.ReplaceBody([]byte(s)) }
+func (m *Message) SetBodyString(s string) { m.body = []byte(s) }
 
 // String returns the email message as a string.
-func (m Message) String() string {
+func (m *Message) String() string {
 	var out strings.Builder
 	out.WriteString(m.Header.String())
 	out.Write(m.Header.lb)
-	out.Write(m.Body())
+	out.Write(m.body)
 	return out.String()
 }
 
 // Bytes returns the email message as a slice of bytes.
-func (m Message) Bytes() []byte {
+func (m *Message) Bytes() []byte {
 	var out bytes.Buffer
-	out.Write(m.Header.Bytes())
+	out.WriteString(m.Header.String())
 	out.Write(m.Header.lb)
-	out.Write(m.Body())
+	out.Write(m.body)
 	return out.Bytes()
 }

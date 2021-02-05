@@ -1,4 +1,4 @@
-package email
+package simple
 
 import (
 	"bytes"
@@ -20,32 +20,43 @@ const (
 	LFCR = "\x0a\x0d"
 )
 
+const (
+	ALCK = "github.com/zostay/go-email/pkg/email.AddressList"
+	DTCK = "github.com/zostay/go-email/pkg/email.Date"
+)
+
+// BadStartError is returned when the header begins with junk text that does not
+// appear to be a header. This text is preserved in the error object.
+type BadStartError struct {
+	BadStart []byte // the text skipped at the start of header
+}
+
+// Error returns the error message.
+func (err *BadStartError) Error() string {
+	return "header starts with text that does not appear to be a header"
+}
+
+// HeaderParseError is returned when an error occurs during parse. This may
+// include multiple errors. These errors will be accumulated in this error.
+type HeaderParseError struct {
+	Errs []error // The accumulated parse errors
+}
+
+// Error returns all the errors that occurred during header parsing.
+func (err *HeaderParseError) Error() string {
+	errs := make([]string, len(err.Errs))
+	for i, e := range err.Errs {
+		errs[i] = e.Error()
+	}
+	return "error parsing email header: " + strings.Join(errs, ", ")
+}
+
 // Header represents an email message header. The header object stores enough
 // detail that the original header can be recreated byte for byte for
 // roundtripping.
-type Header interface {
-	// Break returns the line break to use with this header object.
-	Break() []byte
-
-	// HeaderFields returns all header fields as a list.
-	// HeaderNames retrieves the names of all headers fields.
-	HeaderFields() []HeaderField
-
-	// HeaderGetFieldN retrieves the (n+1)th occurrence of the header field
-	// with the given name in the header. The return result is a pair of values.
-	// The first value is the index of the header found or -1 if no header has
-	// been found. The second value is the object found or nil if no such header
-	// field exists.
-	HeaderGetFieldN(name string, n int) (int, HeaderField)
-
-	// HeaderGetAllField retrieves all the header fields with a matching name.
-	HeaderGetAllFields(name string) []HeaderField
-
-	// HeaderInsertField inserts a field at the given index.
-	HeaderInsertField(i int, f HeaderField)
-
-	// HeaderRemoveField deletes the field at the given index.
-	HeaderRemoveField(i int)
+type Header struct {
+	fields []*HeaderField // The list of fields
+	lb     []byte         // The line break string to use
 }
 
 // HeaderField represents an individual field in the message header. When taken
@@ -58,12 +69,120 @@ type HeaderField struct {
 	cache    map[string]interface{}
 }
 
+// ParseHeader will parse the given string into an email header. It assumes that
+// the entire string given represents the header. It will assume "\n" as the
+// line break character to use during parsing.
+func ParseHeader(m []byte) (*Header, error) {
+	return ParseHeaderLB(m, []byte(LF))
+}
+
+// ParseHeaderLB will parse the given string into an email header using the
+// given line break string. It will assume the entire string given represents
+// the header to be parsed.
+func ParseHeaderLB(m, lb []byte) (*Header, error) {
+	lines, err := ParseHeaderLines(m, lb)
+	errs := make([]error, 0, 1)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	h := Header{
+		fields: make([]*HeaderField, len(lines)),
+		lb:     lb,
+	}
+
+	for i, line := range lines {
+		h.fields[i], err = ParseHeaderField(line, lb)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return &h, &HeaderParseError{errs}
+	}
+	return &h, nil
+}
+
+// ParseHeaderLines is used by ParseHeader and ParseHeaderLB to create a list of
+// lines where each line represents a single field, including and folded
+// continuation lines.
+//
+// Often, mail tools (like some versions of Microsoft Outlook or Exchange
+// *eyeroll*) will incorrectly fold a line. As such, a field line is consider
+// the start of a field when it does not start with a space AND it contains a
+// colon. Otherwise, we will treat it as a fold even though this is not correct
+// according to RFC 5322.
+//
+// If the header starts with text that does not appear to be a header. The start
+// text will be skipped for header parsing. However, it will be accumulated into
+// a BadStartError and returned with the parsed header.
+func ParseHeaderLines(m, lb []byte) ([][]byte, error) {
+	h := make([][]byte, 0, len(m)/80)
+	var err *BadStartError
+	for _, line := range bytes.SplitAfter(m, lb) {
+		if len(line) == 0 {
+			break
+		}
+		if line[0] == '\t' || line[0] == ' ' || !bytes.Contains(line, []byte(":")) {
+			// Start with a continuation? Weird, uh...
+			if len(h) == 0 {
+				if err != nil {
+					err.BadStart = append(err.BadStart, line...)
+				} else {
+					err = &BadStartError{line}
+				}
+				continue
+			}
+
+			h[len(h)-1] = append(h[len(h)-1], line...)
+		} else {
+			h = append(h, line)
+		}
+	}
+
+	if err != nil {
+		return h, err
+	} else {
+		return h, nil
+	}
+}
+
+// ParseHeaderField will take a single header field, including any folded
+// continuation lines. This will then construct a header field object.
+func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
+	parts := bytes.SplitN(f, []byte(":"), 2)
+	if len(parts) < 2 {
+		name := UnfoldValue(f)
+		return &HeaderField{"", string(name), "", f, nil}, fmt.Errorf("header field %q missing body", name)
+	}
+
+	name := strings.TrimSpace(string(UnfoldValue(parts[0])))
+	body := strings.TrimSpace(string(UnfoldValue(parts[1])))
+
+	return &HeaderField{"", name, body, f, nil}, nil
+}
+
+// NewHeader creates a new header.
+func NewHeader(lb string) *Header {
+	return &Header{lb: []byte(lb)}
+}
+
+// Break returns the line break string associated with this header.
+func (h *Header) Break() []byte {
+	if h.lb == nil {
+		return []byte(CRLF)
+	} else {
+		return h.lb
+	}
+}
+
 // String will return the string representation of the header. If the header was
 // parsed from an email header and not modified, this will output the original
 // header, preserved byte-for-byte.
-func (h Header) String() string {
+func (h *Header) String() string {
 	var out strings.Builder
-	for _, f := range h.HeaderFields() {
+	for _, f := range h.fields {
 		out.WriteString(f.String())
 	}
 	return out.String()
