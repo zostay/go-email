@@ -55,15 +55,15 @@ func TestBasic(t *testing.T) {
 
 	assert.Equal(t, "", mail.HeaderGet("Bogus"))
 
-	assert.Contains(t, mail.BodyString(), "Austin Group Chair")
+	assert.Contains(t, mail.ContentString(), "Austin Group Chair")
 
-	oldBody := mail.Body()
+	oldBody := mail.Content()
 
 	const hi = "Hi there!\n"
-	mail.SetBodyString(hi)
-	assert.Equal(t, hi, mail.BodyString())
+	mail.SetContentString(hi)
+	assert.Equal(t, hi, mail.ContentString())
 
-	mail.SetBody(oldBody)
+	mail.SetContent(oldBody)
 
 	assert.Equal(t, string(joseyNoFold), mail.String())
 
@@ -158,8 +158,10 @@ func TestFoldingLongLine(t *testing.T) {
 
 	subject := strings.Repeat("A ", 50)
 
-	h := email.NewHeader(email.LF)
-	err := h.HeaderSet("To", to)
+	h, err := NewHeader(email.LF)
+	assert.NoError(t, err)
+
+	err = h.HeaderSet("To", to)
 	assert.NoError(t, err)
 
 	err = h.HeaderSet("From", from)
@@ -188,10 +190,10 @@ func TestHeaderJunk(t *testing.T) {
 	t.Parallel()
 
 	m, err := Parse(junkInHeader)
-	var hpErr *email.HeaderParseError
+	var hpErr *HeaderParseError
 	if assert.ErrorAs(t, err, &hpErr) {
 		assert.Equal(t, 1, len(hpErr.Errs))
-		var bsErr *email.BadStartError
+		var bsErr *BadStartError
 		if assert.ErrorAs(t, hpErr.Errs[0], &bsErr) {
 			assert.Contains(t, string(bsErr.BadStart), "linden")
 		}
@@ -203,13 +205,13 @@ func TestHeaderJunk(t *testing.T) {
 const mylb = email.LF
 
 func myParseField(f string) *email.HeaderField {
-	hf, _ := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
+	hf, _ := ParseHeaderField([]byte(f+mylb), []byte(mylb))
 	hf.Match() // make sure the match is cached
 	return hf
 }
 
 func myParseFieldNew(f string) *email.HeaderField {
-	hf, _ := email.ParseHeaderField([]byte(f+mylb), []byte(mylb))
+	hf, _ := ParseHeaderField([]byte(f+mylb), []byte(mylb))
 	return hf
 }
 
@@ -235,7 +237,7 @@ The body is irrelevant.
 		myParseField("Alpha: this header comes first"),
 		myParseField("Bravo: this header comes second"),
 		myParseField("Alpha: this header comes third"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	assert.Equal(t, []string{"Alpha", "Bravo"}, m.HeaderNames())
 
@@ -245,7 +247,7 @@ The body is irrelevant.
 		myParseField("Alpha: header one"),
 		myParseField("Bravo: this header comes second"),
 		myParseField("Alpha: header three"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	err = m.HeaderSetAll("Alpha", "h1", "h3", "h4")
 	assert.NoError(t, err)
@@ -254,14 +256,14 @@ The body is irrelevant.
 		myParseField("Bravo: this header comes second"),
 		myParseField("Alpha: h3"),
 		myParseFieldNew("Alpha: h4"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	err = m.HeaderSetAll("alpha", "one is the loneliest header")
 	assert.NoError(t, err)
 	assert.Equal(t, []*email.HeaderField{
 		myParseField("Alpha: one is the loneliest header"),
 		myParseField("Bravo: this header comes second"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	err = m.HeaderSetAll("Gamma", "gammalon")
 	assert.NoError(t, err)
@@ -269,7 +271,7 @@ The body is irrelevant.
 		myParseField("Alpha: one is the loneliest header"),
 		myParseField("Bravo: this header comes second"),
 		myParseFieldNew("Gamma: gammalon"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	err = m.HeaderSetAll("alpha", "header one", "header omega")
 	assert.NoError(t, err)
@@ -278,7 +280,7 @@ The body is irrelevant.
 		myParseField("Bravo: this header comes second"),
 		myParseField("Gamma: gammalon"),
 		myParseFieldNew("alpha: header omega"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	err = m.HeaderSetAll("bravo")
 	assert.NoError(t, err)
@@ -286,7 +288,7 @@ The body is irrelevant.
 		myParseField("Alpha: header one"),
 		myParseField("Gamma: gammalon"),
 		myParseField("alpha: header omega"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	err = m.HeaderSetAll("Omega")
 	assert.NoError(t, err)
@@ -294,7 +296,7 @@ The body is irrelevant.
 		myParseField("Alpha: header one"),
 		myParseField("Gamma: gammalon"),
 		myParseField("alpha: header omega"),
-	}, m.HeaderFields())
+	}, m.Fields)
 }
 
 func TestHeaderNames(t *testing.T) {
@@ -349,7 +351,7 @@ HELP!
 		myParseFieldNew("Reply-To: xyzzy@plugh.example.net"),
 		myParseFieldNew("X-Your-Face: to the new york islface"),
 		myParseFieldNew("Subject: Message in a bottle"),
-	}, m.HeaderFields())
+	}, m.Fields)
 }
 
 func TestHeaderAddBefore(t *testing.T) {
@@ -370,7 +372,7 @@ The body is irrelevant.
 		myParseFieldNew("Alpha: this header comes first"),
 		myParseFieldNew("Bravo: this header comes second"),
 		myParseFieldNew("Alpha: this header comes third"),
-	}, m.HeaderFields())
+	}, m.Fields)
 
 	err = m.HeaderAddBefore("Zero", "and 0+1th")
 	assert.NoError(t, err)
@@ -385,7 +387,7 @@ The body is irrelevant.
 		myParseFieldNew("Alpha: this header comes first"),
 		myParseFieldNew("Bravo: this header comes second"),
 		myParseFieldNew("Alpha: this header comes third"),
-	}, m.HeaderFields())
+	}, m.Fields)
 }
 
 func TestLineBreakDetection(t *testing.T) {

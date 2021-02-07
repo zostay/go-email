@@ -1,9 +1,7 @@
 package email
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -15,21 +13,6 @@ type HeaderField struct {
 	body     string
 	original []byte
 	cache    map[string]interface{}
-}
-
-// ParseHeaderField will take a single header field, including any folded
-// continuation lines. This will then construct a header field object.
-func ParseHeaderField(f, lb []byte) (*HeaderField, error) {
-	parts := bytes.SplitN(f, []byte(":"), 2)
-	if len(parts) < 2 {
-		name := UnfoldValue(f)
-		return &HeaderField{"", string(name), "", f, nil}, fmt.Errorf("header field %q missing body", name)
-	}
-
-	name := strings.TrimSpace(string(UnfoldValue(parts[0])))
-	body := strings.TrimSpace(string(UnfoldValue(parts[1])))
-
-	return &HeaderField{"", name, body, f, nil}, nil
 }
 
 // NewHeaderField constructs a new header field using the given name, body, and
@@ -53,6 +36,12 @@ func NewHeaderField(n, b string, lb []byte) (*HeaderField, error) {
 	return &f, nil
 }
 
+// NewHeaderFieldParsed constructs a new header field using the given name,
+// body, line break, and original. No checks are performed on the name or body.
+func NewHeaderFieldParsed(n, b string, original []byte) *HeaderField {
+	return &HeaderField{"", n, b, original, nil}
+}
+
 // Match returns a string useful for matching this header. It will be the
 // name string converted to lowercase.
 func (f *HeaderField) Match() string {
@@ -60,11 +49,11 @@ func (f *HeaderField) Match() string {
 		return f.match
 	}
 
-	f.match = makeMatch(f.name)
+	f.match = MakeHeaderFieldMatch(f.name)
 	return f.match
 }
 
-func makeMatch(n string) string {
+func MakeHeaderFieldMatch(n string) string {
 	return strings.ToLower(strings.TrimSpace(n))
 }
 

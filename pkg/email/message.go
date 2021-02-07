@@ -19,32 +19,20 @@ import (
 // fields and other information.
 type Message struct {
 	Header
-	body []byte
+	Body
 }
 
 // NewMessage builds a new basic email message from the given header and body.
 func NewMessage(h *Header, body []byte) *Message {
-	return &Message{*h, body}
+	return &Message{*h, *NewBody(body)}
 }
-
-// BodyString returns the message body as a string.
-func (m *Message) BodyString() string { return string(m.body) }
-
-// Body returns the message body.
-func (m *Message) Body() []byte { return []byte(m.BodyString()) }
-
-// SetBody sets the message body.
-func (m *Message) SetBody(b []byte) { m.body = b }
-
-// SetBodyString sets the message body from a string.
-func (m *Message) SetBodyString(s string) { m.body = []byte(s) }
 
 // String returns the email message as a string.
 func (m *Message) String() string {
 	var out strings.Builder
 	out.WriteString(m.Header.String())
 	out.Write(m.Header.lb)
-	out.Write(m.body)
+	out.WriteString(m.Body.String())
 	return out.String()
 }
 
@@ -53,6 +41,6 @@ func (m *Message) Bytes() []byte {
 	var out bytes.Buffer
 	out.WriteString(m.Header.String())
 	out.Write(m.Header.lb)
-	out.Write(m.body)
+	out.Write(m.Body.Bytes())
 	return out.Bytes()
 }

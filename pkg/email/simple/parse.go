@@ -13,12 +13,10 @@ package simple
 
 import (
 	"bytes"
-
-	"github.com/zostay/go-email/pkg/email"
 )
 
 // Parse will turn the given string into an email message.
-func Parse(m []byte) (*email.Message, error) {
+func Parse(m []byte) (*Message, error) {
 	pos, crlf := SplitHeadFromBody(m)
 
 	var head, body []byte
@@ -30,8 +28,8 @@ func Parse(m []byte) (*email.Message, error) {
 		body = []byte{}
 	}
 
-	h, err := email.ParseHeaderLB(head, crlf)
-	return email.NewMessage(h, body), err
+	h, err := ParseHeaderLB(head, crlf)
+	return NewMessage(h, body), err
 }
 
 // SplitHeadFromBody will detect the index of the split between the message

@@ -30,14 +30,14 @@ func TestBasic(t *testing.T) {
 	assert.NotNil(t, m)
 
 	assert.Empty(t, m.Parts)
-	assert.NotEmpty(t, m.Body())
+	assert.NotEmpty(t, m.Content())
 
-	bb, err := m.BodyBinary()
+	bb, err := m.ContentBinary()
 	assert.NoError(t, err)
 
 	enc := base64.StdEncoding
-	binaryWant := make([]byte, enc.DecodedLen(len(m.Body())))
-	n, err := enc.Decode(binaryWant, m.Body())
+	binaryWant := make([]byte, enc.DecodedLen(len(m.Content())))
+	n, err := enc.Decode(binaryWant, m.Content())
 	assert.NoError(t, err)
 	binaryWant = binaryWant[:n]
 	assert.Equal(t, binaryWant, bb)

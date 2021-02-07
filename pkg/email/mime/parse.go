@@ -128,7 +128,7 @@ func (m *Message) fillPartsMultiPart() error {
 		return m.fillPartsSinglePart()
 	}
 
-	boundaries := m.boundaries(m.Body(), boundary)
+	boundaries := m.boundaries(m.Content(), boundary)
 
 	// There are no boundaries found, so it's not multipart
 	if len(boundaries) == 0 {
@@ -145,26 +145,26 @@ func (m *Message) fillPartsMultiPart() error {
 			// MIME, but extra text to be ignored by the reader. We keep it
 			// around for the purpose of round-tripping.
 			if b > 0 {
-				m.Preamble = m.Body()[0:b]
+				m.Preamble = m.Content()[0:b]
 			}
 			lb = b
 			continue
 		}
 
-		bits = append(bits, m.Body()[lb:b])
+		bits = append(bits, m.Content()[lb:b])
 
 		if i == len(boundaries)-1 {
-			if m.finalBoundary(m.Body(), boundary) {
+			if m.finalBoundary(m.Content(), boundary) {
 				// Anything after the last boundary is the epilogue. This is
 				// also not a MIME part and we also keep it around for
 				// round-tripping.
-				m.Epilogue = m.Body()[b:]
+				m.Epilogue = m.Content()[b:]
 				break
 			} else {
 				// This is badly formatted, but whatever. We did not find a
 				// final boundary, so the last boundary appears to be a part
 				// instead so keep it as one.
-				bits = append(bits, m.Body()[b:])
+				bits = append(bits, m.Content()[b:])
 			}
 		}
 	}
