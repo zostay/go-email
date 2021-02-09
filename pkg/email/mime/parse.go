@@ -50,8 +50,10 @@ func Parse(m []byte, o ...option) (*Message, error) {
 
 	msg, err := simple.Parse(m)
 	if msg != nil {
+		h := Header{msg.Header}
 		mm = &Message{
-			Message:  *msg,
+			Header:   h,
+			Body:     msg.Body,
 			MaxDepth: DefaultMaxMultipartDepth,
 		}
 	}
@@ -79,9 +81,8 @@ func (m *Message) FillParts() error {
 	m.Parts = nil
 	m.Epilogue = nil
 
-	mt := m.ContentType()
-	if strings.HasPrefix(mt, "multipart/") ||
-		strings.HasPrefix(mt, "message/") {
+	mtt := m.HeaderContentTypeType()
+	if mtt == "multipart" || mtt == "message" {
 		return m.fillPartsMultiPart()
 	} else {
 		return m.fillPartsSinglePart()
@@ -117,7 +118,7 @@ func (m *Message) finalBoundary(body []byte, boundary string) bool {
 }
 
 func (m *Message) fillPartsMultiPart() error {
-	boundary := m.Boundary()
+	boundary := m.HeaderContentTypeBoundary()
 
 	if m.MaxDepth <= 0 {
 		return errors.New("message is nested too deeply")

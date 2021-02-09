@@ -9,27 +9,21 @@ package mime
 
 import (
 	"errors"
-	"mime"
 	"strings"
 
-	"github.com/zostay/go-email/pkg/email/simple"
+	"github.com/zostay/go-email/pkg/email"
 )
-
-// mediaType represents a parsed Content-type or Content-disposition header.
-type mediaType struct {
-	mediaType string            // the content-type itself
-	params    map[string]string // additional content-type parameters, like charset, boundary, etc.
-}
 
 // Message represents a MIME message.
 type Message struct {
-	simple.Message     // basic message within
-	MaxDepth       int // maximum depth permitted for subparts during parsing
-	prefix         []byte
-	boundary       string
-	Preamble       []byte     // preamble before MIME parts
-	Parts          []*Message // the MIME sub-parts
-	Epilogue       []byte     // epilogue after MIME parts
+	Header         // MIME email header within
+	email.Body     // basic message body within
+	MaxDepth   int // maximum depth permitted for subparts during parsing
+	prefix     []byte
+	boundary   string
+	Preamble   []byte     // preamble before MIME parts
+	Parts      []*Message // the MIME sub-parts
+	Epilogue   []byte     // epilogue after MIME parts
 }
 
 // UpdateBody will reconstruct the basic message whenever the higher level
@@ -49,8 +43,8 @@ type Message struct {
 // some of the sub-parts will have had their body updated.
 func (m *Message) UpdateBody() error {
 	// Ruh-roh, we need to rewrite the boundary
-	if len(m.Parts) > 0 && m.boundary != m.Boundary() {
-		nb := m.Boundary()
+	nb := m.HeaderContentTypeBoundary()
+	if len(m.Parts) > 0 && m.boundary != nb {
 		if len(nb) == 0 {
 			return errors.New("no boundary set")
 		} else if strings.Contains(nb, " \t") {
@@ -80,91 +74,6 @@ func (m *Message) UpdateBody() error {
 	m.SetContentString(a.String())
 
 	return nil
-}
-
-// RawContentType is shorthand for
-//  m.Get("Content-type")
-func (m *Message) RawContentType() string {
-	return m.HeaderGet("Content-type")
-}
-
-func (m *Message) structuredMediaType(n string) (*mediaType, error) {
-	const MTCK = "github.com/zostay/go-email/pkg/email/mime.mediaType"
-
-	// header set
-	hf := m.HeaderGetField(n)
-	if hf == nil {
-		return nil, nil
-	}
-
-	// parsed content type cached on header?
-	mti := hf.CacheGet(MTCK)
-	var mt *mediaType
-	if mt, ok := mti.(*mediaType); ok {
-		return mt, nil
-	}
-
-	// still nothing? parse the content type
-	if mt == nil {
-		medt, ps, err := mime.ParseMediaType(hf.Body())
-		if err != nil {
-			return nil, err
-		}
-
-		mt = &mediaType{medt, ps}
-		hf.CacheSet(MTCK, mt)
-	}
-
-	return mt, nil
-}
-
-// ContentType retrieves only the media-type of the Content-type header (i.e.,
-// the parameters are stripped.)
-func (m *Message) ContentType() string {
-	ct, _ := m.structuredMediaType("Content-type")
-	if ct != nil {
-		return ct.mediaType
-	}
-	return ""
-}
-
-// Charset retrieves the character set on the Content-type header or an empty
-// string.
-func (m *Message) Charset() string {
-	ct, _ := m.structuredMediaType("Content-type")
-	if ct != nil {
-		return ct.params["charset"]
-	}
-	return ""
-}
-
-// Boundary is the boundary set on the Content-type header for multipart
-// messages.
-func (m *Message) Boundary() string {
-	ct, _ := m.structuredMediaType("Content-type")
-	if ct != nil {
-		return ct.params["boundary"]
-	}
-	return ""
-}
-
-// Disposition is the value of the Content-dispotion header value.
-func (m *Message) Disposition() string {
-	cd, _ := m.structuredMediaType("Content-disposition")
-	if cd != nil {
-		return cd.mediaType
-	}
-	return ""
-}
-
-// Filename is the filename set in the Content-disposition header, if set.
-// Otherwise, it returns an empty string.
-func (m *Message) Filename() string {
-	cd, _ := m.structuredMediaType("Content-disposition")
-	if cd != nil {
-		return cd.params["filename"]
-	}
-	return ""
 }
 
 // ContentUnicode is for retrieving a MIME single part body after having the

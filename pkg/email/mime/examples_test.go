@@ -26,7 +26,7 @@ func outputSafeFilename(fn string) string {
 }
 
 func saveAttachments(m *mime.Message) {
-	if fn := m.Filename(); fn != "" {
+	if fn := m.HeaderContentDispositionFilename(); fn != "" {
 		of := outputSafeFilename(fn)
 		b, _ := m.ContentUnicode()
 		_ = ioutil.WriteFile(of, []byte(b), 0644)

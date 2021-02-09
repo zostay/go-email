@@ -55,7 +55,7 @@ type Header struct {
 // legal characters.
 func NewHeader(lb string, hs ...string) (*Header, error) {
 	if len(hs)%2 != 0 {
-		return nil, errors.New("header name provided with no value")
+		return nil, errors.New("header field name provided with no body value")
 	}
 
 	h := Header{*email.NewHeader(lb)}

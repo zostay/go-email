@@ -42,7 +42,7 @@ func TestBasic(t *testing.T) {
 	binaryWant = binaryWant[:n]
 	assert.Equal(t, binaryWant, bb)
 
-	assert.Equal(t, "1.gif", m.Filename())
+	assert.Equal(t, "1.gif", m.HeaderContentDispositionFilename())
 	assert.Equal(t, att1Gif, bb)
 
 	assert.Equal(t, []string{"one", "two", "three"}, m.HeaderGetAll("X-MultiHeader"))

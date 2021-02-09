@@ -13,7 +13,7 @@ func init() {
 }
 
 func CharsetEncoder(m *mime.Message, s string) ([]byte, error) {
-	e, err := ianaindex.MIME.Encoding(m.Charset())
+	e, err := ianaindex.MIME.Encoding(m.HeaderContentTypeCharset())
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func CharsetEncoder(m *mime.Message, s string) ([]byte, error) {
 }
 
 func CharsetDecoder(m *mime.Message, b []byte) (string, error) {
-	e, err := ianaindex.MIME.Encoding(m.Charset())
+	e, err := ianaindex.MIME.Encoding(m.HeaderContentTypeCharset())
 	if err != nil {
 		return "", err
 	}

@@ -54,7 +54,7 @@ var (
 // When outputting us-ascii, any utf-8 character present that does not fit in
 // us-ascii will be replaced with "\x1a", which is the ASCII SUB character.
 func DefaultCharsetEncoder(m *Message, s string) ([]byte, error) {
-	charset := m.Charset()
+	charset := m.HeaderContentTypeCharset()
 	switch strings.ToLower(charset) {
 	case "us-ascii", "":
 		var buf bytes.Buffer
@@ -83,7 +83,7 @@ func DefaultCharsetEncoder(m *Message, s string) ([]byte, error) {
 // such that only valid unicode bytes will be permitted in. Errors will be
 // brought in as unicode.ReplacementChar.
 func DefaultCharsetDecoder(m *Message, b []byte) (string, error) {
-	charset := m.Charset()
+	charset := m.HeaderContentTypeCharset()
 	switch strings.ToLower(charset) {
 	case "us-ascii", "":
 		var s strings.Builder
