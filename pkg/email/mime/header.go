@@ -3,6 +3,7 @@ package mime
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 	"time"
 
 	"github.com/zostay/go-addr/pkg/addr"
@@ -10,7 +11,11 @@ import (
 	"github.com/zostay/go-email/pkg/email/simple"
 )
 
-const mtck = "github.com/zostay/go-email/pkg/email/mime.mediaType"
+const (
+	alck = "github.com/zostay/go-email/pkg/email/mime.AddressList"
+	mtck = "github.com/zostay/go-email/pkg/email/mime.MediaType"
+	dtck = "github.com/zostay/go-email/pkg/email/mime.Date"
+)
 
 type Header struct {
 	simple.Header
@@ -309,4 +314,75 @@ func (m *Message) HeaderContentDispositionFilename() string {
 // parsed, this returns an error.
 func (h *Header) HeaderSetContentDispositionFilename(fn string) error {
 	return h.structuredParameterUpdate("Content-disposition", "filename", fn)
+}
+
+// HeaderGetAddressList returns addresses for a header. If the header is not set or
+// empty, it will return nil and no error. If the header has a value, but cannot
+// be parsed as an address list, it will return nil and an error. If the header
+// can be parsed as an email list, the email addresses will be returned.
+//
+// This only returns the addresses for the first occurence of a header, as the
+// email address headers are only permitted a single time in email.
+func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
+	hf := h.HeaderGetField(n)
+	if hf == nil {
+		return nil, nil
+	}
+
+	if addrs := hf.CacheGet(alck); addrs != nil {
+		return addrs.(addr.AddressList), nil
+	}
+
+	addrs, err := addr.ParseEmailAddressList(hf.Body())
+	if err != nil {
+		return addrs, err
+	}
+
+	hf.CacheSet(alck, addrs)
+	return addrs, nil
+}
+
+// HeaderSetAddressList will update an address list header with the given
+// address list.
+func (h *Header) HeaderSetAddressList(n string, addrs addr.AddressList) {
+	as := addrs.String()
+	_ = h.HeaderSetAll(n, as)
+
+	hf := h.HeaderGetField(n)
+	hf.CacheSet(alck, addrs)
+}
+
+// HeaderDate parses and returns the date in the email. This will read the header
+// named "Date". As this header is always required, it will return the time.Time
+// zero value and an error if this method is called and no value is present. If
+// the date header is present, it will returned the parsed value or an error if
+// the date cannot be parsed.
+func (h *Header) HeaderDate() (time.Time, error) {
+	hf := h.HeaderGetField("Date")
+	if hf == nil {
+		return time.Time{}, nil
+	}
+
+	if date := hf.CacheGet(dtck); date != nil {
+		return date.(time.Time), nil
+	}
+
+	date, err := mail.ParseDate(hf.Body())
+	if err != nil {
+		return date, err
+	}
+
+	hf.CacheSet(dtck, date)
+	return date, nil
+}
+
+// HeaderSetDate takes a time.Time input and sets the header field named "Date"
+// to an RFC5322 formatted date from that input. This uses the built-in RFC1123Z
+// format.
+func (h *Header) HeaderSetDate(d time.Time) {
+	df := d.Format(time.RFC1123Z)
+	_ = h.HeaderSetAll("Date", df)
+
+	hf := h.HeaderGetField("Date")
+	hf.CacheSet(dtck, d)
 }
