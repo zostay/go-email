@@ -1,7 +1,6 @@
 package email
 
 import (
-	"errors"
 	"strings"
 )
 
@@ -17,23 +16,15 @@ type HeaderField struct {
 
 // NewHeaderField constructs a new header field using the given name, body, and
 // line break string.
-func NewHeaderField(n, b string, lb []byte) (*HeaderField, error) {
+func NewHeaderField(n, b string, lb []byte) *HeaderField {
 	f := HeaderField{
 		original: []byte(": "),
 	}
 
-	var err error
-	err = f.SetName(n, lb)
-	if err != nil {
-		return nil, err
-	}
+	f.SetName(n, lb)
+	f.SetBody(b, lb)
 
-	err = f.SetBody(b, lb)
-	if err != nil {
-		return nil, err
-	}
-
-	return &f, nil
+	return &f
 }
 
 // NewHeaderFieldParsed constructs a new header field using the given name,
@@ -99,31 +90,7 @@ func (f *HeaderField) Bytes() []byte { return f.original }
 // SetName will rename a field. This first checks to make sure no illegal
 // characters are present in the field name. The line break parameter must be
 // passed so it can refold the line as needed.
-//
-// It will return an error if the given string contains a colon or any character
-// outside the printable ASCII range.
-func (f *HeaderField) SetName(n string, lb []byte) error {
-	forbiddenNameChars := func(c rune) bool {
-		if c == ':' {
-			return true
-		}
-		if c >= 33 && c <= 126 {
-			return false
-		}
-		return true
-	}
-
-	if strings.IndexFunc(n, forbiddenNameChars) > -1 {
-		return errors.New("header name contains illegal character")
-	}
-
-	f.SetNameUnsafe(n, lb)
-	return nil
-}
-
-// SetNameUnsafe will rename a field without checks. You must supply the line
-// break to be used for folding.
-func (f *HeaderField) SetNameUnsafe(n string, lb []byte) {
+func (f *HeaderField) SetName(n string, lb []byte) {
 	f.cache = nil
 	f.match = ""
 	f.original = FoldValue(append([]byte(n), f.original[len(f.name):]...), lb)
@@ -140,32 +107,8 @@ func (f *HeaderField) SetNameNoFold(n string) {
 }
 
 // SetBody will update the body of the field. You must supply the line break to
-// be used for folding. Before setting the field, the value will be checked to
-// make sure it is legal. It is only permitted to contain printable ASCII,
-// space, and tab characters.
-func (f *HeaderField) SetBody(b string, lb []byte) error {
-	forbiddenBodyChars := func(c rune) bool {
-		if c == ' ' || c == '\t' {
-			return false
-		}
-		if c >= 33 && c <= 126 {
-			return false
-		}
-		return true
-	}
-
-	if strings.IndexFunc(b, forbiddenBodyChars) > -1 {
-		return errors.New("body name contains illegal character")
-	}
-
-	f.SetBodyUnsafe(b, lb)
-	return nil
-}
-
-// SetBodyUnsafe will update the body of the field without checking to make sure
-// it is valid. This can be used to provide a prefolded body (though, it will
-// still be folded further if any long lines are found).
-func (f *HeaderField) SetBodyUnsafe(b string, lb []byte) {
+// be used for folding.
+func (f *HeaderField) SetBody(b string, lb []byte) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
 	newOrig = append(newOrig, []byte(b)...)
 	newOrig = append(newOrig, lb...)

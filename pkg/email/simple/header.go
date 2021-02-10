@@ -17,6 +17,11 @@ const (
 	DTCK = "github.com/zostay/go-email/pkg/email.Date"
 )
 
+var (
+	ErrIllegalFieldName = errors.New("field name contains illegal character")
+	ErrIllegalBodyValue = errors.New("body value contains illegal character")
+)
+
 // BadStartError is returned when the header begins with junk text that does not
 // appear to be a header. This text is preserved in the error object.
 type BadStartError struct {
@@ -302,7 +307,8 @@ func (h *Header) HeaderRename(oldName, newName string) error {
 		return err
 	}
 
-	return hf.SetName(newName, h.Break())
+	hf.SetName(newName, h.Break())
+	return nil
 }
 
 // HeaderRenameN will find the (ix+1)th from the top or the (-ix)th from the
@@ -316,7 +322,8 @@ func (h *Header) HeaderRenameN(oldName, newName string, ix int) error {
 		return err
 	}
 
-	return hf.SetName(newName, h.Break())
+	hf.SetName(newName, h.Break())
+	return nil
 }
 
 // HeaderRenameAll will rename all headers with the first name to have the name
@@ -331,10 +338,7 @@ func (h *Header) HeaderRenameAll(oldName, newName string) error {
 	for _, hf := range h.Fields {
 		if hf.Match() == m {
 			found = true
-			err := hf.SetName(newName, h.Break())
-			if err != nil {
-				return err
-			}
+			hf.SetName(newName, h.Break())
 		}
 	}
 
@@ -345,19 +349,59 @@ func (h *Header) HeaderRenameAll(oldName, newName string) error {
 	return nil
 }
 
+func forbiddenNameChars(c rune) bool {
+	if c == ':' {
+		return true
+	}
+	if c >= 33 && c <= 126 {
+		return false
+	}
+	return true
+}
+
+func checkName(n string) error {
+	if strings.IndexFunc(n, forbiddenNameChars) > -1 {
+		return ErrIllegalFieldName
+	}
+	return nil
+}
+
+func forbiddenBodyChars(c rune) bool {
+	if c == ' ' || c == '\t' {
+		return false
+	}
+	if c >= 33 && c <= 126 {
+		return false
+	}
+	return true
+}
+
+func checkValue(b string) error {
+	if strings.IndexFunc(b, forbiddenBodyChars) > -1 {
+		return ErrIllegalBodyValue
+	}
+	return nil
+}
+
 // HeaderSet will find the first header with a matching name and replace it
 // with the given body. If no header by that name is set, it will add a new
 // header with that name and body.
 func (h *Header) HeaderSet(n, b string) error {
-	if i := h.HeaderFieldIndex(n, 0, false); i > -1 {
-		f := h.Fields[i]
-		return f.SetBody(b, h.Break())
-	}
-
-	f, err := email.NewHeaderField(n, b, h.Break())
-	if err != nil {
+	if err := checkName(n); err != nil {
 		return err
 	}
+
+	if err := checkValue(b); err != nil {
+		return err
+	}
+
+	if i := h.HeaderFieldIndex(n, 0, false); i > -1 {
+		f := h.Fields[i]
+		f.SetBody(b, h.Break())
+		return nil
+	}
+
+	f := email.NewHeaderField(n, b, h.Break())
 
 	h.Fields = append(h.Fields, f)
 
@@ -378,7 +422,12 @@ func (h *Header) HeaderSetN(n, b string, ix int) error {
 		return err
 	}
 
-	return hf.SetBody(b, h.Break())
+	if err := checkValue(b); err != nil {
+		return err
+	}
+
+	hf.SetBody(b, h.Break())
+	return nil
 }
 
 // HeaderSetAll does a full header replacement. This performs a number of
@@ -402,6 +451,16 @@ func (h *Header) HeaderSetN(n, b string, ix int) error {
 // If the operation is successful, it returns nil. If there is an error, then
 // the object will be unchanged and an error returned.
 func (h *Header) HeaderSetAll(n string, bs ...string) error {
+	if err := checkName(n); err != nil {
+		return err
+	}
+
+	for _, b := range bs {
+		if err := checkValue(b); err != nil {
+			return err
+		}
+	}
+
 	// no values, so delete all
 	if len(bs) == 0 {
 		h.HeaderDeleteAll(n)
@@ -415,10 +474,7 @@ func (h *Header) HeaderSetAll(n string, bs ...string) error {
 		if hf.Match() == m {
 			// Set existing field
 			if bi < len(bs) {
-				err := hf.SetBody(bs[bi], h.Break())
-				if err != nil {
-					return err
-				}
+				hf.SetBody(bs[bi], h.Break())
 
 				hfs = append(hfs, hf)
 				bi++
@@ -450,10 +506,15 @@ func (h *Header) HeaderSetAll(n string, bs ...string) error {
 //
 // Returns an error if the given header name or body value is not legal.
 func (h *Header) HeaderAdd(n, b string) error {
-	f, err := email.NewHeaderField(n, b, h.Break())
-	if err != nil {
+	if err := checkName(n); err != nil {
 		return err
 	}
+
+	if err := checkValue(b); err != nil {
+		return err
+	}
+
+	f := email.NewHeaderField(n, b, h.Break())
 
 	h.Fields = append(h.Fields, f)
 	return nil
@@ -464,10 +525,15 @@ func (h *Header) HeaderAdd(n, b string) error {
 //
 // Returns an error if the given header name or body value is not legal.
 func (h *Header) HeaderAddBefore(n, b string) error {
-	f, err := email.NewHeaderField(n, b, h.Break())
-	if err != nil {
+	if err := checkName(n); err != nil {
 		return err
 	}
+
+	if err := checkValue(b); err != nil {
+		return err
+	}
+
+	f := email.NewHeaderField(n, b, h.Break())
 
 	h.Fields = append([]*email.HeaderField{f}, h.Fields...)
 	return nil
@@ -487,10 +553,15 @@ func (h *Header) HeaderAddBefore(n, b string) error {
 // If the given field name or body value is not legal, an error will be returned
 // and the header will not be modified.
 func (h *Header) HeaderAddN(n, b string, ix int) error {
-	f, err := email.NewHeaderField(n, b, h.Break())
-	if err != nil {
+	if err := checkName(n); err != nil {
 		return err
 	}
+
+	if err := checkValue(b); err != nil {
+		return err
+	}
+
+	f := email.NewHeaderField(n, b, h.Break())
 
 	if i := h.HeaderFieldIndex(n, ix, true); i > -1 {
 		var a, b []*email.HeaderField
@@ -523,10 +594,15 @@ func (h *Header) HeaderAddN(n, b string, ix int) error {
 // If the given field name or body value is not legal, an error will be returned
 // and the header will not be modified.
 func (h *Header) HeaderAddBeforeN(n, b string, ix int) error {
-	f, err := email.NewHeaderField(n, b, h.Break())
-	if err != nil {
+	if err := checkName(n); err != nil {
 		return err
 	}
+
+	if err := checkValue(b); err != nil {
+		return err
+	}
+
+	f := email.NewHeaderField(n, b, h.Break())
 
 	if i := h.HeaderFieldIndex(n, ix, true); i > -1 {
 		var a, b []*email.HeaderField

@@ -65,7 +65,7 @@ func TestBasic(t *testing.T) {
 
 	mail.SetContent(oldBody)
 
-	assert.Equal(t, string(joseyNoFold), mail.String())
+	assert.Equal(t, joseyNoFold, mail.Bytes())
 
 	const (
 		pu = "Previously-Unknown"

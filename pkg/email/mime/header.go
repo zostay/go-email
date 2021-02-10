@@ -71,7 +71,7 @@ func (h *Header) headerSet(n string, v interface{}) (err error) {
 			err = h.HeaderSet(n, b.Format(time.RFC1123Z))
 		}
 	case *MediaType:
-		err = h.HeaderSetMediaType(n, b)
+		h.HeaderSetMediaType(n, b)
 	case *addr.Mailbox:
 		h.HeaderSetAddressList(n, addr.AddressList{b})
 	case addr.Address:
@@ -129,23 +129,15 @@ func (h *Header) HeaderGetMediaType(n string) (*MediaType, error) {
 }
 
 // HeaderSetMediaType sets the named header to the given MediaType object.
-func (h *Header) HeaderSetMediaType(n string, mt *MediaType) error {
+func (h *Header) HeaderSetMediaType(n string, mt *MediaType) {
 	hf := h.HeaderGetField(n)
-	var err error
 	if hf != nil {
-		err = hf.SetBody(mt.String(), h.Break())
-		if err != nil {
-			return err
-		}
+		hf.SetBody(mt.String(), h.Break())
 	} else {
-		hf, err = email.NewHeaderField(n, mt.String(), h.Break())
-		if err != nil {
-			return err
-		}
+		hf = email.NewHeaderField(n, mt.String(), h.Break())
 		h.Fields = append(h.Fields, hf)
 	}
 	hf.CacheSet(mtck, mt)
-	return nil
 }
 
 // HeaderContentType retrieves only the full MIME type set in the Content-type
@@ -169,16 +161,10 @@ func (h *Header) HeaderSetContentType(mt string) (err error) {
 		nct := NewMediaTypeMap(mt, ct.params)
 		hf := h.HeaderGetField("Content-type")
 		if hf != nil {
-			err = hf.SetBody(nct.String(), h.Break())
-			if err != nil {
-				return
-			}
+			hf.SetBody(nct.String(), h.Break())
 			hf.CacheSet(mtck, nct)
 		} else {
-			err = h.HeaderSetMediaType("Content-type", nct)
-			if err != nil {
-				return
-			}
+			h.HeaderSetMediaType("Content-type", nct)
 		}
 	} else {
 		err = h.HeaderSet("Content-type", mt)
@@ -230,16 +216,9 @@ func (h *Header) structuredParameterUpdate(n, pn, pv string) error {
 	nct := NewMediaTypeMap(ct.mediaType, ct.params)
 	hf := h.HeaderGetField(n)
 	if hf != nil {
-		err = hf.SetBody(nct.String(), h.Break())
-		if err != nil {
-			return err
-		}
+		hf.SetBody(nct.String(), h.Break())
 	} else {
-		hf, err = email.NewHeaderField(n, nct.String(), h.Break())
-		if err != nil {
-			return err
-		}
-
+		hf = email.NewHeaderField(n, nct.String(), h.Break())
 		h.Fields = append(h.Fields, hf)
 	}
 	hf.CacheSet(mtck, nct)
@@ -298,17 +277,10 @@ func (h *Header) HeaderSetContentDisposition(mt string) error {
 	if cd != nil {
 		ncd := NewMediaTypeMap(mt, cd.params)
 		hf := h.HeaderGetField("Content-disposition")
-		var err error
 		if hf != nil {
-			err = hf.SetBody(ncd.String(), h.Break())
-			if err != nil {
-				return err
-			}
+			hf.SetBody(ncd.String(), h.Break())
 		} else {
-			hf, err = email.NewHeaderField("Content-disposition", ncd.String(), h.Break())
-			if err != nil {
-				return err
-			}
+			hf = email.NewHeaderField("Content-disposition", ncd.String(), h.Break())
 		}
 		hf.CacheSet(mtck, ncd)
 	} else {
