@@ -107,7 +107,8 @@ func (f *HeaderField) SetNameNoFold(n string) {
 }
 
 // SetBody will update the body of the field. You must supply the line break to
-// be used for folding.
+// be used for folding. The body value should not be terminated with a line
+// ending. The line ending will be added for you.
 func (f *HeaderField) SetBody(b string, lb []byte) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
 	newOrig = append(newOrig, []byte(b)...)
@@ -117,8 +118,36 @@ func (f *HeaderField) SetBody(b string, lb []byte) {
 	f.body = b
 }
 
-// SetBodyNoFold will update the body of the field without checking to make sure
-// it is valid and without performing any folding.
+// SetBodyEncoded will update the body of the field, but provides the string
+// value of field as well as a octet representation. This is useful in cases
+// where the native string representation of the field is significantly
+// different from the octet representation (due to MIME word encoding or
+// similar). You must also supply the line ending use for folding. The line
+// ending should not already be applied to the binary representation.
+func (f *HeaderField) SetBodyEncoded(sb string, bb []byte, lb []byte) {
+	newOrig := append(f.original[:len(f.name)+1], ' ')
+	newOrig = append(newOrig, bb...)
+	newOrig = append(newOrig, lb...)
+	f.cache = nil
+	f.original = FoldValue(newOrig, lb)
+	f.body = sb
+}
+
+// SetBodyEncodedNoFold will update the body of the field without performing any
+// folding. This allows the encoded version of the value to be very different
+// from the octet representation for use with MIME word encoding and such. No
+// folding is performed. Make sure to provide an oppropriate line ending to the
+// value as well.
+func (f *HeaderField) SetBodyEncodedNoFold(sb string, bb []byte) {
+	newOrig := append(f.original[:len(f.name)+1], ' ')
+	newOrig = append(newOrig, bb...)
+	f.cache = nil
+	f.original = newOrig
+	f.body = sb
+}
+
+// SetBodyNoFold will update the body of the field without performing any
+// folding.
 func (f *HeaderField) SetBodyNoFold(b string) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
 	newOrig = append(newOrig, []byte(b)...)
