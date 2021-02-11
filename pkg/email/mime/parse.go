@@ -3,6 +3,7 @@ package mime
 import (
 	"bytes"
 	"errors"
+	"mime"
 	"regexp"
 	"strings"
 
@@ -66,12 +67,42 @@ func Parse(m []byte, o ...option) (*Message, error) {
 		return mm, err
 	}
 
-	err = mm.FillParts()
-	if err != nil {
-		return mm, err
+	derr := mm.DecodeHeader()
+	ferr := mm.FillParts()
+	var pderr, pferr *ParseError
+	if errors.As(derr, &pderr) && errors.As(ferr, &pferr) {
+		errs := append(pderr.Errs, pferr.Errs...)
+		return mm, &ParseError{errs}
+	} else if ferr != nil {
+		return mm, derr
+	} else if derr != nil {
+		return mm, ferr
 	}
 
 	return mm, nil
+}
+
+// DecodeHeader scans through the headers and looks for MIME word encoded field
+// values. When they are found, these are decoded into native unicode.
+func (m *Message) DecodeHeader() error {
+	dec := &mime.WordDecoder{}
+	errs := make([]error, 0)
+	for _, hf := range m.Fields {
+		if strings.Contains(hf.Body(), "=?") {
+			dv, err := dec.Decode(hf.Body())
+			if err != nil {
+				errs = append(errs, err)
+			}
+
+			hf.SetBodyEncoded(dv, []byte(hf.Body()), m.Break())
+		}
+	}
+
+	if len(errs) > 0 {
+		return &ParseError{errs}
+	} else {
+		return nil
+	}
 }
 
 // FillParts performs the work of parsing the message body into preamble,
