@@ -3,7 +3,9 @@ package mime
 import (
 	"errors"
 	"fmt"
+	"mime"
 	"net/mail"
+	"strings"
 	"time"
 
 	"github.com/zostay/go-addr/pkg/addr"
@@ -42,6 +44,7 @@ func NewHeader(lb string, hs ...interface{}) (*Header, error) {
 	if err != nil {
 		return nil, err
 	}
+	sh.SetBody = defaultBodySetter
 	h := Header{*sh}
 
 	var n string
@@ -53,7 +56,7 @@ func NewHeader(lb string, hs ...interface{}) (*Header, error) {
 				return nil, errors.New("header field name is not a string")
 			}
 		} else {
-			err := h.headerSet(n, v)
+			err := h.HeaderSet(n, v)
 			if err != nil {
 				return nil, err
 			}
@@ -63,35 +66,38 @@ func NewHeader(lb string, hs ...interface{}) (*Header, error) {
 	return &h, nil
 }
 
-func (h *Header) headerSet(n string, v interface{}) (err error) {
+func forbiddenBodyChars(c rune) bool {
+	if c == ' ' || c == '\t' {
+		return false
+	}
+	if c >= 33 && c <= 126 {
+		return false
+	}
+	return true
+}
+
+func defaultBodySetter(hf *email.HeaderField, v interface{}, lb []byte) error {
+	var sb string
 	switch b := v.(type) {
 	case string:
-		err = h.HeaderSet(n, b)
+		sb = b
 	case []byte:
-		err = h.HeaderSet(n, string(b))
+		sb = string(b)
 	case time.Time:
-		if n == "Date" {
-			h.HeaderSetDate(b)
-		} else {
-			err = h.HeaderSet(n, b.Format(time.RFC1123Z))
-		}
-	case *MediaType:
-		h.HeaderSetMediaType(n, b)
-	case *addr.Mailbox:
-		h.HeaderSetAddressList(n, addr.AddressList{b})
-	case addr.Address:
-		h.HeaderSetAddressList(n, addr.AddressList{b})
-	case addr.MailboxList:
-		h.HeaderSetAddressList(n, b.AddressList())
-	case addr.AddressList:
-		h.HeaderSetAddressList(n, b)
+		sb = b.Format(time.RFC1123Z)
 	case fmt.Stringer:
-		err = h.HeaderSet(n, b.String())
+		sb = b.String()
 	default:
 		return errors.New("unsupported value type set on header field body")
 	}
 
-	return
+	bb := []byte(sb)
+	if strings.IndexFunc(sb, forbiddenBodyChars) > -1 {
+		sb = mime.QEncoding.Encode("utf-8", sb)
+	}
+
+	hf.SetBodyEncoded(sb, bb, lb)
+	return nil
 }
 
 func (h *Header) structuredMediaType(n string) (*MediaType, error) {
@@ -134,15 +140,21 @@ func (h *Header) HeaderGetMediaType(n string) (*MediaType, error) {
 }
 
 // HeaderSetMediaType sets the named header to the given MediaType object.
-func (h *Header) HeaderSetMediaType(n string, mt *MediaType) {
+func (h *Header) HeaderSetMediaType(n string, mt *MediaType) error {
 	hf := h.HeaderGetField(n)
 	if hf != nil {
-		hf.SetBody(mt.String(), h.Break())
+		if err := h.SetBody(hf, mt, h.Break()); err != nil {
+			return err
+		}
 	} else {
-		hf = email.NewHeaderField(n, mt.String(), h.Break())
+		hf = email.NewHeaderField(n, "", h.Break())
+		if err := h.SetBody(hf, mt, h.Break()); err != nil {
+			return err
+		}
 		h.Fields = append(h.Fields, hf)
 	}
 	hf.CacheSet(mtck, mt)
+	return nil
 }
 
 // HeaderContentType retrieves only the full MIME type set in the Content-type
@@ -160,22 +172,24 @@ func (h *Header) HeaderContentType() string {
 //
 // If the existing Content-type header cannot be parsed for some reason, setting
 // this value will replace the entire value with this MIME-type.
-func (h *Header) HeaderSetContentType(mt string) (err error) {
+func (h *Header) HeaderSetContentType(mt string) error {
 	ct, _ := h.structuredMediaType("Content-type")
 	if ct != nil {
 		nct := NewMediaTypeMap(mt, ct.params)
 		hf := h.HeaderGetField("Content-type")
 		if hf != nil {
-			hf.SetBody(nct.String(), h.Break())
+			if err := h.SetBody(hf, nct, h.Break()); err != nil {
+				return err
+			}
 			hf.CacheSet(mtck, nct)
-		} else {
-			h.HeaderSetMediaType("Content-type", nct)
+		} else if err := h.HeaderSetMediaType("Content-type", nct); err != nil {
+			return err
 		}
-	} else {
-		err = h.HeaderSet("Content-type", mt)
+	} else if err := h.HeaderSet("Content-type", mt); err != nil {
+		return err
 	}
 
-	return
+	return nil
 }
 
 // HeaderContentTypeType retrieves the first part, the type, of the MIME type set in
@@ -221,7 +235,9 @@ func (h *Header) structuredParameterUpdate(n, pn, pv string) error {
 	nct := NewMediaTypeMap(ct.mediaType, ct.params)
 	hf := h.HeaderGetField(n)
 	if hf != nil {
-		hf.SetBody(nct.String(), h.Break())
+		if err := h.SetBody(hf, nct, h.Break()); err != nil {
+			return err
+		}
 	} else {
 		hf = email.NewHeaderField(n, nct.String(), h.Break())
 		h.Fields = append(h.Fields, hf)
@@ -283,7 +299,9 @@ func (h *Header) HeaderSetContentDisposition(mt string) error {
 		ncd := NewMediaTypeMap(mt, cd.params)
 		hf := h.HeaderGetField("Content-disposition")
 		if hf != nil {
-			hf.SetBody(ncd.String(), h.Break())
+			if err := h.SetBody(hf, ncd, h.Break()); err != nil {
+				return err
+			}
 		} else {
 			hf = email.NewHeaderField("Content-disposition", ncd.String(), h.Break())
 		}
