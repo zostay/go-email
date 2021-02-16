@@ -3,6 +3,8 @@ package mime
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -107,5 +109,23 @@ func DefaultCharsetDecoder(charset string, b []byte) (string, error) {
 		return s.String(), nil
 	default:
 		return "", fmt.Errorf("unsupported byte encoding %q", charset)
+	}
+}
+
+// CharsetDecoderToCharsetReader transforms a CharsetDecoder defined here into the
+// interface used by mime.WordDecoder.
+func CharsetDecoderToCharsetReader(decode func(string, []byte) (string, error)) func(string, io.Reader) (io.Reader, error) {
+	return func(charset string, r io.Reader) (io.Reader, error) {
+		bs, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+
+		s, err := decode(charset, bs)
+		if err != nil {
+			return nil, err
+		}
+
+		return strings.NewReader(s), nil
 	}
 }

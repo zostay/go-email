@@ -85,7 +85,9 @@ func Parse(m []byte, o ...option) (*Message, error) {
 // DecodeHeader scans through the headers and looks for MIME word encoded field
 // values. When they are found, these are decoded into native unicode.
 func (m *Message) DecodeHeader() error {
-	dec := &mime.WordDecoder{}
+	dec := &mime.WordDecoder{
+		CharsetReader: CharsetDecoderToCharsetReader(CharsetDecoder),
+	}
 	errs := make([]error, 0)
 	for _, hf := range m.Fields {
 		if strings.Contains(hf.Body(), "=?") {
