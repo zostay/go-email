@@ -18,7 +18,7 @@ import (
 //
 // If the target charset is not supported, bytes should be returned as nil and an
 // error should be returned.
-type Encoder func(m *Message, s string) ([]byte, error)
+type Encoder func(charset, s string) ([]byte, error)
 
 // Decoder represents the character decoding function used by the mime package
 // for transforming parsed data supplied in arbitrary text encodings. This will
@@ -30,7 +30,7 @@ type Encoder func(m *Message, s string) ([]byte, error)
 //
 // If the source charset is not supported, bytes should be returned as nil and
 // an error should be returned.
-type Decoder func(m *Message, b []byte) (string, error)
+type Decoder func(charset string, b []byte) (string, error)
 
 var (
 	// CharsetEncoder is the Encoder used for outputting unicode strings as
@@ -51,10 +51,10 @@ var (
 // DefaultCharsetEncoder is the default encoder. It is able to handle us-ascii
 // and utf-8 only. Anything else will result in an error.
 //
-// When outputting us-ascii, any utf-8 character present that does not fit in
-// us-ascii will be replaced with "\x1a", which is the ASCII SUB character.
-func DefaultCharsetEncoder(m *Message, s string) ([]byte, error) {
-	charset := m.HeaderContentTypeCharset()
+// When outputting us-ascii, ios-8859-1 (a.k.a. latin1), any utf-8 character
+// present that does not fit in us-ascii will be replaced with "\x1a", which is
+// the ASCII SUB character.
+func DefaultCharsetEncoder(charset, s string) ([]byte, error) {
 	switch strings.ToLower(charset) {
 	case "us-ascii", "":
 		var buf bytes.Buffer
@@ -66,15 +66,16 @@ func DefaultCharsetEncoder(m *Message, s string) ([]byte, error) {
 			}
 		}
 		return buf.Bytes(), nil
-	case "utf-8":
+	case "iso-8859-1", "latin1", "utf-8":
 		return []byte(s), nil
 	default:
 		return nil, fmt.Errorf("unsupported byte encoding %q", charset)
 	}
 }
 
-// DefaultCharsetDecoder is the default decoder. It is able to handle us-ascii
-// and utf-8 only. Anything else will result in an error.
+// DefaultCharsetDecoder is the default decoder. It is able to handle us-ascii,
+// iso-8859-1 (a.k.a. latin1), and utf-8 only. Anything else will result in an
+// error.
 //
 // When us-ascii is input, any NUL or 8-bit character (i.e., bytes greater than
 // 0x7f) will be translated into unicode.ReplacementChar.
@@ -82,8 +83,7 @@ func DefaultCharsetEncoder(m *Message, s string) ([]byte, error) {
 // When utf-8 is input, the bytes will be read in and transformed into runes
 // such that only valid unicode bytes will be permitted in. Errors will be
 // brought in as unicode.ReplacementChar.
-func DefaultCharsetDecoder(m *Message, b []byte) (string, error) {
-	charset := m.HeaderContentTypeCharset()
+func DefaultCharsetDecoder(charset string, b []byte) (string, error) {
 	switch strings.ToLower(charset) {
 	case "us-ascii", "":
 		var s strings.Builder
@@ -95,6 +95,8 @@ func DefaultCharsetDecoder(m *Message, b []byte) (string, error) {
 			}
 		}
 		return s.String(), nil
+	case "iso-8859-1", "latin1":
+		return string(b), nil
 	case "utf-8":
 		var s strings.Builder
 		for len(b) > 0 {

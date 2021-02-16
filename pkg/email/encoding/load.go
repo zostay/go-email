@@ -1,3 +1,12 @@
+// Package encoding provides a replacement encoder and decoder for use with
+// mime.CharsetEncoder and mime.CharsetDecoder. This loads all the encodings
+// provided with:
+//
+// * golang.org/x/text/encoding/ianaindex
+//
+// This will make the size of your compiled binaries considerably larger. But it
+// will also give your code the ability to encode and decode pretty much any
+// character set it might encounter in the wild wild world of email.
 package encoding
 
 import (
@@ -12,8 +21,10 @@ func init() {
 	mime.CharsetDecoder = CharsetDecoder
 }
 
-func CharsetEncoder(m *mime.Message, s string) ([]byte, error) {
-	e, err := ianaindex.MIME.Encoding(m.HeaderContentTypeCharset())
+// CharsetEncoder provides a replacement encoder for mime.CharsetEncoder, which
+// can encode a wide range of rare and unusual character sets.
+func CharsetEncoder(charset, s string) ([]byte, error) {
+	e, err := ianaindex.MIME.Encoding(charset)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +37,10 @@ func CharsetEncoder(m *mime.Message, s string) ([]byte, error) {
 	return []byte(es), nil
 }
 
-func CharsetDecoder(m *mime.Message, b []byte) (string, error) {
-	e, err := ianaindex.MIME.Encoding(m.HeaderContentTypeCharset())
+// CharsetDecoder provides a replacement decoder for mime.CharsetDecoder, which
+// can decode a wide range of rare and unusual character sets.
+func CharsetDecoder(charset string, b []byte) (string, error) {
+	e, err := ianaindex.MIME.Encoding(charset)
 	if err != nil {
 		return "", err
 	}

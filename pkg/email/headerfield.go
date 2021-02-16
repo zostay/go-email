@@ -44,6 +44,9 @@ func (f *HeaderField) Match() string {
 	return f.match
 }
 
+// MakeHeaderFieldMatch trims space and lowers the case of a header name for
+// comparison purposes. All the HeaderGet* and HeaderSet* methods make use of
+// this to make sure header names are matched in a standard way.
 func MakeHeaderFieldMatch(n string) string {
 	return strings.ToLower(strings.TrimSpace(n))
 }

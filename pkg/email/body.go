@@ -5,10 +5,12 @@ import (
 	"strings"
 )
 
+// Body is a basic wrapper around a slice of bytes of data.
 type Body struct {
 	content []byte
 }
 
+// NewBody builds a new body with the given content bytes.
 func NewBody(content []byte) *Body {
 	return &Body{content}
 }

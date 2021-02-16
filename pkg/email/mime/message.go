@@ -87,7 +87,7 @@ func (m *Message) ContentUnicode() (string, error) {
 		return "", err
 	}
 
-	bs, err := CharsetDecoder(m, bb)
+	bs, err := CharsetDecoder(m.HeaderContentTypeCharset(), bb)
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +131,7 @@ func (m *Message) SetContentUnicode(s string) error {
 		return errors.New("cannot treat multipart MIME message as single part")
 	}
 
-	eb, err := CharsetEncoder(m, s)
+	eb, err := CharsetEncoder(m.HeaderContentTypeCharset(), s)
 	if err != nil {
 		return err
 	}

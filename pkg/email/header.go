@@ -7,12 +7,12 @@ import (
 )
 
 // Constants for use when selecting a line break to use with a new header. If
-// you don't know what to pick, choose the StandardLineBreak.
+// you don't know what to pick, choose CRLF.
 const (
-	CRLF = "\x0d\x0a"
-	LF   = "\x0a"
-	CR   = "\x0d"
-	LFCR = "\x0a\x0d"
+	CRLF = "\x0d\x0a" // "\r\n" - Network linebreak
+	LF   = "\x0a"     // "\n"   - Unix and Linux
+	CR   = "\x0d"     // "\r"   - Commodores and old Macs
+	LFCR = "\x0a\x0d" // "\r\n" - weird
 )
 
 // Header represents an email message header. The header object stores enough
@@ -68,6 +68,22 @@ func (h *Header) HeaderGetField(n string) *HeaderField {
 	return nil
 }
 
+// HeaderFieldIndex will look up the (ix+1)th header field with the name n. It
+// returns the index in h.Fields of that field. This also works with negative
+// ix, which finds the (-ix)th header field from the end of the fields list.
+//
+// If no header field is found with the given name, -1 will be returned.
+//
+// If fb is false and there is no (ix+1)th or (-ix)th header, based on whether
+// ix is non-negative or negative, respectively, then -1 is returned.
+//
+// If fb is true and ix is non-negative and there is no (ix+1)th header field,
+// but there was at least one header, the index of the latest header field with
+// that name is returned.
+//
+// If fb is true and ix is negative and there is no (-ix)th header field, but
+// there was at least one header, the index of the earliest header field with
+// that name is returned.
 func (h *Header) HeaderFieldIndex(n string, ix int, fb bool) int {
 	m := MakeHeaderFieldMatch(n)
 	lasti := -1

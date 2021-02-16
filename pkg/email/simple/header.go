@@ -40,6 +40,8 @@ func (err *HeaderParseError) Error() string {
 	return "error parsing email header: " + strings.Join(errs, ", ")
 }
 
+// BodySetter is a helper that is used to convert complex types used to set
+// headers into strings and then set the field body value.
 type BodySetter func(*email.HeaderField, interface{}, []byte) error
 
 func defaultBodySetter(hf *email.HeaderField, b interface{}, lb []byte) error {
@@ -64,7 +66,11 @@ func defaultBodySetter(hf *email.HeaderField, b interface{}, lb []byte) error {
 	return nil
 }
 
+// Header provides a simple header interface for dealing with email headers
+// without worrying about MIME details.
 type Header struct {
+	// SetBody is set to a BodySetter that handles string, slices and arrays of
+	// bytes, and fmt.Stringer objects.
 	SetBody BodySetter
 	email.Header
 }

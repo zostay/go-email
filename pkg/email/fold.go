@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	FoldIndent          = " "
-	PreferredFoldLength = 80
-	ForcedFoldLength    = 1000
+	FoldIndent          = " "  // indent placed before folded lines
+	PreferredFoldLength = 80   // we prefer headers and 7bit/8bit bodies lines shorter than this
+	ForcedFoldLength    = 1000 // we forceably break headers and 7bit/8bit bodies lines longer than this
 )
 
 // UnfoldValue will take a folded header line from an email and unfold it for

@@ -19,6 +19,7 @@ const (
 	dtck = "github.com/zostay/go-email/pkg/email/mime.Date"
 )
 
+// Header provides tools built on simple.Header to work with MIME headers.
 type Header struct {
 	simple.Header
 }
