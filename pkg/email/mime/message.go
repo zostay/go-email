@@ -76,6 +76,47 @@ func (m *Message) UpdateBody() error {
 	return nil
 }
 
+// ContentTransferEncoding is just an alias for:
+//  cte := strings.ToLower(m.HeaderGet("Content-transfer-encoding"))
+// It returns the transfer encoding used for the message body. For
+// MIME-compliant messages, this should always be one of the following values:
+//  7bit
+//  8bit
+//  binary
+//  base64
+//  quoted-printable
+// Occassionally, you will see other oddball values, of course.
+func (m *Message) ContentTransferEncoding() string {
+	return strings.ToLower(m.HeaderGet("Content-transfer-encoding"))
+}
+
+// SetContentTransferEncoding updates the transfer encoding for the message and
+// then it will rewrite the content to adhere to the new encoding. It willr
+// return an error if there's a problem decoding or re-encoding the content
+// onthe way. If an error is returned, the Content-transfer-encoding will have
+// remain at its original value.
+func (m *Message) SetContentTransferEncoding(cte string) error {
+	oldCte := m.ContentTransferEncoding()
+	if strings.ToLower(cte) == oldCte {
+		return nil
+	}
+
+	decodedContent, err := m.ContentBinary()
+	if err != nil {
+		return err
+	}
+
+	_ = m.HeaderSet("Content-transfer-encoding", cte)
+
+	err = m.SetContentBinary(decodedContent)
+	if err != nil {
+		_ = m.HeaderSet("Content-transfer-encoding", oldCte)
+		return err
+	}
+
+	return nil
+}
+
 // ContentUnicode is for retrieving a MIME single part body after having the
 // transfer encoding decoded and any charsets decoded into Go's native unicode
 // handling. If the message is multipart, it returns an empty string with no

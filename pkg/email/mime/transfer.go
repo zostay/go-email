@@ -45,6 +45,7 @@ func DecodeToQuotedPrintable(b []byte) ([]byte, error) {
 	var w bytes.Buffer
 	qpw := quotedprintable.NewWriter(&w)
 	_, err := qpw.Write(b)
+	qpw.Close()
 	return w.Bytes(), err
 }
 

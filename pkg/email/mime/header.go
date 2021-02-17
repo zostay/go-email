@@ -92,9 +92,9 @@ func defaultBodySetter(hf *email.HeaderField, v interface{}, lb []byte) error {
 		return errors.New("unsupported value type set on header field body")
 	}
 
-	bb := []byte(sb)
+	var bb []byte
 	if strings.IndexFunc(sb, forbiddenBodyChars) > -1 {
-		sb = mime.QEncoding.Encode("utf-8", sb)
+		bb = []byte(mime.BEncoding.Encode("utf-8", sb))
 	}
 
 	hf.SetBodyEncoded(sb, bb, lb)
