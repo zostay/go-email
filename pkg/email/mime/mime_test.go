@@ -203,10 +203,12 @@ Content-Type: multipart/alternative; boundary="1"
 
 Inner Prelude
 --1
+Content-Disposition: inline
 Content-Type: text/plain
 
 This is plain text.
 --1
+Content-Disposition: inline
 Content-Type: text/html
 
 This is <b>HTML</b> text.
@@ -232,10 +234,12 @@ Postlude
 
 Inner Prelude
 --1
+Content-Disposition: inline
 Content-Type: text/plain
 
 This is plain text.
 --1
+Content-Disposition: inline
 Content-Type: text/html
 
 This is <b>HTML</b> text.
@@ -250,13 +254,15 @@ Inner Postlude`, p.String())
 		if assert.Equal(t, 2, len(p.Parts)) {
 			ip1 := p.Parts[0]
 
-			assert.Equal(t, `Content-Type: text/plain
+			assert.Equal(t, `Content-Disposition: inline
+Content-Type: text/plain
 
 This is plain text.`, ip1.String())
 
 			ip2 := p.Parts[1]
 
-			assert.Equal(t, `Content-Type: text/html
+			assert.Equal(t, `Content-Disposition: inline
+Content-Type: text/html
 
 This is <b>HTML</b> text.`, ip2.String())
 		}
