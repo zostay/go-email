@@ -189,3 +189,76 @@ Postlude
 		assert.Equal(t, "This is plain text.", c)
 	}
 }
+
+func TestParseMultipartNested(t *testing.T) {
+	t.Parallel()
+
+	const emailMsg = `Subject: hello
+Content-Type: multipart/mixed; boundary="0"
+
+Prelude
+
+--0
+Content-Type: multipart/alternative; boundary="1"
+
+Inner Prelude
+--1
+Content-Type: text/plain
+
+This is plain text.
+--1
+Content-Type: text/html
+
+This is <b>HTML</b> text.
+--1--
+Inner Postlude
+--0--
+
+Postlude
+`
+
+	m, err := Parse([]byte(emailMsg))
+	assert.NoError(t, err)
+
+	assert.Equal(t, emailMsg, m.String())
+
+	assert.Equal(t, []byte("Prelude\n"), m.Preamble)
+	assert.Equal(t, []byte("\n--0--\n\nPostlude\n"), m.Epilogue)
+
+	if assert.Equal(t, 1, len(m.Parts)) {
+		p := m.Parts[0]
+
+		assert.Equal(t, `Content-Type: multipart/alternative; boundary="1"
+
+Inner Prelude
+--1
+Content-Type: text/plain
+
+This is plain text.
+--1
+Content-Type: text/html
+
+This is <b>HTML</b> text.
+--1--
+Inner Postlude`, p.String())
+
+		assert.Equal(t, 2, len(p.Parts))
+
+		assert.Equal(t, []byte("Inner Prelude"), p.Preamble)
+		assert.Equal(t, []byte("\n--1--\nInner Postlude"), p.Epilogue)
+
+		if assert.Equal(t, 2, len(p.Parts)) {
+			ip1 := p.Parts[0]
+
+			assert.Equal(t, `Content-Type: text/plain
+
+This is plain text.`, ip1.String())
+
+			ip2 := p.Parts[1]
+
+			assert.Equal(t, `Content-Type: text/html
+
+This is <b>HTML</b> text.`, ip2.String())
+		}
+	}
+}

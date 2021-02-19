@@ -187,6 +187,7 @@ func (m *Message) fillPartsMultiPart() error {
 		}
 
 		bits = append(bits, m.Content()[lb:b])
+		lb = b
 
 		if i == len(boundaries)-1 {
 			if m.finalBoundary(m.Content()[b:], boundary) {
