@@ -186,7 +186,7 @@ this library. This includes:
 
 1. **Unattended Production Use.** I recommend against using this library in an
    unattended production situation. It makes several decisions that will make
-   production use in a server or other automated situation risk. I'm intending
+   production use in a server or other automated situation risky. I'm intending
    to use this library in a command-line tool I run by hand and monitor the
    output of directly.
 

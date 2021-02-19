@@ -126,7 +126,7 @@ func (m *Message) FillParts() error {
 func (m *Message) boundaries(body []byte, boundary string) []int {
 	lbq := regexp.QuoteMeta(string(m.Break()))
 	bq := regexp.QuoteMeta(boundary)
-	bmre := regexp.MustCompile("(?:^|" + lbq + ")--" + bq + "\\s*(?:" + lbq + "|$)")
+	bmre := regexp.MustCompile("(?:^|" + lbq + ")--" + bq + "(?:--)?\\s*(?:" + lbq + "|$)")
 
 	matches := bmre.FindAllIndex(body, -1)
 	res := make([]int, len(matches))
@@ -164,7 +164,8 @@ func (m *Message) fillPartsMultiPart() error {
 
 	boundaries := m.boundaries(m.Content(), boundary)
 
-	// There are no boundaries found, so it's not multipart
+	// There are no boundaries found, so it's not multipart. Treat it as single
+	// part anyway.
 	if len(boundaries) == 0 {
 		return m.fillPartsSinglePart()
 	}
@@ -188,7 +189,7 @@ func (m *Message) fillPartsMultiPart() error {
 		bits = append(bits, m.Content()[lb:b])
 
 		if i == len(boundaries)-1 {
-			if m.finalBoundary(m.Content(), boundary) {
+			if m.finalBoundary(m.Content()[b:], boundary) {
 				// Anything after the last boundary is the epilogue. This is
 				// also not a MIME part and we also keep it around for
 				// round-tripping.

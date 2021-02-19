@@ -66,7 +66,7 @@ func (mt *MediaType) MediaType() string { return mt.mediaType }
 // MIME type.
 func (mt *MediaType) Type() string {
 	if mt.typeSplit >= 0 {
-		return mt.mediaType[:mt.typeSplit-1]
+		return mt.mediaType[:mt.typeSplit]
 	} else {
 		return ""
 	}
