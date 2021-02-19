@@ -150,3 +150,42 @@ line! Long line! Long line! Long line! Long line!=20`, "\n", "\r\n"),
 	assert.NoError(t, err)
 	assert.Equal(t, strings.Repeat("Long line! ", 100), c)
 }
+
+func TestParseMultipart(t *testing.T) {
+	t.Parallel()
+
+	const emailMsg = `Subject: hello
+Content-Type: multipart/mixed; boundary="0"
+
+Prelude
+
+--0
+Content-Type: text/plain
+
+This is plain text.
+--0--
+
+Postlude
+`
+
+	m, err := Parse([]byte(emailMsg))
+	assert.NoError(t, err)
+
+	assert.Equal(t, emailMsg, m.String())
+
+	assert.Equal(t, []byte("Prelude\n"), m.Preamble)
+	assert.Equal(t, []byte("\n--0--\n\nPostlude\n"), m.Epilogue)
+
+	if assert.Equal(t, 1, len(m.Parts)) {
+		p := m.Parts[0]
+
+		assert.Equal(t, "Content-Type: text/plain\n\nThis is plain text.", p.String())
+
+		assert.Equal(t, 0, len(p.Parts))
+		assert.Equal(t, "This is plain text.", p.ContentString())
+
+		c, err := p.ContentUnicode()
+		assert.NoError(t, err)
+		assert.Equal(t, "This is plain text.", c)
+	}
+}

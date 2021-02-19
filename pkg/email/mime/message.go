@@ -220,3 +220,14 @@ func (m *Message) SetContentBinary(b []byte) error {
 	m.SetContent(b)
 	return nil
 }
+
+// String outputs the message as a string.
+func (m *Message) String() string {
+	return m.Header.String() + string(m.Break()) + m.Body.String()
+}
+
+// Bytes outputs the messages as a slice of bytes.
+func (m *Message) Bytes() []byte {
+	msg := append(m.Header.Bytes(), m.Break()...)
+	return append(msg, m.Body.Bytes()...)
+}
