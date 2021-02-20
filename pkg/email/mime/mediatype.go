@@ -83,6 +83,11 @@ func (mt *MediaType) Subtype() string {
 	}
 }
 
+// Parameters returns the map of structured parameters to the media type.
+func (mt *MediaType) Parameters() map[string]string {
+	return mt.params
+}
+
 // Parameter returns the value of the named parameter or the empty string.
 func (mt *MediaType) Parameter(n string) string {
 	return mt.params[n]
