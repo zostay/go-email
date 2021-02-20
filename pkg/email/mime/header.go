@@ -281,8 +281,8 @@ func (h *Header) HeaderSetContentTypeBoundary(b string) error {
 }
 
 // HeaderContentDisposition is the value of the Content-dispotion header value.
-func (m *Message) HeaderContentDisposition() string {
-	cd, _ := m.structuredMediaType("Content-disposition")
+func (h *Header) HeaderContentDisposition() string {
+	cd, _ := h.structuredMediaType("Content-disposition")
 	if cd != nil {
 		return cd.mediaType
 	}
