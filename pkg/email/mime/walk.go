@@ -1,7 +1,7 @@
 package mime
 
 import (
-	"containers/list"
+	"container/list"
 )
 
 type PartWalker func(part *Message) error
