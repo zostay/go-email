@@ -2,6 +2,7 @@ package email
 
 import (
 	"bytes"
+	"fmt"
 )
 
 const (
@@ -46,7 +47,7 @@ func FoldValue(f, lb []byte) []byte {
 		f = f[end:]
 		foldSpace = true
 
-		return f
+		return bytes.TrimLeft(f, " \t")
 	}
 
 	lines := bytes.Split(f, lb)
