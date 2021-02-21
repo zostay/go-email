@@ -216,7 +216,9 @@ func (m *Message) fillPartsMultiPart() error {
 			WithMaxDepth(m.MaxDepth-1),
 		)
 		pm.prefix = prefix
-		errs = append(errs, err)
+		if err != nil {
+			errs = append(errs, err)
+		}
 		parts[i] = pm
 	}
 
