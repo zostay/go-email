@@ -96,7 +96,7 @@ func (m *Message) DecodeHeader() error {
 				errs = append(errs, err)
 			}
 
-			hf.SetBodyEncoded(dv, []byte(hf.Body()), m.Break())
+			hf.SetBodyEncodedNoFold(dv, []byte(hf.Body()))
 		}
 	}
 
