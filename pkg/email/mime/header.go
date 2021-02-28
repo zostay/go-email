@@ -371,12 +371,12 @@ func (h *Header) HeaderSetAddressList(n string, addrs addr.AddressList) {
 	hf.CacheSet(alck, addrs)
 }
 
-// HeaderDate parses and returns the date in the email. This will read the header
+// HeaderGetDate parses and returns the date in the email. This will read the header
 // named "Date". As this header is always required, it will return the time.Time
 // zero value and an error if this method is called and no value is present. If
 // the date header is present, it will returned the parsed value or an error if
 // the date cannot be parsed.
-func (h *Header) HeaderDate() (time.Time, error) {
+func (h *Header) HeaderGetDate() (time.Time, error) {
 	hf := h.HeaderGetField("Date")
 	if hf == nil {
 		return time.Time{}, nil
