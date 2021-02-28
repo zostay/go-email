@@ -34,7 +34,7 @@ func saveAttachment(m *mime.Message) error {
 	return nil
 }
 
-func Example() {
+func ExampleMessage_WalkSingleParts() {
 	msg, err := ioutil.ReadFile("input.msg")
 	if err != nil {
 		panic(err)
