@@ -4,6 +4,8 @@ import (
 	"container/list"
 )
 
+// PartWalker is the callback used to iterate through parts in WalkParts and
+// WalkSingleParts.
 type PartWalker func(part *Message) error
 
 // WalkParts executes the given function for every part. This does a depth first

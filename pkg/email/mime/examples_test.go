@@ -25,16 +25,13 @@ func outputSafeFilename(fn string) string {
 	return fmt.Sprintf("%d%s", fileCount, safeExt)
 }
 
-func saveAttachments(m *mime.Message) {
+func saveAttachment(m *mime.Message) error {
 	if fn := m.HeaderContentDispositionFilename(); fn != "" {
 		of := outputSafeFilename(fn)
 		b, _ := m.ContentUnicode()
 		_ = ioutil.WriteFile(of, []byte(b), 0644)
-	} else {
-		for _, p := range m.Parts {
-			saveAttachments(p)
-		}
 	}
+	return nil
 }
 
 func Example() {
@@ -48,5 +45,5 @@ func Example() {
 		panic(err)
 	}
 
-	saveAttachments(m)
+	_ = m.WalkSingleParts(saveAttachment)
 }
