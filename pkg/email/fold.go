@@ -2,7 +2,6 @@ package email
 
 import (
 	"bytes"
-	"fmt"
 )
 
 const (
