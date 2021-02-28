@@ -3,6 +3,7 @@ package mime
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"mime"
 	"regexp"
 	"strings"
@@ -91,9 +92,10 @@ func (m *Message) DecodeHeader() error {
 	errs := make([]error, 0)
 	for _, hf := range m.Fields {
 		if strings.Contains(hf.Body(), "=?") {
-			dv, err := dec.Decode(hf.Body())
+			dv, err := dec.DecodeHeader(hf.Body())
 			if err != nil {
 				errs = append(errs, err)
+				continue
 			}
 
 			hf.SetBodyEncodedNoFold(dv, []byte(hf.Body()))

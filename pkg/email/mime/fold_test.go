@@ -67,4 +67,6 @@ Hello.
 	assert.NoError(t, err)
 
 	assert.Equal(t, len(m.Fields), 30)
+
+	assert.Equal(t, "Example <devsupport@example.com>", m.HeaderGet("From"))
 }
