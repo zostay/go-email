@@ -3,7 +3,6 @@ package mime
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"mime"
 	"regexp"
 	"strings"
