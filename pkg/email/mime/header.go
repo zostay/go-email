@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/araddon/dateparse"
 	"github.com/zostay/go-addr/pkg/addr"
+
 	"github.com/zostay/go-email/pkg/email"
 	"github.com/zostay/go-email/pkg/email/simple"
 )
@@ -388,7 +390,10 @@ func (h *Header) HeaderGetDate() (time.Time, error) {
 
 	date, err := mail.ParseDate(hf.Body())
 	if err != nil {
-		return date, err
+		date, err = dateparse.ParseAny(hf.Body())
+		if err != nil {
+			return date, fmt.Errorf("unable to parse \"Date\" header value %q: %w", hf.Body(), err)
+		}
 	}
 
 	hf.CacheSet(dtck, date)
