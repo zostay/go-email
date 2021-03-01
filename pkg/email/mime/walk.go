@@ -6,7 +6,20 @@ import (
 
 // PartWalker is the callback used to iterate through parts in WalkParts and
 // WalkSingleParts.
-type PartWalker func(part *Message) error
+//
+// The first argument is the depth level of the part being passed, which can be
+// helpful at understanding where you are in the document.  The top-level
+// message is depth 0, sub-parts of it is depth 1, sub-parts of those are level
+// 2, etc.
+//
+// The second argument is the index within that level. At level 0 there will
+// only ever be a single index, 0. Sub-parts are indexed starting from 0.
+//
+// The third argument is a pointer to the Message found.
+//
+// The function should return an error to immediately stop the process of
+// iteration.
+type PartWalker func(depth, i int, part *Message) error
 
 // WalkParts executes the given function for every part. This does a depth first
 // descent into nested parts. If the given function returns an error, the
@@ -19,35 +32,40 @@ type PartWalker func(part *Message) error
 func (m *Message) WalkParts(pw PartWalker) error {
 	ms := list.New()
 
-	pushParts := func(parts []*Message) {
-		for _, p := range parts {
-			ms.PushBack(p)
+	type part struct {
+		depth int
+		i     int
+		part  *Message
+	}
+
+	pushParts := func(depth int, parts []*Message) {
+		for i, p := range parts {
+			ms.PushBack(&part{depth, i, p})
 		}
 	}
 
-	shiftPart := func() *Message {
+	shiftPart := func() *part {
 		if ms.Len() == 0 {
 			return nil
 		}
 
 		e := ms.Front()
 		ms.Remove(e)
-		return e.Value.(*Message)
+		return e.Value.(*part)
 	}
 
-	pushParts([]*Message{m})
-	pushParts(m.Parts)
+	pushParts(0, []*Message{m})
 	for {
 		p := shiftPart()
 		if p == nil {
 			return nil
 		}
 
-		if len(p.Parts) > 0 {
-			pushParts(p.Parts)
+		if len(p.part.Parts) > 0 {
+			pushParts(p.depth+1, p.part.Parts)
 		}
 
-		err := pw(p)
+		err := pw(p.depth, p.i, p.part)
 		if err != nil {
 			return err
 		}
@@ -63,11 +81,11 @@ func (m *Message) WalkParts(pw PartWalker) error {
 // As with WalkSingleParts, this will exit the function if the PartWalker
 // returns an error without continuing the traversal.
 func (m *Message) WalkSingleParts(pw PartWalker) error {
-	return m.WalkParts(func(m *Message) error {
+	return m.WalkParts(func(depth, i int, m *Message) error {
 		if len(m.Parts) > 0 {
 			return nil
 		}
 
-		return pw(m)
+		return pw(depth, i, m)
 	})
 }
