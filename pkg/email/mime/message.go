@@ -26,6 +26,39 @@ type Message struct {
 	Epilogue   []byte     // epilogue after MIME parts
 }
 
+// NewMessage will create a message with the selected boundary. The header and
+// body will be empty, so it won't really be a legal message yet. This does not
+// check to make sure the boundary is sane. You will also need to set this
+// boundary on the Content-Type header if you want to actually have multiple
+// parts. If you aren't going to have multiple parts, you can safely set the
+// boundary to an empty string.
+func NewMessage(boundary string) *Message {
+	return &Message{
+		boundary: boundary,
+		Parts:    make([]*Message, 0),
+	}
+}
+
+// InsertPart will attach a MIME message to this message at the specified point.
+// Inserting at 0 will make it the first part. Using a negative index will make
+// it the last. Using a value greater than or equal to the length of Parts will
+// also insert it as the last.
+func (m *Message) InsertPart(ix int, p *Message) {
+	if ix < -1 || ix >= len(m.Parts) {
+		m.Parts = append(m.Parts, p)
+	}
+
+	lb := m.Break()
+	p.prefix = append(lb, []byte("--")...)
+	p.prefix = append(p.prefix, []byte(m.boundary)...)
+	p.prefix = append(p.prefix, lb...)
+
+	bp := m.Parts[:ix]
+	ap := m.Parts[ix:]
+	m.Parts = append(bp, p)
+	m.Parts = append(m.Parts, ap...)
+}
+
 // UpdateBody will reconstruct the basic message whenever the higher level
 // elements are adjusted, preserving the original byte-for-byte as much as
 // possible.
