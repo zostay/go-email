@@ -25,7 +25,7 @@ func outputSafeFilename(fn string) string {
 	return fmt.Sprintf("%d%s", fileCount, safeExt)
 }
 
-func saveAttachment(m *mime.Message) error {
+func saveAttachment(_, _ int, m *mime.Message) error {
 	if fn := m.HeaderContentDispositionFilename(); fn != "" {
 		of := outputSafeFilename(fn)
 		b, _ := m.ContentUnicode()
