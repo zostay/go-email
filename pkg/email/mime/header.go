@@ -354,7 +354,7 @@ func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
 		return addrs.(addr.AddressList), nil
 	}
 
-	addrs, err := addr.ParseEmailAddressList(hf.Body())
+	addrs, err := addr.ParseEmailAddressList(string(hf.RawBody()))
 	if err != nil {
 		return addrs, err
 	}

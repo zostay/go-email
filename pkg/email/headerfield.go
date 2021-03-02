@@ -6,6 +6,15 @@ import (
 
 // HeaderField represents an individual field in the message header. When taken
 // from a parsed header, it will preserve the original field, byte-for-byte.
+//
+// HeaderField is just for storing information about the field. Otherwise it is
+// completely stupid. It provides for storing the field body in a fully native
+// string that is fully decoded and for storing a totally different encoded form
+// as octets. However, it does nothing to assist you in this.
+//
+// The name field, in particular, should be kept in ASCII only. If you set a
+// name to something other than ASCII, you probably won't appreciate the
+// results. Weirdness will ensue. It won't be pretty. I promise you.
 type HeaderField struct {
 	match    string
 	name     string
@@ -57,6 +66,12 @@ func (f *HeaderField) Name() string { return f.name }
 // Body returns the field body.
 func (f *HeaderField) Body() string { return f.body }
 
+// RawBody returns the field body in the final encoded form as it will be output
+// in the email.
+func (f *HeaderField) RawBody() []byte {
+	return f.original[len(f.name)+2:]
+}
+
 // Original returns the original text of the field or the newly set rendered
 // text for the field.
 func (f *HeaderField) Original() []byte { return f.original }
@@ -90,9 +105,11 @@ func (f *HeaderField) String() string { return string(f.original) }
 // Bytes returns the original as bytes.
 func (f *HeaderField) Bytes() []byte { return f.original }
 
-// SetName will rename a field. This first checks to make sure no illegal
-// characters are present in the field name. The line break parameter must be
-// passed so it can refold the line as needed.
+// SetName will rename a field. The line break parameter must be passed so it
+// can refold the line as needed.
+//
+// It is only safe to place ASCII characters into the name of a field. Any
+// characters that are 8-bit or longer may result in undefined behavior.
 func (f *HeaderField) SetName(n string, lb []byte) {
 	f.cache = nil
 	f.match = ""
@@ -100,8 +117,11 @@ func (f *HeaderField) SetName(n string, lb []byte) {
 	f.name = n
 }
 
-// SetNameNoFold will rename a field without checks and without folding. The
-// name will be set as is.
+// SetNameNoFold will rename a field without folding. The name will be set as
+// is.
+//
+// It is only safe to place ASCII characters into the name of a field. Any other
+// characters that are 8-bit or longer may result in undefined behavior.
 func (f *HeaderField) SetNameNoFold(n string) {
 	f.cache = nil
 	f.match = ""
@@ -122,7 +142,7 @@ func (f *HeaderField) SetBody(b string, lb []byte) {
 }
 
 // SetBodyEncoded will update the body of the field, but provides the string
-// value of field as well as a octet representation. This is useful in cases
+// value of field as well as an octet representation. This is useful in cases
 // where the native string representation of the field is significantly
 // different from the octet representation (due to MIME word encoding or
 // similar). You must also supply the line ending use for folding. The line
