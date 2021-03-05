@@ -20,3 +20,16 @@ func TestWordEncodingHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "\"Name ☺\" <user@host>", m.HeaderGet("To"))
 }
+
+func TestParseWordEncodedHeader(t *testing.T) {
+	const headerStr = `Subject: =?utf-8?Q?Andrew=2C_you=27ve_got_Smart_Matches=E2=84=A2=21?=
+Mime-Version: 1.0
+
+Hello`
+
+	m, err := Parse([]byte(headerStr))
+	assert.NoError(t, err)
+
+	// Roundtripping works with Subject
+	assert.Equal(t, headerStr, m.String())
+}

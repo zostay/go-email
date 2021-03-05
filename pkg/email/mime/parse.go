@@ -97,7 +97,7 @@ func (m *Message) DecodeHeader() error {
 				continue
 			}
 
-			hf.SetBodyEncodedNoFold(dv, []byte(hf.Body()))
+			hf.SetBodyEncodedNoFold(dv, hf.RawBody())
 		}
 	}
 

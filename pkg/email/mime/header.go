@@ -356,11 +356,110 @@ func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
 
 	addrs, err := addr.ParseEmailAddressList(string(hf.RawBody()))
 	if err != nil {
-		return addrs, err
+		addrs = parseEmailAddressList(hf.Body())
 	}
 
 	hf.CacheSet(alck, addrs)
 	return addrs, nil
+}
+
+// parseEmailAddressList is a fallback method for email address parsing. The
+// parser in github.com/zostay/go-addr is a strict parser, which is useful for
+// getting good accurate parsing of email addresses, but especially for
+// validating data entry. However, when working with the mess that is the web
+// when you want to get something useful, even if its technically wrong, well,
+// this method an be used to clean up the mess.
+//
+// It works as follows:
+//
+// 1. Split the string up by commas.
+// 2. Each string resulting from the split is trimmed of whitespace.
+// 3. The comments are stripped from each string and held.
+// 4. All the words at the start are treated as the display name.
+// 5. The last word at the end is treated as the email address.
+//
+// As some address fields have something other than an address in it because
+// people on the Internet are weird, the result will be wrong sometimes.
+//
+// We stuff whatever we get into an addr.Mailbox and call it good. As they are
+// so rare, we will assume we are never dealing with groups. This may lead to
+// oddness if a group is encountered.
+func parseEmailAddressList(v string) addr.AddressList {
+	extractComments := func(s string) (string, string) {
+		var clean, comment strings.Builder
+		nestLevel := 0
+		for _, c := range s {
+			if c == '(' {
+				nestLevel++
+				if nestLevel == 1 {
+					continue
+				} else {
+					comment.WriteRune(c)
+				}
+			} else if c == ')' {
+				nestLevel--
+				if nestLevel == 0 {
+					continue
+				} else if nestLevel < 0 {
+					nestLevel = 0
+					clean.WriteRune(c)
+				} else {
+					comment.WriteRune(c)
+				}
+			} else if nestLevel > 0 {
+				comment.WriteRune(c)
+			} else {
+				clean.WriteRune(c)
+			}
+		}
+
+		return clean.String(), comment.String()
+	}
+
+	mbs := strings.Split(v, ",")
+	as := make(addr.AddressList, 0, len(mbs))
+	for _, orig := range mbs {
+		mb, com := extractComments(orig)
+
+		mb = strings.TrimSpace(mb)
+		com = strings.TrimSpace(com)
+
+		parts := strings.Fields(mb)
+
+		var dn, email string
+		if len(parts) > 1 {
+			dn = strings.Join(parts[:len(parts)-1], " ")
+			email = parts[len(parts)-1]
+		} else {
+			email = parts[0]
+		}
+
+		if email != "" {
+			var addrSpec *addr.AddrSpec
+			if i := strings.Index(email, "@"); i > -1 {
+				addrSpec = addr.NewAddrSpecParsed(
+					email[:i],
+					email[i+1:],
+					email,
+				)
+			} else {
+				addrSpec = addr.NewAddrSpecParsed(
+					email,
+					"",
+					email,
+				)
+			}
+
+			mailbox, err := addr.NewMailboxParsed(dn, addrSpec, com, orig)
+			if err != nil {
+				mailbox, _ = addr.NewMailboxParsed(dn, addrSpec, "", orig)
+			}
+
+			as = append(as, mailbox)
+		}
+	}
+
+	return as
 }
 
 // HeaderSetAddressList will update an address list header with the given
