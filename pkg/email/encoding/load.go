@@ -10,6 +10,8 @@
 package encoding
 
 import (
+	"fmt"
+
 	_ "golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/ianaindex"
 
@@ -43,6 +45,10 @@ func CharsetDecoder(charset string, b []byte) (string, error) {
 	e, err := ianaindex.MIME.Encoding(charset)
 	if err != nil {
 		return "", err
+	}
+
+	if e == nil {
+		return "", fmt.Errorf("no encoding found for charset %q", charset)
 	}
 
 	eb, err := e.NewDecoder().Bytes(b)
