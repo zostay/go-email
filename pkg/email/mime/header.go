@@ -427,7 +427,9 @@ func parseEmailAddressList(v string) addr.AddressList {
 		parts := strings.Fields(mb)
 
 		var dn, email string
-		if len(parts) > 1 {
+		if len(parts) == 0 {
+			email = ""
+		} else if len(parts) > 1 {
 			dn = strings.Join(parts[:len(parts)-1], " ")
 			email = parts[len(parts)-1]
 		} else {

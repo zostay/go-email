@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/zostay/go-email/pkg/email"
 )
@@ -32,4 +33,17 @@ Hello`
 
 	// Roundtripping works with Subject
 	assert.Equal(t, headerStr, m.String())
+}
+
+func TestBlankRecipients(t *testing.T) {
+	const headerStr = `To: 
+
+Hello`
+
+	m, err := Parse([]byte(headerStr))
+	require.NoError(t, err)
+
+	al, err := m.HeaderGetAddressList("To")
+	require.NoError(t, err)
+	assert.Len(t, al, 0)
 }
