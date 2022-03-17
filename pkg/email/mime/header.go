@@ -363,6 +363,29 @@ func (h *Header) HeaderGetAddressList(n string) (addr.AddressList, error) {
 	return addrs, nil
 }
 
+// HeaderGetAllAddressLists handles address headers that have multiple header
+// entries, such as Delivered-To. This will return an address list for all the
+// headers as a single AddressList.
+func (h *Header) HeaderGetAllAddressLists(n string) (addr.AddressList, error) {
+	hfs := h.HeaderGetAllFields(n)
+	allAddrs := make(addr.AddressList, 0)
+	for _, hf := range hfs {
+		if addrs := hf.CacheGet(alck); addrs != nil {
+			allAddrs = append(allAddrs, addrs.(addr.AddressList)...)
+		}
+
+		addrs, err := addr.ParseEmailAddressList(string(hf.RawBody()))
+		if err != nil {
+			addrs = parseEmailAddressList(hf.Body())
+		}
+
+		hf.CacheSet(alck, addrs)
+		allAddrs = append(allAddrs, addrs...)
+	}
+
+	return allAddrs, nil
+}
+
 // parseEmailAddressList is a fallback method for email address parsing. The
 // parser in github.com/zostay/go-addr is a strict parser, which is useful for
 // getting good accurate parsing of email addresses, but especially for

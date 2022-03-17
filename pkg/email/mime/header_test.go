@@ -47,3 +47,26 @@ Hello`
 	require.NoError(t, err)
 	assert.Len(t, al, 0)
 }
+
+func TestAllAddressLists(t *testing.T) {
+	const headerStr = `Delivered-To: one@example.com
+Delivered-To: two@example.com, three@example.com
+
+Hello`
+
+	emails := []string{
+		"one@example.com",
+		"two@example.com",
+		"three@example.com",
+	}
+
+	m, err := Parse([]byte(headerStr))
+	require.NoError(t, err)
+
+	// I should get addresses from all Delivered-To headers
+	addrs, err := m.HeaderGetAllAddressLists("Delivered-To")
+	require.NoError(t, err)
+	for i, addr := range addrs {
+		assert.Equal(t, emails[i], addr.Address())
+	}
+}
