@@ -1,10 +1,5 @@
 package email
 
-import (
-	"bytes"
-	"strings"
-)
-
 // Body is a basic wrapper around a slice of bytes of data.
 type Body struct {
 	content []byte
@@ -29,14 +24,10 @@ func (m *Body) SetContentString(s string) { m.content = []byte(s) }
 
 // String returns the email message as a string.
 func (m *Body) String() string {
-	var out strings.Builder
-	out.Write(m.content)
-	return out.String()
+	return m.ContentString()
 }
 
 // Bytes returns the email message as a slice of bytes.
 func (m *Body) Bytes() []byte {
-	var out bytes.Buffer
-	out.Write(m.content)
-	return out.Bytes()
+	return m.Content()
 }
