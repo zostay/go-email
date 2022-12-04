@@ -12,12 +12,12 @@ const (
 	CRLF = "\x0d\x0a" // "\r\n" - Network linebreak
 	LF   = "\x0a"     // "\n"   - Unix and Linux
 	CR   = "\x0d"     // "\r"   - Commodores and old Macs
-	LFCR = "\x0a\x0d" // "\r\n" - weird
+	LFCR = "\x0a\x0d" // "\n\r" - weirdos
 )
 
 // Header represents an email message header. The header object stores enough
-// detail that the original header can be recreated byte for byte for
-// roundtripping.
+// detail that the original header can be recreated byte-for-byte for
+// round-tripping.
 type Header struct {
 	Fields []*HeaderField // The list of fields
 	lb     []byte         // The line break string to use
