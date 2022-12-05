@@ -1,9 +1,11 @@
 package simple
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/zostay/go-email/pkg/email"
 )
@@ -18,7 +20,7 @@ Bar: 3
 Baz: 1
 `
 
-	h, err := ParseHeaderLB([]byte(headerStr), []byte(email.LF))
+	h, err := ParseHeader([]byte(headerStr))
 	assert.NoError(t, err)
 	assert.NotNil(t, h)
 
@@ -56,6 +58,43 @@ Baz: 1
 }
 
 func TestRename(t *testing.T) {
+	t.Parallel()
+
+	const basic = `Foo: F1
+fOO: F2
+bar: B1
+FoO: F3
+Baz: Z1
+BAR: B2
+`
+
+	m, err := ParseHeaderLB([]byte(basic), []byte(email.LF))
+	assert.NoError(t, err)
+
+	err = m.HeaderRename("foo", "zap")
+	assert.NoError(t, err)
+
+	err = m.HeaderRename("foo", "zep")
+	assert.NoError(t, err)
+
+	err = m.HeaderRename("foo", "zip")
+	assert.NoError(t, err)
+
+	err = m.HeaderRename("foo", "zop")
+	assert.Error(t, err)
+
+	const basicRenamed = `zap: F1
+zep: F2
+bar: B1
+zip: F3
+Baz: Z1
+BAR: B2
+`
+
+	assert.Equal(t, basicRenamed, m.String())
+}
+
+func TestRenameAll(t *testing.T) {
 	t.Parallel()
 
 	const basic = `Foo: F1
@@ -139,6 +178,8 @@ BAR: B2
 }
 
 func TestHeaderWrapping(t *testing.T) {
+	t.Parallel()
+
 	const emailText = `Foo: Wrapped
   Needlessly
 Foo: Not wrapped, but may need wrapping if the field name becomes long.
@@ -165,4 +206,193 @@ The-Field-Formerly-Known-As-Foo: Wrapped, and will generally need to be
 `
 
 	assert.Equal(t, rewrappedText, m.String())
+}
+
+func TestBadStartError(t *testing.T) {
+	t.Parallel()
+
+	err := &BadStartError{}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "does not appear to be a header")
+}
+
+func TestHeaderParseError(t *testing.T) {
+	t.Parallel()
+
+	err := &HeaderParseError{
+		Errs: []error{
+			fmt.Errorf("one"),
+			fmt.Errorf("two"),
+			fmt.Errorf("three"),
+		},
+	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error parsing email")
+	assert.Contains(t, err.Error(), "one, two, three")
+}
+
+func TestNewHeader(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewHeader(email.LF, "One")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no body value")
+
+	h, err := NewHeader(email.LF, "One", "two", "Three", "four", "One", "five")
+	assert.NoError(t, err)
+	require.NotNil(t, h)
+
+	assert.Len(t, h.Fields, 3)
+	assert.Equal(t, []string{"One", "Three"}, h.HeaderNames())
+	assert.Equal(t, []string{"two", "five"}, h.HeaderGetAll("One"))
+	assert.Equal(t, []string{"four"}, h.HeaderGetAll("Three"))
+}
+
+func TestHeader_HeaderSetN(t *testing.T) {
+	t.Parallel()
+
+	const header = `One: two
+Three: four
+One: five
+`
+
+	h, err := ParseHeader([]byte(header))
+	require.NoError(t, err)
+
+	err = h.HeaderSetN("One", "six", 0)
+	assert.NoError(t, err)
+
+	err = h.HeaderSetN("One", "seven", 1)
+	assert.NoError(t, err)
+
+	err = h.HeaderSetN("One", "eight", 2)
+	assert.Error(t, err)
+
+	err = h.HeaderSetN("One", "nine", -2)
+	assert.NoError(t, err)
+
+	const headerSet = `One: nine
+Three: four
+One: seven
+`
+
+	assert.Equal(t, headerSet, h.String())
+}
+
+func TestHeader_HeaderAddN(t *testing.T) {
+	t.Parallel()
+
+	const basic = `One: two
+Three: four
+One: five
+`
+
+	h, err := ParseHeader([]byte(basic))
+	require.NoError(t, err)
+
+	err = h.HeaderAddN("One", "six", 0)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddN("One", "seven", 3)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddN("One", "eight", 1)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddN("One", "nine", -2)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddN("Foo", "ten", 0)
+	assert.NoError(t, err)
+
+	const basicAdded = `One: two
+One: six
+One: eight
+Three: four
+One: five
+One: nine
+One: seven
+Foo: ten
+`
+
+	assert.Equal(t, basicAdded, h.String())
+}
+
+func TestHeader_HeaderAddBeforeN(t *testing.T) {
+	t.Parallel()
+
+	const basic = `One: two
+Three: four
+One: five
+`
+
+	h, err := ParseHeader([]byte(basic))
+	require.NoError(t, err)
+
+	err = h.HeaderAddBeforeN("One", "six", 0)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddBeforeN("One", "seven", 3)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddBeforeN("One", "eight", 1)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddBeforeN("One", "nine", -2)
+	assert.NoError(t, err)
+
+	err = h.HeaderAddBeforeN("Foo", "ten", 0)
+	assert.NoError(t, err)
+
+	const basicAdded = `Foo: ten
+One: six
+One: eight
+One: two
+Three: four
+One: nine
+One: seven
+One: five
+`
+
+	assert.Equal(t, basicAdded, h.String())
+}
+
+func TestHeader_HeaderDelete(t *testing.T) {
+	t.Parallel()
+
+	const basic = `One: two
+Three: four
+One: five
+`
+
+	h, err := ParseHeader([]byte(basic))
+	require.NoError(t, err)
+
+	err = h.HeaderDelete("One", 0)
+	assert.NoError(t, err)
+
+	const basicDeleteFirstOne = `Three: four
+One: five
+`
+
+	assert.Equal(t, basicDeleteFirstOne, h.String())
+
+	h, err = ParseHeader([]byte(basic))
+	require.NoError(t, err)
+
+	err = h.HeaderDelete("One", 1)
+	assert.NoError(t, err)
+
+	const basicDeleteSecondOne = `One: two
+Three: four
+`
+
+	assert.Equal(t, basicDeleteSecondOne, h.String())
+
+	h, err = ParseHeader([]byte(basic))
+	require.NoError(t, err)
+
+	err = h.HeaderDelete("One", 2)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot delete")
 }

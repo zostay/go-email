@@ -380,14 +380,14 @@ func (h *Header) HeaderSetN(n string, b interface{}, ix int) error {
 //
 // 1. If no body values are given, this is equivalent to HeaderDeleteAll.
 //
-// 2. If some body values are given and there are some headers already present.
-//    This is equivalent to calling HeaderSet for each of those values.
+//  2. If some body values are given and there are some headers already present.
+//     This is equivalent to calling HeaderSet for each of those values.
 //
-// 3. If there are fewer body values than headers already present, the remaining
-//    headers will be deleted.
+//  3. If there are fewer body values than headers already present, the remaining
+//     headers will be deleted.
 //
-// 4. If there are more body values than headers already present, this is
-//    equivalent to calling HeaderAdd for each of those headers.
+//  4. If there are more body values than headers already present, this is
+//     equivalent to calling HeaderAdd for each of those headers.
 //
 // Basically, it's going to make sure all the given headers are set and will
 // start by changing the ones already in place, removing any additional ones
@@ -482,14 +482,14 @@ func (h *Header) HeaderAddBefore(n string, b interface{}) error {
 
 // HeaderAddN will add a new header field after the (ix+1)th instance of the
 // given header. If there is any header field with the given name, but not
-// a (ix+1)th header, it will be added after the lsat one.
+// a (ix+1)th header, it will be added after the last one.
 //
 // If ix is negative, then it will be added after the (-ix)th header field from
 // the end. If there is at least one header field with the given name, but no
 // (-ix)th header, it will be added after the first one.
 //
-// If no header field with the given name is present, the header will be added
-// to the bottom of the header.
+// If no header field with the given name is present, the new header field will
+// be added to the bottom of the header.
 //
 // If the given field name or body value is not legal, an error will be returned
 // and the header will not be modified.
@@ -504,15 +504,15 @@ func (h *Header) HeaderAddN(n string, b interface{}, ix int) error {
 	}
 
 	if i := h.HeaderFieldIndex(n, ix, true); i > -1 {
-		var aft, bef []*email.HeaderField
-		bef = h.Fields[:i]
-		if len(h.Fields) > i+1 {
-			aft = h.Fields[i+1:]
-		} else {
-			aft = []*email.HeaderField{}
-		}
-		h.Fields = append(bef, f)
-		h.Fields = append(h.Fields, aft...)
+		// make space for the new entry
+		h.Fields = append(h.Fields, nil)
+
+		// move everything after i back one
+		copy(h.Fields[i+1:], h.Fields[i:])
+
+		// Insert the new entry at i+1 (after i)
+		h.Fields[i+1] = f
+
 		return nil
 	}
 
@@ -528,8 +528,8 @@ func (h *Header) HeaderAddN(n string, b interface{}, ix int) error {
 // the end. If there is at least one header field with the given name, but no
 // (-ix)th header, it will be added before the first one.
 //
-// If no header field with the given name is present, the header will be added
-// to the top of the header.
+// If no header field with the given name is present, the new header field will
+// be added to the top of the header.
 //
 // If the given field name or body value is not legal, an error will be returned
 // and the header will not be modified.
@@ -544,19 +544,21 @@ func (h *Header) HeaderAddBeforeN(n string, b interface{}, ix int) error {
 	}
 
 	if i := h.HeaderFieldIndex(n, ix, true); i > -1 {
-		var a, b []*email.HeaderField
-		if i > 0 {
-			b = h.Fields[:i-1]
-		} else {
-			b = []*email.HeaderField{}
-		}
-		a = h.Fields[i:]
-		h.Fields = append(b, f)
-		h.Fields = append(h.Fields, a...)
+		// make space for the new entry
+		h.Fields = append(h.Fields, nil)
+
+		// move everything after i back one
+		copy(h.Fields[i+1:], h.Fields[i:])
+
+		// Insert the new entry at i (before i)
+		h.Fields[i] = f
+
 		return nil
 	}
 
-	h.Fields = append(h.Fields, f)
+	h.Fields = append(h.Fields, nil)
+	copy(h.Fields[1:], h.Fields[0:])
+	h.Fields[0] = f
 	return nil
 }
 
@@ -568,7 +570,11 @@ func (h *Header) HeaderDelete(n string, ix int) error {
 	for i, f := range h.Fields {
 		if f.Match() == m {
 			if count == ix {
-				h.Fields = append(h.Fields[:i-1], h.Fields[i+1:]...)
+				if i == 0 {
+					h.Fields = h.Fields[1:]
+				} else {
+					h.Fields = append(h.Fields[:i], h.Fields[i+1:]...)
+				}
 				return nil
 			}
 			count++
