@@ -8,6 +8,8 @@ import (
 )
 
 func TestNewHeaderField(t *testing.T) {
+	t.Parallel()
+
 	hf := NewHeaderField("ONE ", "two", []byte(LF))
 	require.NotNil(t, hf)
 
@@ -17,6 +19,8 @@ func TestNewHeaderField(t *testing.T) {
 }
 
 func TestNewHeaderFieldParsed(t *testing.T) {
+	t.Parallel()
+
 	hf := NewHeaderFieldParsed("ONE ", "two", []byte("ONE :  two\n"))
 	require.NotNil(t, hf)
 
@@ -64,12 +68,16 @@ func TestNewHeaderFieldParsed(t *testing.T) {
 }
 
 func TestMakeHeaderFieldMatch(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, "one", MakeHeaderFieldMatch("ONE"))
 	assert.Equal(t, "one", MakeHeaderFieldMatch("   \toNE\r\n"))
 	assert.Equal(t, "one", MakeHeaderFieldMatch("one"))
 }
 
 func TestHeader_Cache(t *testing.T) {
+	t.Parallel()
+
 	hf := NewHeaderField("One", "two", []byte(LF))
 	require.NotNil(t, hf)
 
@@ -83,6 +91,8 @@ func TestHeader_Cache(t *testing.T) {
 }
 
 func TestHeaderField_SetBodyEncoded(t *testing.T) {
+	t.Parallel()
+
 	hf := NewHeaderField("One", "two", []byte(LF))
 	hf.SetBodyEncoded("three", []byte("four"), []byte(LF))
 

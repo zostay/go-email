@@ -10,6 +10,8 @@ import (
 var content = []byte("Test email.")
 
 func TestNewBody(t *testing.T) {
+	t.Parallel()
+
 	b := NewBody(content)
 	require.NotNil(t, b)
 

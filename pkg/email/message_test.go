@@ -7,6 +7,8 @@ import (
 )
 
 func TestNewMessage(t *testing.T) {
+	t.Parallel()
+
 	m := NewMessage(
 		NewHeader(LF,
 			NewHeaderField("Subject", "test", []byte(LF))),

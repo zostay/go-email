@@ -8,11 +8,15 @@ import (
 )
 
 func TestUnfoldValue(t *testing.T) {
+	t.Parallel()
+
 	uv := UnfoldValue([]byte("folded\n line"))
 	assert.Equal(t, []byte("folded line"), uv)
 }
 
 func TestFoldValue(t *testing.T) {
+	t.Parallel()
+
 	fv := FoldValue([]byte("this is a very long value that will need to be folded after some number of characters because long lines aren't allowed in email"), []byte(CRLF))
 	assert.Equal(t, []byte("this is a very long value that will need to be folded after some number of\r\n characters because long lines aren't allowed in email\r\n"), fv)
 
