@@ -54,7 +54,7 @@ func TestNewHeaderFieldParsed(t *testing.T) {
 		[]byte("This is a longer key so it will change where the header is folded: this is a\n long string that should be folded by the set body method\n because it is too long to stay beyond the preferred length\n"),
 		hf.Original())
 
-	hf.SetBodyNoFold("This is a long string but we'll be stopping the folding because we don't include any, though we should\n", []byte(LF))
+	hf.SetBodyNoFold("This is a long string but we'll be stopping the folding because we don't include any, though we should", []byte(LF))
 	assert.Equal(t,
 		"This is a long string but we'll be stopping the folding because we don't include any, though we should",
 		hf.Body())
