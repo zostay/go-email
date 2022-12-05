@@ -94,24 +94,30 @@ func (mt *MediaType) Parameter(n string) string {
 }
 
 // Charset is a short name for
-//  mt.Parameter("charset")
+//
+//	mt.Parameter("charset")
+//
 // This is useful for Content-type headers.
 func (mt *MediaType) Charset() string {
-	return mt.params["charset"]
+	return mt.params[CTCharset]
 }
 
 // Boundary is a short name for
-//  mt.Parameter("boundary")
+//
+//	mt.Parameter("boundary")
+//
 // This is useful for Content-type headers.
 func (mt *MediaType) Boundary() string {
-	return mt.params["boundary"]
+	return mt.params[CTBoundary]
 }
 
 // Filename is a short name for
-//  mt.Parameter("filename")
+//
+//	mt.Parameter("filename")
+//
 // This is useful for Content-disposition headers.
 func (mt *MediaType) Filename() string {
-	return mt.params["filename"]
+	return mt.params[CDFilename]
 }
 
 // String returnes the formatted representation of the media type object.
