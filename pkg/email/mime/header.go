@@ -21,6 +21,24 @@ const (
 	dtck = "github.com/zostay/go-email/pkg/email/mime.Date"
 )
 
+const (
+	// ContentType is the name to give the Content-type header.
+	ContentType = "Content-type"
+
+	// CTCharset is the name to give the charset parameter of the Content-type
+	// header.
+	CTCharset = "charset"
+
+	// CTBoundary is the name to give teh Content-type boundary parameter.
+	CTBoundary = "boundary"
+
+	// ContentDisposition is the name to give the Content-disposition header.
+	ContentDisposition = "Content-disposition"
+
+	// CDFilename is the name to give the Content-disposition filename parameter.
+	CDFilename = "filename"
+)
+
 // Header provides tools built on simple.Header to work with MIME headers.
 type Header struct {
 	simple.Header
@@ -165,7 +183,7 @@ func (h *Header) HeaderSetMediaType(n string, mt *MediaType) error {
 // HeaderContentType retrieves only the full MIME type set in the Content-type
 // header.
 func (h *Header) HeaderContentType() string {
-	ct, _ := h.structuredMediaType("Content-type")
+	ct, _ := h.structuredMediaType(ContentType)
 	if ct != nil {
 		return ct.mediaType
 	}
@@ -178,19 +196,19 @@ func (h *Header) HeaderContentType() string {
 // If the existing Content-type header cannot be parsed for some reason, setting
 // this value will replace the entire value with this MIME-type.
 func (h *Header) HeaderSetContentType(mt string) error {
-	ct, _ := h.structuredMediaType("Content-type")
+	ct, _ := h.structuredMediaType(ContentType)
 	if ct != nil {
 		nct := NewMediaTypeMap(mt, ct.params)
-		hf := h.HeaderGetField("Content-type")
+		hf := h.HeaderGetField(ContentType)
 		if hf != nil {
 			if err := h.SetBody(hf, nct, h.Break()); err != nil {
 				return err
 			}
 			hf.CacheSet(mtck, nct)
-		} else if err := h.HeaderSetMediaType("Content-type", nct); err != nil {
+		} else if err := h.HeaderSetMediaType(ContentType, nct); err != nil {
 			return err
 		}
-	} else if err := h.HeaderSet("Content-type", mt); err != nil {
+	} else if err := h.HeaderSet(ContentType, mt); err != nil {
 		return err
 	}
 
@@ -200,7 +218,7 @@ func (h *Header) HeaderSetContentType(mt string) error {
 // HeaderContentTypeType retrieves the first part, the type, of the MIME type set in
 // the Content-Type header.
 func (h *Header) HeaderContentTypeType() string {
-	ct, _ := h.structuredMediaType("Content-type")
+	ct, _ := h.structuredMediaType(ContentType)
 	if ct != nil {
 		return ct.Type()
 	}
@@ -210,7 +228,7 @@ func (h *Header) HeaderContentTypeType() string {
 // HeaderContentTypeSubtype retrieves the second part, the subtype, of the MIME type
 // set in the Content-type header.
 func (h *Header) HeaderContentTypeSubtype() string {
-	ct, _ := h.structuredMediaType("Content-type")
+	ct, _ := h.structuredMediaType(ContentType)
 	if ct != nil {
 		return ct.Subtype()
 	}
@@ -220,7 +238,7 @@ func (h *Header) HeaderContentTypeSubtype() string {
 // HeaderContentTypeCharset retrieves the character set on the Content-type
 // header or an empty string.
 func (h *Header) HeaderContentTypeCharset() string {
-	ct, _ := h.structuredMediaType("Content-type")
+	ct, _ := h.structuredMediaType(ContentType)
 	if ct != nil {
 		return ct.Charset()
 	}
@@ -258,13 +276,13 @@ func (h *Header) structuredParameterUpdate(n, pn, pv string) error {
 // If no Content-type header has been set yet or the value set cannot be
 // parsed, this returns an error.
 func (h *Header) HeaderSetContentTypeCharset(cs string) error {
-	return h.structuredParameterUpdate("Content-type", "charset", cs)
+	return h.structuredParameterUpdate(ContentType, CTCharset, cs)
 }
 
 // HeaderContentTypeBoundary is the boundary set on the Content-type header for
 // multipart messages.
 func (h *Header) HeaderContentTypeBoundary() string {
-	ct, _ := h.structuredMediaType("Content-type")
+	ct, _ := h.structuredMediaType(ContentType)
 	if ct != nil {
 		return ct.Boundary()
 	}
@@ -281,12 +299,12 @@ func (h *Header) HeaderContentTypeBoundary() string {
 // message body, so if there are existing boundaries, you need to update those
 // separately.
 func (h *Header) HeaderSetContentTypeBoundary(b string) error {
-	return h.structuredParameterUpdate("Content-type", "boundary", b)
+	return h.structuredParameterUpdate(ContentType, CTBoundary, b)
 }
 
 // HeaderContentDisposition is the value of the Content-dispotion header value.
 func (h *Header) HeaderContentDisposition() string {
-	cd, _ := h.structuredMediaType("Content-disposition")
+	cd, _ := h.structuredMediaType(ContentDisposition)
 	if cd != nil {
 		return cd.mediaType
 	}
@@ -299,20 +317,20 @@ func (h *Header) HeaderContentDisposition() string {
 // If the existing Content-disposition header cannot be parsed for some reason, setting
 // this value will replace the entire value with this media-type.
 func (h *Header) HeaderSetContentDisposition(mt string) error {
-	cd, _ := h.structuredMediaType("Content-disposition")
+	cd, _ := h.structuredMediaType(ContentDisposition)
 	if cd != nil {
 		ncd := NewMediaTypeMap(mt, cd.params)
-		hf := h.HeaderGetField("Content-disposition")
+		hf := h.HeaderGetField(ContentDisposition)
 		if hf != nil {
 			if err := h.SetBody(hf, ncd, h.Break()); err != nil {
 				return err
 			}
 		} else {
-			hf = email.NewHeaderField("Content-disposition", ncd.String(), h.Break())
+			hf = email.NewHeaderField(ContentDisposition, ncd.String(), h.Break())
 		}
 		hf.CacheSet(mtck, ncd)
 	} else {
-		var err = h.HeaderSet("Content-disposition", mt)
+		var err = h.HeaderSet(ContentDisposition, mt)
 		if err != nil {
 			return err
 		}
@@ -323,7 +341,7 @@ func (h *Header) HeaderSetContentDisposition(mt string) error {
 // HeaderContentDispositionFilename is the filename set in the
 // Content-disposition header, if set.  Otherwise, it returns an empty string.
 func (m *Message) HeaderContentDispositionFilename() string {
-	cd, _ := m.structuredMediaType("Content-disposition")
+	cd, _ := m.structuredMediaType(ContentDisposition)
 	if cd != nil {
 		return cd.Filename()
 	}
@@ -336,7 +354,7 @@ func (m *Message) HeaderContentDispositionFilename() string {
 // If no Content-disposition header has been set yet or the value set cannot be
 // parsed, this returns an error.
 func (h *Header) HeaderSetContentDispositionFilename(fn string) error {
-	return h.structuredParameterUpdate("Content-disposition", "filename", fn)
+	return h.structuredParameterUpdate(ContentDisposition, CDFilename, fn)
 }
 
 // HeaderGetAddressList returns addresses for a header. If the header is not set or
