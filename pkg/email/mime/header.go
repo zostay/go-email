@@ -97,6 +97,8 @@ func defaultBodySetter(hf *email.HeaderField, v interface{}, lb []byte) error {
 	var bb []byte
 	if strings.IndexFunc(sb, forbiddenBodyChars) > -1 {
 		bb = []byte(mime.BEncoding.Encode("utf-8", sb))
+	} else {
+		bb = []byte(sb)
 	}
 
 	hf.SetBodyEncoded(sb, bb, lb)
