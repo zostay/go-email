@@ -69,6 +69,7 @@ func (f *HeaderField) Body() string { return f.body }
 // RawBody returns the field body in the final encoded form as it will be output
 // in the email.
 func (f *HeaderField) RawBody() []byte {
+	// TODO This is not a very robust solution...
 	return f.original[len(f.name)+2:]
 }
 
@@ -159,7 +160,7 @@ func (f *HeaderField) SetBodyEncoded(sb string, bb []byte, lb []byte) {
 // SetBodyEncodedNoFold will update the body of the field without performing any
 // folding. This allows the encoded version of the value to be very different
 // from the octet representation for use with MIME word encoding and such. No
-// folding is performed. Make sure to provide an oppropriate line ending to the
+// folding is performed. Make sure to provide an appropriate line ending to the
 // value as well.
 func (f *HeaderField) SetBodyEncodedNoFold(sb string, bb []byte) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
@@ -171,9 +172,10 @@ func (f *HeaderField) SetBodyEncodedNoFold(sb string, bb []byte) {
 
 // SetBodyNoFold will update the body of the field without performing any
 // folding.
-func (f *HeaderField) SetBodyNoFold(b string) {
+func (f *HeaderField) SetBodyNoFold(b string, lb []byte) {
 	newOrig := append(f.original[:len(f.name)+1], ' ')
 	newOrig = append(newOrig, []byte(b)...)
+	newOrig = append(newOrig, lb...)
 	f.cache = nil
 	f.original = newOrig
 	f.body = b
