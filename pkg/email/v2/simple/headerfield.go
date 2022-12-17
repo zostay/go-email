@@ -1,7 +1,5 @@
 package simple
 
-import "github.com/zostay/go-email/pkg/email/v2"
-
 // HeaderField implements a mutable field that tracks each header up two
 // two times. It combines a HeaderFieldFolded with a HeaderFieldOriginal. Each
 // may be modified independently by calling their methods directly. This must be
@@ -22,8 +20,6 @@ type HeaderField struct {
 // original is provided and there is an error in parsing it, this function will
 // return an error.
 func NewHeaderField(
-	lbr email.Break,
-	vf *ValueFolder,
 	name,
 	body string,
 	original []byte,
