@@ -2,6 +2,7 @@ package simple
 
 import (
 	"bytes"
+	"strings"
 
 	"github.com/zostay/go-email/pkg/email/v2"
 )
@@ -14,10 +15,8 @@ type Header struct {
 }
 
 // NewHeader constructs a new header from the given break and header fields.
-func NewHeader(lbr email.Break, f ...*HeaderField) *Header {
-	if f == nil {
-		f = make([]*HeaderField, 0, 10)
-	}
+func NewHeader(lbr email.Break) *Header {
+	f := make([]*HeaderField, 0, 10)
 	vf := NewDefaultValueFolder()
 	return &Header{lbr, vf, f}
 }
@@ -60,7 +59,7 @@ func (h *Header) Size() int {
 // header field is set.
 func (h *Header) GetFieldNamed(name string, n int) email.HeaderField {
 	for _, f := range h.fields {
-		if f.Name() == name {
+		if strings.EqualFold(f.Name(), name) {
 			if n == 0 {
 				return f
 			}
@@ -75,11 +74,22 @@ func (h *Header) GetFieldNamed(name string, n int) email.HeaderField {
 func (h *Header) GetAllFieldsNamed(name string) []email.HeaderField {
 	fs := make([]email.HeaderField, 0, 10)
 	for _, f := range h.fields {
-		if f.Name() == name {
+		if strings.EqualFold(f.Name(), name) {
 			fs = append(fs, f)
 		}
 	}
 	return fs
+}
+
+// GetIndexesNamed returns the indexes of fields with the given name.
+func (h *Header) GetIndexesNamed(name string) []int {
+	is := make([]int, 0, 10)
+	for i, f := range h.fields {
+		if strings.EqualFold(f.Name(), name) {
+			is = append(is, i)
+		}
+	}
+	return is
 }
 
 // ListFields returns all the fields in the header.
