@@ -1,4 +1,4 @@
-package email
+package mime
 
 import (
 "errors"
@@ -9,7 +9,8 @@ import (
 
 "github.com/zostay/go-addr/pkg/addr"
 
-"github.com/zostay/go-email/pkg/email/v2/param"
+	"github.com/zostay/go-email/pkg/email/v2"
+	"github.com/zostay/go-email/pkg/email/v2/param"
 )
 
 const (
@@ -25,7 +26,7 @@ const (
 )
 
 type Header struct {
-	BasicHeader
+	email.BasicHeader
 
 	// valueCache holds the semantic value for a header. As of this time, we
 	// assume that all headers that have a semantic value are singular, which is
@@ -41,7 +42,7 @@ type Header struct {
 	valueCache map[string]any
 }
 
-func NewHeader(h BasicHeader) *Header {
+func NewHeader(h email.BasicHeader) *Header {
 	return &Header{h, make(map[string]any, 10)}
 }
 

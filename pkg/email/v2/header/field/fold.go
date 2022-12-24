@@ -1,4 +1,4 @@
-package simple
+package field
 
 import (
 	"bytes"
@@ -15,57 +15,57 @@ const (
 )
 
 var (
-	// ErrIndentSpace is returned by NewValueFolder when a non-space/non-tab
+	// DefaultFoldEncoding creates a new FoldEncoding using default settings. This
+	// is the recommended way to create a FoldEncoding.
+	DefaultFoldEncoding = &FoldEncoding{
+		DefaultFoldIndent,
+		DefaultPreferredFoldLength,
+		DefaultForcedFoldLength,
+	}
+)
+
+var (
+	// ErrFoldIndentSpace is returned by NewFoldEncoding when a non-space/non-tab
 	// character is put in the foldIndent setting.
-	ErrIndentSpace = errors.New("fold indent may only contains spaces and tabs")
+	ErrFoldIndentSpace = errors.New("fold indent may only contains spaces and tabs")
 
-	// ErrIndentTooLong is returned by NewValueFolder when the foldIndent
+	// ErrFoldIndentTooLong is returned by NewFoldEncoding when the foldIndent
 	// setting is equal to or longer than the preferredFoldLength.
-	ErrIndentTooLong = errors.New("fold indent must be shorter than the preferred fold length")
+	ErrFoldIndentTooLong = errors.New("fold indent must be shorter than the preferred fold length")
 
-	// ErrFoldLengthTooLong is returned by NewValueFolder when the
+	// ErrFoldLengthTooLong is returned by NewFoldEncoding when the
 	// preferredFoldLength is longer than the forcedFoldLength.
 	ErrFoldLengthTooLong = errors.New("preferred fold length must be no longer than the forced fold length")
 
-	// ErrFoldLengthTooShort is returned by NewValueFolder when the
+	// ErrFoldLengthTooShort is returned by NewFoldEncoding when the
 	// forcedFoldLength is shorter than 3 bytes long.
 	ErrFoldLengthTooShort = errors.New("forced fold length cannot be too short")
 )
 
-// ValueFolder provides the tooling for folding email message headers.
-type ValueFolder struct {
+// FoldEncoding provides the tooling for folding email message headers.
+type FoldEncoding struct {
 	foldIndent          string
 	preferredFoldLength int
 	forcedFoldLength    int
 }
 
-// NewDefaultValueFolder creates a new ValueFolder using default settings. This
-// is the recommended way to create a ValueFolder.
-func NewDefaultValueFolder() *ValueFolder {
-	return &ValueFolder{
-		DefaultFoldIndent,
-		DefaultPreferredFoldLength,
-		DefaultForcedFoldLength,
-	}
-}
-
-// NewValueFolder creates a new ValueFolder with the given settings. The
+// NewFoldEncoding creates a new FoldEncoding with the given settings. The
 // foldIndent must be a string made up of at least one or more space or tab
 // characters and it must be shorter than the preferredFoldLength. The
 // preferredFoldLength must be equal to or less than forcedFoldLength. if
 // any of the given inputs do not meet these requirements, an error will be
 // returned.
-func NewValueFolder(
+func NewFoldEncoding(
 	foldIndent string,
 	preferredFoldLength,
 	forcedFoldLength int,
-) (*ValueFolder, error) {
+) (*FoldEncoding, error) {
 	if ix := strings.IndexFunc(foldIndent, func(c rune) bool { return !isSpace(c) }); ix >= 0 {
-		return nil, ErrIndentSpace
+		return nil, ErrFoldIndentSpace
 	}
 
 	if len(foldIndent) >= preferredFoldLength {
-		return nil, ErrIndentTooLong
+		return nil, ErrFoldIndentTooLong
 	}
 
 	if preferredFoldLength > forcedFoldLength {
@@ -76,12 +76,12 @@ func NewValueFolder(
 		return nil, ErrFoldLengthTooShort
 	}
 
-	return &ValueFolder{foldIndent, preferredFoldLength, forcedFoldLength}, nil
+	return &FoldEncoding{foldIndent, preferredFoldLength, forcedFoldLength}, nil
 }
 
 // Unfold will take a folded header line from an email and unfold it for
 // reading. This gives you the proper header body value.
-func (vf *ValueFolder) Unfold(f []byte) []byte {
+func (vf *FoldEncoding) Unfold(f []byte) []byte {
 	uf := make([]byte, 0, len(f))
 	for _, b := range f {
 		if !isCRLF(rune(b)) {
@@ -98,7 +98,7 @@ func isSpace(c rune) bool { return c == ' ' || c == '\t' }
 // email and fold it. It will make sure that every fold line is properly
 // indented, try to break lines on appropriate spaces, and force long lines to
 // be broken before the maximum line length.
-func (vf *ValueFolder) Fold(f []byte, lb email.Break) []byte {
+func (vf *FoldEncoding) Fold(f []byte, lb email.Break) []byte {
 	if len(f) < vf.preferredFoldLength {
 		return f
 	}
