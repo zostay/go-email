@@ -1,7 +1,6 @@
 package field
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/zostay/go-email/pkg/email/v2"
@@ -30,25 +29,6 @@ type Raw struct {
 	colon int    // the index of the colon
 }
 
-// Parse will parse the given field and return a Raw. If
-// something goes wrong in parsing the field, it will return an error instead.
-func Parse(field []byte) (*Raw, error) {
-	if len(field) < 3 {
-		return nil, ErrRawFieldTooShort
-	}
-
-	// locate the colon separator
-	colon := bytes.Index(field, []byte{':'})
-	if colon < 0 {
-		return nil, ErrRawFieldMissingColon
-	}
-
-	return &Raw{
-		field: field,
-		colon: colon,
-	}, nil
-}
-
 // String returns the Raw as a string.
 func (f *Raw) String() string {
 	return string(f.field)
@@ -59,12 +39,14 @@ func (f *Raw) Bytes() []byte {
 	return f.field
 }
 
-// Name returns the name part of the Raw.
+// Name returns the name part of the Raw. Please note that the value returned
+// may be foleded.
 func (f *Raw) Name() string {
 	return string(f.field[:f.colon])
 }
 
-// Body returns the body part of the Raw as bytes.
+// Body returns the body part of the Raw as bytes. Please note that the value
+// returned may be folded.
 func (f *Raw) Body() string {
 	return string(f.field[f.colon+1:])
 }

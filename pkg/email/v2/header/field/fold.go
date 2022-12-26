@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"strings"
-
-	"github.com/zostay/go-email/pkg/email/v2"
 )
 
 const (
@@ -41,6 +39,9 @@ var (
 	// forcedFoldLength is shorter than 3 bytes long.
 	ErrFoldLengthTooShort = errors.New("forced fold length cannot be too short")
 )
+
+// Break is basically identical to header.Break, but with a focus on bytes.
+type Break []byte
 
 // FoldEncoding provides the tooling for folding email message headers.
 type FoldEncoding struct {
@@ -98,7 +99,7 @@ func isSpace(c rune) bool { return c == ' ' || c == '\t' }
 // email and fold it. It will make sure that every fold line is properly
 // indented, try to break lines on appropriate spaces, and force long lines to
 // be broken before the maximum line length.
-func (vf *FoldEncoding) Fold(f []byte, lb email.Break) []byte {
+func (vf *FoldEncoding) Fold(f []byte, lb Break) []byte {
 	if len(f) < vf.preferredFoldLength {
 		return f
 	}
@@ -111,14 +112,14 @@ func (vf *FoldEncoding) Fold(f []byte, lb email.Break) []byte {
 			out.WriteString(vf.foldIndent)
 		}
 		out.Write(f[:end])
-		out.Write(lb.Bytes())
+		out.Write(lb)
 		f = f[end:]
 		foldSpace = true
 
 		return bytes.TrimLeft(f, " \t")
 	}
 
-	lines := bytes.Split(f, lb.Bytes())
+	lines := bytes.Split(f, lb)
 	for _, line := range lines {
 		// Will we be forced to fold?
 		fforced := len(line) > vf.forcedFoldLength-2

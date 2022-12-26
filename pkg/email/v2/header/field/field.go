@@ -1,6 +1,10 @@
 package field
 
-import "github.com/zostay/go-email/pkg/email/v2"
+import (
+	"bytes"
+
+	"github.com/zostay/go-email/pkg/email/v2"
+)
 
 // Field provides a low-level interface to manage a single email header field.
 // Every Field contains name and body values from the embedded Base object. In
@@ -27,31 +31,6 @@ type Field struct {
 // New constructs a new field with no original value.
 func New(name, body string) *Field {
 	return &Field{Base{name, body}, nil}
-}
-
-// FromParse will construct a Field. The original argument is optional. If the
-// original is provided and there is an error in parsing it, this function will
-// return an error. Otherwise, the original bytes will be parsed using
-// field.Parse() and the result used for the initial Raw value.
-func FromParse(
-	name,
-	body string,
-	original []byte,
-) (*Field, error) {
-	f := &Field{
-		Base:     Base{name, body},
-		Raw: nil,
-	}
-
-	if original != nil {
-		var err error
-		f.Raw, err = Parse(original)
-		if err != nil {
-			return f, err
-		}
-	}
-
-	return f, nil
 }
 
 // String returns the Raw.String() if Raw is not nil. It returns the
@@ -99,10 +78,12 @@ func (f *Field) SetBody(b string) {
 // SetRaw replaces Raw with a new value. The value will be run through
 // field.Parse(). If there's a problem parsing the field, this method will fail
 // with an error.
-func (f *Field) SetRaw(o []byte) error {
-	var err error
-	f.Raw, err = Parse(o)
-	return err
+func (f *Field) SetRaw(o []byte) {
+	ix := bytes.IndexRune(o, ':')
+	if ix < 0 {
+		ix = len(o)
+	}
+	f.Raw = &Raw{o, ix}
 }
 
 var _ email.MutableHeaderField = &Field{}
