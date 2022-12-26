@@ -29,13 +29,11 @@ func Parse(v string) (*Value, error) {
 	return &Value{mt, ps}, nil
 }
 
-func New(v string) (*Value, error) {
-	// TODO make sure v is valid
+func New(v string) *Value {
 	return &Value{v, map[string]string{}}, nil
 }
 
-func NewWithParams(v string, ps map[string]string) (*Value, error) {
-	// TODO make sure v is valid
+func NewWithParams(v string, ps map[string]string) *Value {
 	return &Value{v, ps}, nil
 }
 

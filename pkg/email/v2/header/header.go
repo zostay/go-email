@@ -1,15 +1,36 @@
-package email
+package header
 
 import (
-"errors"
-"mime"
-"net/mail"
-"strings"
-"time"
+	"errors"
+	"mime"
+	"net/mail"
+	"strings"
+	"time"
 
-"github.com/zostay/go-addr/pkg/addr"
+	"github.com/zostay/go-addr/pkg/addr"
 
-"github.com/zostay/go-email/pkg/email/v2/param"
+	"github.com/zostay/go-email/pkg/email/v2/param"
+)
+
+var (
+	// ErrNoSuchField is returned by Header methods when the operation
+	// being performed failed because the header named does not exist.
+	ErrNoSuchField = errors.New("not such header field")
+
+	// ErrNoSuchFieldParameter is returned by Header methods when the
+	// operation being performed failed because the header exists, but a
+	// sub-field of the header does not exist.
+	ErrNoSuchFieldParameter = errors.New("no such header field parameter")
+
+	// ErrManyFields is returned by Header methods when the operation
+	// being performed failed because the there are multiple fields with the
+	// given name.
+	ErrManyFields = errors.New("many header fields found")
+
+	// ErrWrongAddressType is returned by address setting methods that accept
+	// either a string or an addr.AddressList when something other than those
+	// types is provided.
+	ErrWrongAddressType = errors.New("incorrect address type during write")
 )
 
 const (
@@ -25,7 +46,7 @@ const (
 )
 
 type Header struct {
-	BasicHeader
+	Base
 
 	// valueCache holds the semantic value for a header. As of this time, we
 	// assume that all headers that have a semantic value are singular, which is
@@ -41,18 +62,29 @@ type Header struct {
 	valueCache map[string]any
 }
 
-func NewHeader(h BasicHeader) *Header {
-	return &Header{h, make(map[string]any, 10)}
-}
+// func NewHeader(in mail.Header) *Header {
+// 	if in == nil {
+// 		return &Header{}
+// 	}
+//
+// 	var h Header
+// 	for name, bodies := range in {
+// 		for _, body := range bodies {
+// 			h.InsertBeforeField(h.Size(), name, body)
+// 		}
+// 	}
+//
+// 	return &h
+// }
 
 func (h *Header) Get(name string) (string, error) {
 	ixs := h.GetIndexesNamed(name)
 	if len(ixs) == 0 {
-		return "", ErrNoSuchHeader
+		return "", ErrNoSuchField
 	}
 
 	if len(ixs) > 1 {
-		return "", ErrManyHeaders
+		return "", ErrManyFields
 	}
 
 	return h.GetField(ixs[0]).Body(), nil
@@ -72,7 +104,7 @@ func (h *Header) setValue(name string, value any) {
 func (h *Header) getTime(name string) (time.Time, error) {
 	f := h.GetFieldNamed(name, 0)
 	if f == nil {
-		return time.Time{}, ErrNoSuchHeader
+		return time.Time{}, ErrNoSuchField
 	}
 
 	t, err := mail.ParseDate(f.Body())
@@ -102,7 +134,7 @@ func (h *Header) GetTime(name string) (time.Time, error) {
 func (h *Header) getAddressList(name string) (addr.AddressList, error) {
 	f := h.GetFieldNamed(name, 0)
 	if f == nil {
-		return nil, ErrNoSuchHeader
+		return nil, ErrNoSuchField
 	}
 
 	al, err := addr.ParseEmailAddressList(f.Body())
@@ -132,7 +164,7 @@ func (h *Header) GetAddressList(name string) (addr.AddressList, error) {
 func (h *Header) getParamValue(name string) (*param.Value, error) {
 	f := h.GetFieldNamed(name, 0)
 	if f == nil {
-		return nil, ErrNoSuchHeader
+		return nil, ErrNoSuchField
 	}
 
 	pv, err := param.Parse(f.Body())
@@ -192,21 +224,15 @@ func (h *Header) Set(name, body string) {
 	// if more than one, we're setting so delete any but the first
 	if len(ixs) > 1 {
 		for i := len(ixs)-1; i > 0; i-- {
-			h.DeleteField(ixs[i])
+			// ignore out of range errors, we don't make that mistake here
+			_ = h.DeleteField(ixs[i])
 		}
 	}
 
 	// get the field we want to modify or replace
 	f := h.GetField(ixs[0])
-	if mf, mutable := f.(MutableHeaderField); mutable {
-		// if we can, modify the field
-		mf.SetName(name)
-		mf.SetBody(body)
-	} else {
-		// if we can't modify, replace the field
-		h.DeleteField(ixs[0])
-		h.InsertBeforeField(ixs[0], name, body)
-	}
+	f.SetName(name)
+	f.SetBody(body)
 }
 
 func (h *Header) SetTime(name string, body time.Time) {
@@ -237,24 +263,19 @@ func (h *Header) getParamValueValue(name string) (string, error) {
 	return pv.Value(), nil
 }
 
-func (h *Header) setParamValueValue(name, v string) error {
+func (h *Header) setParamValueValue(name, v string) {
 	pv, err := h.GetParamValue(name)
 	if err != nil {
-		if errors.Is(err, ErrNoSuchHeader) {
-			pv, err := param.New(v)
-			if err != nil {
-				return err
-			}
+		if errors.Is(err, ErrNoSuchField) {
+			pv := param.New(v)
 			h.SetParamValue(name, pv)
-			return nil
 		}
-		return err
+		h.Set(name, v)
 	}
 
 	newPv := param.Modify(pv, param.Change(v))
 
 	h.SetParamValue(name, newPv)
-	return nil
 }
 
 func (h *Header) getParamValueParam(name, p string) (string, error) {
@@ -267,7 +288,7 @@ func (h *Header) getParamValueParam(name, p string) (string, error) {
 		return v, nil
 	}
 
-	return "", ErrNoSuchHeaderParameter
+	return "", ErrNoSuchFieldParameter
 }
 
 func (h *Header) setParamValueParam(name, p, v string) error {
@@ -290,8 +311,8 @@ func (h *Header) GetContentType() (string, error) {
 
 // SetContentType sets the MIME type on the Content-type header, creating it if
 // it has not been set yet.
-func (h *Header) SetContentType(mt string) error {
-	return h.setParamValueValue(ContentType, mt)
+func (h *Header) SetContentType(mt string) {
+	h.setParamValueValue(ContentType, mt)
 }
 
 // GetCharset gets the charset from the Content-type header or returns an error
@@ -331,8 +352,8 @@ func (h *Header) GetContentDisposition() (string, error) {
 
 // SetContentDisposition sets the disposition value of the Content-disposition
 // header field.
-func (h *Header) SetContentDisposition(d string) error {
-	return h.setParamValueValue(ContentDisposition, d)
+func (h *Header) SetContentDisposition(d string) {
+	h.setParamValueValue(ContentDisposition, d)
 }
 
 // GetFilename gets the filename parameter of the Content-disposition header.
@@ -548,6 +569,6 @@ func parseEmailAddressList(v string) addr.AddressList {
 	return as
 }
 
-var _ BasicHeader = &Header{}
-var _ Outputter = &Header{}
-var _ WithMutableBreak = &Header{}
+// var _ email.BasicHeader = &Header{}
+// var _ email.Outputter = &Header{}
+// var _ email.WithMutableBreak = &Header{}

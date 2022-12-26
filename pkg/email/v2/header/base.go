@@ -8,23 +8,23 @@ import (
 	"github.com/zostay/go-email/pkg/email/v2/header/field"
 )
 
-// Simple represents a basic email message header. It is a low-level interface
+// Base represents a basic email message header. It is a low-level interface
 // to headers, but with the ability to apply field folding during output.
-type Simple struct {
-	lbr    email.Break
-	vf *field.FoldEncoding
+type Base struct {
+	lbr    Break
+	vf     *field.FoldEncoding
 	fields []*field.Field
 }
 
 // initFields initializes the fields value lazily.
-func (h *Simple) initFields() {
+func (h *Base) initFields() {
 	if h.fields == nil {
 		h.fields = make([]*field.Field, 0, 10)
 	}
 }
 
 // FoldEncoding returns the value folder used by this header during rendering.
-func (h *Simple) FoldEncoding() *field.FoldEncoding {
+func (h *Base) FoldEncoding() *field.FoldEncoding {
 	if h.vf == nil {
 		h.vf = field.DefaultFoldEncoding
 	}
@@ -32,26 +32,26 @@ func (h *Simple) FoldEncoding() *field.FoldEncoding {
 }
 
 // SetFoldEncoding changes the value folder used by this header during rendering.
-func (h *Simple) SetFoldEncoding(vf *field.FoldEncoding) {
+func (h *Base) SetFoldEncoding(vf *field.FoldEncoding) {
 	h.vf = vf
 }
 
 // Break returns the line break used to separate header fields and terminate the
 // header.
-func (h *Simple) Break() email.Break {
+func (h *Base) Break() Break {
 	if h.lbr == "" {
-		h.lbr = email.LF
+		h.lbr = LF
 	}
 	return h.lbr
 }
 
 // SetBreak changes the line break to use with this header.
-func (h *Simple) SetBreak(lbr email.Break) {
+func (h *Base) SetBreak(lbr Break) {
 	h.lbr = lbr
 }
 
 // GetField returns the nth field.
-func (h *Simple) GetField(n int) email.HeaderField {
+func (h *Base) GetField(n int) *field.Field {
 	if n >= len(h.fields) {
 		return nil
 	}
@@ -59,13 +59,13 @@ func (h *Simple) GetField(n int) email.HeaderField {
 }
 
 // Size returns the number of header fields in the header.
-func (h *Simple) Size() int {
+func (h *Base) Size() int {
 	return len(h.fields)
 }
 
 // GetFieldNamed returns the nth (0-indexed) with the given name or nil if no such
 // header field is set.
-func (h *Simple) GetFieldNamed(name string, n int) email.HeaderField {
+func (h *Base) GetFieldNamed(name string, n int) *field.Field {
 	for _, f := range h.fields {
 		if strings.EqualFold(f.Name(), name) {
 			if n == 0 {
@@ -79,8 +79,8 @@ func (h *Simple) GetFieldNamed(name string, n int) email.HeaderField {
 
 // GetAllFieldsNamed returns all the fields with the given name or nil if no fields
 // are set with that name.
-func (h *Simple) GetAllFieldsNamed(name string) []email.HeaderField {
-	fs := make([]email.HeaderField, 0, 10)
+func (h *Base) GetAllFieldsNamed(name string) []*field.Field {
+	fs := make([]*field.Field, 0, 10)
 	for _, f := range h.fields {
 		if strings.EqualFold(f.Name(), name) {
 			fs = append(fs, f)
@@ -90,7 +90,7 @@ func (h *Simple) GetAllFieldsNamed(name string) []email.HeaderField {
 }
 
 // GetIndexesNamed returns the indexes of fields with the given name.
-func (h *Simple) GetIndexesNamed(name string) []int {
+func (h *Base) GetIndexesNamed(name string) []int {
 	is := make([]int, 0, 10)
 	for i, f := range h.fields {
 		if strings.EqualFold(f.Name(), name) {
@@ -101,8 +101,8 @@ func (h *Simple) GetIndexesNamed(name string) []int {
 }
 
 // ListFields returns all the fields in the header.
-func (h *Simple) ListFields() []email.HeaderField {
-	fs := make([]email.HeaderField, len(h.fields))
+func (h *Base) ListFields() []*field.Field {
+	fs := make([]*field.Field, len(h.fields))
 	for i := range h.fields {
 		fs[i] = h.fields[i]
 	}
@@ -110,7 +110,7 @@ func (h *Simple) ListFields() []email.HeaderField {
 }
 
 // Bytes returns the header as a slice of bytes.
-func (h *Simple) Bytes() []byte {
+func (h *Base) Bytes() []byte {
 	var buf bytes.Buffer
 	for _, f := range h.fields {
 		foldedField := h.vf.Fold(f.Bytes(), h.lbr)
@@ -122,13 +122,13 @@ func (h *Simple) Bytes() []byte {
 }
 
 // String returns the header as a string.
-func (h *Simple) String() string {
+func (h *Base) String() string {
 	return string(h.Bytes())
 }
 
 // InsertBeforeField will insert the given name and body values into the header
 // at the given index.
-func (h *Simple) InsertBeforeField(
+func (h *Base) InsertBeforeField(
 	n int,
 	name,
 	body string,
@@ -157,13 +157,14 @@ func (h *Simple) InsertBeforeField(
 }
 
 // ClearFields removes all fields from the header.
-func (h *Simple) ClearFields() {
+func (h *Base) ClearFields() {
 	h.initFields()
 	h.fields = h.fields[:0]
 }
 
-// DeleteField removes the nth field from the header.
-func (h *Simple) DeleteField(n int) error {
+// DeleteField removes the nth field from the header. Fails with an error if the
+// given index is out of range.
+func (h *Base) DeleteField(n int) error {
 	h.initFields()
 
 	// bounds check
@@ -180,5 +181,5 @@ func (h *Simple) DeleteField(n int) error {
 	return nil
 }
 
-var _ email.WithMutableBreak = &Simple{}
-var _ email.MutableHeader = &Simple{}
+// var _ email.WithMutableBreak = &Base{}
+// var _ email.MutableHeader = &Base{}

@@ -1,4 +1,4 @@
-package email
+package header
 
 // Break represents the linebreak to use when working with an email.
 type Break string
