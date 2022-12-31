@@ -88,7 +88,7 @@ func Parse(f Line, lb []byte) *Field {
 	body := string(DefaultFoldEncoding.Unfold(f[ix+1:]))
 	return &Field{
 		Base: Base{name, body},
-		Raw: &Raw{f, ix},
+		Raw:  &Raw{f, ix},
 	}
 
 }

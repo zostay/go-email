@@ -97,6 +97,9 @@ func (h *Header) getValue(name string) (any, bool) {
 }
 
 func (h *Header) setValue(name string, value any) {
+	if h.valueCache == nil {
+		h.valueCache = make(map[string]any, h.Size())
+	}
 	n := strings.ToLower(name)
 	h.valueCache[n] = value
 }
