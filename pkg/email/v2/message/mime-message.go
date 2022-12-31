@@ -65,13 +65,14 @@ type Part interface {
 	GetParts() ([]Part, error)
 }
 
-// GenericMessage is just an alias for Part, which is intended to convey the
-// meaning that the message returned is not necessary a sub-part of a parent
-// message.
+// GenericMessage is just an alias for Part, which is intended to convey
+// additional semantics:
 //
-// Where this type is used, we guarantee the following semantics: the object
-// returned is either a *Message or a *MultipartMessage (or nil, in case of an
-// error).
+// 1. The message returned is not necessarily a sub-part of a message.
+//
+// 2. The returned message is guaranteed to either be a *Message or a
+// *MultipartMessage. Therefore, it is safe to use this in a type-switch
+// and only look for either of those two objects.
 type GenericMessage = Part
 
 // MultipartMessage is a multipart MIME message. When building these methods the MIME
