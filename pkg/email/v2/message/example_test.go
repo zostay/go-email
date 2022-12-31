@@ -25,11 +25,11 @@ func ExampleBuffer() {
 }
 
 func ExampleMimeBuffer() {
-	mm := &message.MimeBuffer{}
+	mm := &message.MultipartBuffer{}
 	mm.SetSubject("Fancy message")
 	mm.SetContentType("multipart/mixed")
 
-	altPart := &message.MimeBuffer{}
+	altPart := &message.MultipartBuffer{}
 	mm.SetContentType("multipart/alternative")
 
 	txtPart := &message.Buffer{}

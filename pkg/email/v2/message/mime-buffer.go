@@ -12,22 +12,22 @@ const (
 	DefaultMultipartContentType = "multipart/mixed"
 )
 
-// MimeBuffer provides tools for constructing complete MIME messages. It is
+// MultipartBuffer provides tools for constructing complete MIME messages. It is
 // built up a piece at a time by adding sub-messages to the buffer via the Add()
 // method. You are responsible for ensuring that each of the parts are correct.
-type MimeBuffer struct {
+type MultipartBuffer struct {
 	header.Header
-	parts  []*Message
+	parts []*Message
 }
 
-func (mb *MimeBuffer) initParts() {
+func (mb *MultipartBuffer) initParts() {
 	if mb.parts == nil {
 		mb.parts = make([]*Message, 0, 10)
 	}
 }
 
 // Add will add one or more parts to the message.
-func (mb *MimeBuffer) Add(msgs ...*Message) {
+func (mb *MultipartBuffer) Add(msgs ...*Message) {
 	mb.initParts()
 	for _, msg := range msgs {
 		mb.parts = append(mb.parts, msg)
@@ -47,7 +47,7 @@ func (mb *MimeBuffer) Add(msgs ...*Message) {
 // It will also check to see if the Content-type boundary is set and set it to
 // something random using mime.GenerateBound() automatically. This boundary
 // will then be used to join the parts together.
-func (mb *MimeBuffer) Message() *Message {
+func (mb *MultipartBuffer) Message() *Message {
 	if _, err := mb.GetContentType(); errors.Is(err, header.ErrNoSuchField) {
 		mb.SetContentType(DefaultMultipartContentType)
 	}

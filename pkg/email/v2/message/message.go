@@ -42,6 +42,6 @@ func (m *Message) GetReader() (io.Reader, error) {
 }
 
 // GetParts always returns nil and ErrNotMultipart.
-func (m *Message) GetParts() ([]MimePart, error) {
+func (m *Message) GetParts() ([]Part, error) {
 	return nil, ErrNotMultipart
 }
