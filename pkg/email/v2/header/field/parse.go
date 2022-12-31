@@ -77,13 +77,15 @@ func ParseLines(m, lb []byte) (Lines, error) {
 
 // Parse will take a single header field line, including any folded continuation
 // lines. This will then construct a header field object.
-func Parse(enc *FoldEncoding, f Line, lb []byte) *Field {
+func Parse(f Line, lb []byte) *Field {
 	ix := bytes.Index(f, lb)
 	if ix < 0 {
 		ix = len(f)
 	}
-	name := string(enc.Unfold(f[:ix]))
-	body := string(enc.Unfold(f[ix+1:]))
+	// it's fine to use the default fold encoding because unfold is not affected
+	// by choices made when folding
+	name := string(DefaultFoldEncoding.Unfold(f[:ix]))
+	body := string(DefaultFoldEncoding.Unfold(f[ix+1:]))
 	return &Field{
 		Base: Base{name, body},
 		Raw: &Raw{f, ix},

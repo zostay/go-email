@@ -113,7 +113,7 @@ func (h *Base) ListFields() []*field.Field {
 func (h *Base) Bytes() []byte {
 	var buf bytes.Buffer
 	for _, f := range h.fields {
-		foldedField := h.vf.Fold(f.Bytes(), h.lbr)
+		foldedField := h.vf.Fold(f.Bytes(), h.lbr.Bytes())
 		buf.Write(foldedField)
 		buf.Write(h.lbr.Bytes())
 	}

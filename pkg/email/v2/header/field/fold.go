@@ -51,11 +51,15 @@ type FoldEncoding struct {
 }
 
 // NewFoldEncoding creates a new FoldEncoding with the given settings. The
-// foldIndent must be a string made up of at least one or more space or tab
-// characters and it must be shorter than the preferredFoldLength. The
-// preferredFoldLength must be equal to or less than forcedFoldLength. if
-// any of the given inputs do not meet these requirements, an error will be
-// returned.
+// foldIndent must be a string, filled with one or more space or tab characters,
+// and it must be shorter than the preferredFoldLength. The preferredFoldLength
+// must be equal to or less than forcedFoldLength. if any of the given inputs do
+// not meet these requirements, an error will be returned.
+//
+// The fold encoding does not do anything special to ensure that no folding
+// occurs before the colon even though that would be incorrect. It relies on the
+// assumption that the fold lengths chosen will be wider than the longest field
+// name. That should be enough to guarantee that field names never get folded.
 func NewFoldEncoding(
 	foldIndent string,
 	preferredFoldLength,
