@@ -6,16 +6,16 @@ import (
 	"github.com/zostay/go-email/pkg/email/v2/header"
 )
 
-// Message is the base-level email message interface. It is simply a header
+// Opaque is the base-level email message interface. It is simply a header
 // and a message body, very similar to the net/mail message implementation.
-type Message struct {
+type Opaque struct {
 	header.Header
 	io.Reader
 }
 
-// WriteTo writes the Message header and body to the destination
+// WriteTo writes the Opaque header and body to the destination
 // io.Writer.
-func (b *Message) WriteTo(w io.Writer) (int64, error) {
+func (b *Opaque) WriteTo(w io.Writer) (int64, error) {
 	hb := b.Header.Bytes()
 	hn, err := w.Write(hb)
 	if err != nil {
@@ -27,21 +27,21 @@ func (b *Message) WriteTo(w io.Writer) (int64, error) {
 }
 
 // IsMultipart always returns false.
-func (m *Message) IsMultipart() bool {
+func (m *Opaque) IsMultipart() bool {
 	return false
 }
 
 // GetHeader returns the header for the message.
-func (m *Message) GetHeader() *header.Header {
+func (m *Opaque) GetHeader() *header.Header {
 	return &m.Header
 }
 
 // GetReader returns the reader containing the body of the message.
-func (m *Message) GetReader() (io.Reader, error) {
+func (m *Opaque) GetReader() (io.Reader, error) {
 	return m.Reader, nil
 }
 
 // GetParts always returns nil and ErrNotMultipart.
-func (m *Message) GetParts() ([]Part, error) {
+func (m *Opaque) GetParts() ([]Part, error) {
 	return nil, ErrNotMultipart
 }

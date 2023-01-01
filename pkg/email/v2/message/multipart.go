@@ -20,7 +20,7 @@ var (
 	ErrMultipart = errors.New("this is a multipart message")
 )
 
-// Part is an interface define the parts of a MultipartMessage. Each Part is
+// Part is an interface define the parts of a Multipart. Each Part is
 // either a branch or a leaf.
 //
 // A branch Part is one that has sub-parts. In this case, the IsMultipart()
@@ -65,19 +65,19 @@ type Part interface {
 	GetParts() ([]Part, error)
 }
 
-// GenericMessage is just an alias for Part, which is intended to convey
+// Generic is just an alias for Part, which is intended to convey
 // additional semantics:
 //
 // 1. The message returned is not necessarily a sub-part of a message.
 //
-// 2. The returned message is guaranteed to either be a *Message or a
-// *MultipartMessage. Therefore, it is safe to use this in a type-switch
+// 2. The returned message is guaranteed to either be a *Opaque or a
+// *Multipart. Therefore, it is safe to use this in a type-switch
 // and only look for either of those two objects.
-type GenericMessage = Part
+type Generic = Part
 
-// MultipartMessage is a multipart MIME message. When building these methods the MIME
+// Multipart is a multipart MIME message. When building these methods the MIME
 // type set in the Content-type header should always start with multipart/*.
-type MultipartMessage struct {
+type Multipart struct {
 	// Header is the header for the message.
 	header.Header
 
@@ -100,17 +100,17 @@ type MultipartMessage struct {
 	parts []Part
 }
 
-func (mm *MultipartMessage) initParts() {
+func (mm *Multipart) initParts() {
 	if mm.parts == nil {
 		mm.parts = make([]Part, 0, 10)
 	}
 }
 
-// WriteTo writes the Message header and parts to the destination io.Writer.
+// WriteTo writes the Opaque header and parts to the destination io.Writer.
 // This method will fail with an error if the given message does not have a
 // Content-type boundary parameter set. May return an error on an IO error as
 // well.
-func (mm *MultipartMessage) WriteTo(w io.Writer) (int64, error) {
+func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 	boundary, err := mm.GetBoundary()
 	if err != nil {
 		return 0, err
@@ -149,21 +149,21 @@ func (mm *MultipartMessage) WriteTo(w io.Writer) (int64, error) {
 }
 
 // IsMultipart always returns true.
-func (mm *MultipartMessage) IsMultipart() bool {
+func (mm *Multipart) IsMultipart() bool {
 	return true
 }
 
 // GetHeader returns the header for the message.
-func (mm *MultipartMessage) GetHeader() *header.Header {
+func (mm *Multipart) GetHeader() *header.Header {
 	return &mm.Header
 }
 
 // GetReader always returns nil and ErrMultipart.
-func (mm *MultipartMessage) GetReader() (io.Reader, error) {
+func (mm *Multipart) GetReader() (io.Reader, error) {
 	return nil, ErrMultipart
 }
 
 // GetParts returns the sub-parts of this message or nil if there aren't any.
-func (mm *MultipartMessage) GetParts() ([]Part, error) {
+func (mm *Multipart) GetParts() ([]Part, error) {
 	return mm.parts, nil
 }

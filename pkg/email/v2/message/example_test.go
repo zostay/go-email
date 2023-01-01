@@ -11,25 +11,28 @@ import (
 
 func ExampleMessage_WriteTo() {
 	buf := bytes.NewBufferString("Hello World")
-	msg := &message.Message{Reader: buf}
+	msg := &message.Opaque{Reader: buf}
 	msg.SetSubject("A message to nowhere")
 	msg.WriteTo(os.Stdout)
 }
 
-func ExampleBuffer() {
+func ExampleOpaqueBuffer() {
 	buf := &message.Buffer{}
 	buf.SetSubject("Some spam for you inbox")
 	fmt.Fprintln(buf, "Hello World!")
-	msg := buf.Message()
+	msg, err := buf.Opaque()
+	if err != nil {
+		panic(err)
+	}
 	msg.WriteTo(os.Stdout)
 }
 
-func ExampleMimeBuffer() {
-	mm := &message.MultipartBuffer{}
+func ExampleMultipartBuffer() {
+	mm := &message.Buffer{}
 	mm.SetSubject("Fancy message")
 	mm.SetContentType("multipart/mixed")
 
-	altPart := &message.MultipartBuffer{}
+	altPart := &message.Buffer{}
 	mm.SetContentType("multipart/alternative")
 
 	txtPart := &message.Buffer{}
@@ -42,7 +45,9 @@ func ExampleMimeBuffer() {
 	txtPart.SetContentDisposition("attachment")
 	fmt.Fprintln(htmlPart, "Hello <b>World</b>!")
 
-	altPart.Add(txtPart.Message(), htmlPart.Message())
+	txtMsg, _ := txtPart.Opaque()
+	htmlMsg, _ := htmlPart.Opaque()
+	altPart.Add(txtMsg, htmlMsg)
 
 	imgAttach := &message.Buffer{}
 	imgAttach.SetContentType("image/jpeg")
@@ -51,8 +56,13 @@ func ExampleMimeBuffer() {
 	img, _ := os.Open("image.jpg")
 	io.Copy(imgAttach, img)
 
-	mm.Add(altPart.Message(), imgAttach.Message())
+	altMsg, _ := altPart.Multipart()
+	imgMsg, _ := imgAttach.Opaque()
+	mm.Add(altMsg, imgMsg)
 
-	msg := mm.Message()
+	msg, err := mm.Multipart()
+	if err != nil {
+		panic(err)
+	}
 	msg.WriteTo(os.Stdout)
 }

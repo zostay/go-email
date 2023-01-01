@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
-	"regexp"
 	"strings"
 
 	"github.com/zostay/go-email/pkg/email/v2/header"
@@ -87,6 +85,12 @@ func WithChunkSize(chunkSize int) ParseOption {
 // default.
 func WithMaxDepth(maxDepth int) ParseOption {
 	return func(pr *parser) { pr.maxDepth = maxDepth }
+}
+
+// WithoutMultipart is a ParseOption that will not allow parsing of any
+// multipart messages. The message returned from Parse() will always be *Opaque.
+func WithoutMultipart() ParseOption {
+	return func(pr *parser) { pr.maxDepth = 0 }
 }
 
 // WithoutRecursion is a ParseOption that will only allow a single level of
@@ -181,22 +185,22 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 	return buf.Bytes(), []byte("\x0d"), &bytes.Buffer{}, nil
 }
 
-// ParseMessage will turn the given input into a Message by detecting the line
+// ParseOpaque will turn the given input into an Opaque by detecting the line
 // break used to split the header from the body, using that break to split the
 // header part from the body part, and parsing the header. The body, whatever it
 // is, is kept as an opaque value provided in the io.Reader part of the
-// constructed Message object.
-func ParseMessage(r io.Reader, opts ...ParseOption) (*Message, error) {
+// constructed Opaque object.
+func ParseOpaque(r io.Reader, opts ...ParseOption) (*Opaque, error) {
 	pr := defaultParser.clone()
 	for _, opt := range opts {
 		opt(pr)
 	}
 
-	return pr.parseMessage(r)
+	return pr.parseOpaque(r)
 }
 
-// parseMessage implements ParseMessage.
-func (pr *parser) parseMessage(r io.Reader) (*Message, error) {
+// parseOpaque implements ParseOpaque.
+func (pr *parser) parseOpaque(r io.Reader) (*Opaque, error) {
 	hdr, crlf, body, err := pr.splitHeadFromBody(r)
 	if err != nil {
 		return nil, err
@@ -207,10 +211,10 @@ func (pr *parser) parseMessage(r io.Reader) (*Message, error) {
 		return nil, err
 	}
 
-	return &Message{*head, body}, nil
+	return &Opaque{*head, body}, nil
 }
 
-// Parse will transform a *Message into a *MultipartMessage or return a *Message if
+// Parse will transform a *Opaque into a *Multipart or return a *Opaque if
 // the object does not represent a multipart message. The parse of the message
 // will proceed as follows:
 //
@@ -230,10 +234,10 @@ func (pr *parser) parseMessage(r io.Reader) (*Message, error) {
 //
 // 4. If we get thi far and the initial boundary is found, then the remaining
 // boundaries continue to be read until we reach the end of the message. At this
-// point a *MultipartMessage will be returned with all the parts broken up into
+// point a *Multipart will be returned with all the parts broken up into
 // pieces. If the end boundary is missing, it will also return an error
 // ErrMissingEndBoundary.
-func Parse(msg *Message, opts ...ParseOption) (GenericMessage, error) {
+func Parse(msg *Opaque, opts ...ParseOption) (Generic, error) {
 	pr := defaultParser.clone()
 	for _, opt := range opts {
 		opt(pr)
@@ -243,9 +247,9 @@ func Parse(msg *Message, opts ...ParseOption) (GenericMessage, error) {
 }
 
 // parse implements the Parse methods.
-func (pr *parser) parse(msg *Message, depth int) (GenericMessage, error) {
+func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	// we're too deep: stop here and just return the original
-	if pr.maxDepth < 0 || depth < pr.maxDepth {
+	if pr.maxDepth >= 0 && depth >= pr.maxDepth {
 		return msg, nil
 	}
 
@@ -380,7 +384,7 @@ func (pr *parser) parse(msg *Message, depth int) (GenericMessage, error) {
 	// This function will recover the original message if we get an error
 	// parsing a sub-part.
 	parts := make([][]byte, 0, 10)
-	originalMessage := func() *Message {
+	originalMessage := func() *Opaque {
 		// finish accumulating the parts and find the suffix (if any)
 		for sc.Scan() {
 			part := sc.Bytes()
@@ -398,20 +402,20 @@ func (pr *parser) parse(msg *Message, depth int) (GenericMessage, error) {
 			r.Write(suffix)
 		}
 
-		return &Message{
+		return &Opaque{
 			Header: msg.Header,
 			Reader: r,
 		}
 	}
 
 	// All returned tokens are parts
-	msgParts := make([]GenericMessage, 0, 10)
+	msgParts := make([]Generic, 0, 10)
 	for sc.Scan() {
 		part := sc.Bytes()
 		parts = append(parts, part)
 
 		// parse each part as a simple message first
-		opMsg, err := pr.parseMessage(bytes.NewReader(part))
+		opMsg, err := pr.parseOpaque(bytes.NewReader(part))
 		if err != nil {
 			return originalMessage(), err
 		}
@@ -424,171 +428,12 @@ func (pr *parser) parse(msg *Message, depth int) (GenericMessage, error) {
 		msgParts = append(msgParts, msg)
 	}
 
-	return &MultipartMessage{
+	return &Multipart{
 		Header: msg.Header,
 		prefix: prefix,
 		suffix: suffix,
 		parts:  msgParts,
 	}, nil
-}
-
-type option func(*Message)
-
-// DecodeHeader scans through the headers and looks for MIME word encoded field
-// values. When they are found, these are decoded into native unicode.
-func (m *Message) DecodeHeader() error {
-	dec := &mime.WordDecoder{
-		CharsetReader: CharsetDecoderToCharsetReader(CharsetDecoder),
-	}
-	errs := make([]error, 0)
-	for _, hf := range m.Fields {
-		if strings.Contains(hf.Body(), "=?") {
-			dv, err := dec.DecodeHeader(hf.Body())
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-
-			hf.SetBodyEncodedNoFold(dv, hf.RawBody())
-		}
-	}
-
-	if len(errs) > 0 {
-		return &ParseError{errs}
-	} else {
-		return nil
-	}
-}
-
-// FillParts performs the work of parsing the message body into preamble,
-// sub-parts, and epilogue.
-func (m *Message) FillParts() error {
-	m.Preamble = nil
-	m.Parts = nil
-	m.Epilogue = nil
-
-	mtt := m.HeaderContentTypeType()
-	if mtt == "multipart" || mtt == "message" {
-		return m.fillPartsMultiPart()
-	} else {
-		return m.fillPartsSinglePart()
-	}
-
-}
-
-func (m *Message) boundaries(body []byte, boundary string) []int {
-	lbq := regexp.QuoteMeta(string(m.Break()))
-	bq := regexp.QuoteMeta(boundary)
-	bmre := regexp.MustCompile("(?:^|" + lbq + ")--" + bq + "(?:--)?\\s*(?:" + lbq + "|$)")
-
-	matches := bmre.FindAllIndex(body, -1)
-	res := make([]int, len(matches))
-	for i, m := range matches {
-		res[i] = m[0]
-	}
-
-	return res
-}
-
-// finalBoundary checks to see if this is a final boundary formatted like
-//
-//	// --boundary--
-//
-// In that case, it returns true. Otherwise, it returns false.
-//
-// This assumes that the body given is the start of a boundary, so it doesn't
-// verify anything but the last part.
-func (m *Message) finalBoundary(body []byte, boundary string) bool {
-	lbq := regexp.QuoteMeta(string(m.Break()))
-	bq := regexp.QuoteMeta(boundary)
-	cmre := regexp.MustCompile("^(?:" + lbq + ")?--" + bq + "--\\s*(?:" + lbq + "|$)")
-	return cmre.Match(body)
-}
-
-func (m *Message) fillPartsMultiPart() error {
-	boundary := m.HeaderContentTypeBoundary()
-
-	if m.MaxDepth <= 0 {
-		return errors.New("message is nested too deeply")
-	}
-
-	// No boundary set, so it's not multipart
-	if boundary == "" {
-		return m.fillPartsSinglePart()
-	}
-
-	boundaries := m.boundaries(m.Content(), boundary)
-
-	// There are no boundaries found, so it's not multipart. Treat it as single
-	// part anyway.
-	if len(boundaries) == 0 {
-		return m.fillPartsSinglePart()
-	}
-
-	m.boundary = boundary
-
-	bits := make([][]byte, 0, len(boundaries))
-	lb := -1
-	for i, b := range boundaries {
-		if lb == -1 {
-			// Anything before the first boundary is the preamble. This is not a
-			// MIME, but extra text to be ignored by the reader. We keep it
-			// around for the purpose of round-tripping.
-			if b > 0 {
-				m.Preamble = m.Content()[0:b]
-			}
-			lb = b
-			continue
-		}
-
-		bits = append(bits, m.Content()[lb:b])
-		lb = b
-
-		if i == len(boundaries)-1 {
-			if m.finalBoundary(m.Content()[b:], boundary) {
-				// Anything after the last boundary is the epilogue. This is
-				// also not a MIME part and we also keep it around for
-				// round-tripping.
-				m.Epilogue = m.Content()[b:]
-				break
-			} else {
-				// This is badly formatted, but whatever. We did not find a
-				// final boundary, so the last boundary appears to be a part
-				// instead so keep it as one.
-				bits = append(bits, m.Content()[b:])
-			}
-		}
-	}
-
-	errs := make([]error, 0)
-	parts := make([]*Message, len(bits))
-	for i, bit := range bits {
-		lbr := len(m.Break())
-		bend := bytes.Index(bit[lbr:], m.Break()) + lbr*2
-		prefix := bit[:bend]
-		postBoundary := bit[bend:]
-		pm, err := Parse(postBoundary,
-			WithMaxDepth(m.MaxDepth-1),
-		)
-		pm.prefix = prefix
-		if err != nil {
-			errs = append(errs, err)
-		}
-		parts[i] = pm
-	}
-
-	m.Parts = parts
-
-	if len(errs) > 0 {
-		return &ParseError{errs}
-	}
-
-	return nil
-}
-
-func (m *Message) fillPartsSinglePart() error {
-	m.Parts = []*Message{}
-	return nil
 }
 
 type remainder struct {
