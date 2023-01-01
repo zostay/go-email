@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/zostay/go-email/pkg/email/v2/message"
+	"github.com/zostay/go-email/pkg/v2/message"
 )
 
 func ExampleMessage_WriteTo() {

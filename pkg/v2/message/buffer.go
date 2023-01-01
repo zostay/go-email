@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/zostay/go-email/pkg/email/v2/header"
-	"github.com/zostay/go-email/pkg/email/v2/mime"
+	"github.com/zostay/go-email/pkg/v2/header"
 )
 
 const (
@@ -131,7 +130,7 @@ func (b *Buffer) prepareForMultipartOutput() {
 	}
 
 	if _, err := b.GetBoundary(); errors.Is(err, header.ErrNoSuchFieldParameter) {
-		_ = b.SetBoundary(mime.GenerateBoundary())
+		_ = b.SetBoundary(GenerateBoundary())
 	}
 }
 

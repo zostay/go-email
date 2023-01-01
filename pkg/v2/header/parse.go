@@ -1,7 +1,7 @@
 package header
 
 import (
-	"github.com/zostay/go-email/pkg/email/v2/header/field"
+	"github.com/zostay/go-email/pkg/v2/header/field"
 )
 
 // Parse will parse the given slice of bytes into an email header using the
@@ -19,7 +19,7 @@ func Parse(m, lb []byte) (*Header, error) {
 	}
 
 	h := &Header{
-		Base:       Base{
+		Base: Base{
 			lbr:    Break(lb),
 			vf:     field.DefaultFoldEncoding,
 			fields: fields,

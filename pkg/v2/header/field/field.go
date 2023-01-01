@@ -2,8 +2,6 @@ package field
 
 import (
 	"bytes"
-
-	"github.com/zostay/go-email/pkg/email/v2"
 )
 
 // Field provides a low-level interface to manage a single email header field.
@@ -85,6 +83,3 @@ func (f *Field) SetRaw(o []byte) {
 	}
 	f.Raw = &Raw{o, ix}
 }
-
-var _ email.MutableHeaderField = &Field{}
-var _ email.Outputter = &Field{}

@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/zostay/go-email/pkg/email/v2/header"
+	"github.com/zostay/go-email/pkg/v2/header"
 )
 
 const (

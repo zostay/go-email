@@ -3,7 +3,7 @@ package message
 import (
 	"io"
 
-	"github.com/zostay/go-email/pkg/email/v2/header"
+	"github.com/zostay/go-email/pkg/v2/header"
 )
 
 // Opaque is the base-level email message interface. It is simply a header

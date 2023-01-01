@@ -2,10 +2,16 @@ package header
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 
-	"github.com/zostay/go-email/pkg/email/v2"
-	"github.com/zostay/go-email/pkg/email/v2/header/field"
+	"github.com/zostay/go-email/pkg/v2/header/field"
+)
+
+var (
+	// ErrIndexOutOfRange when an attempt is made to access a header field index
+	// that is too large or to small.
+	ErrIndexOutOfRange = errors.New("header field index is out of range")
 )
 
 // Base represents a basic email message header. It is a low-level interface
@@ -169,7 +175,7 @@ func (h *Base) DeleteField(n int) error {
 
 	// bounds check
 	if n < 0 || n >= len(h.fields) {
-		return email.ErrIndexOutOfRange
+		return ErrIndexOutOfRange
 	}
 
 	// copy over the removed field
@@ -180,6 +186,3 @@ func (h *Base) DeleteField(n int) error {
 
 	return nil
 }
-
-// var _ email.WithMutableBreak = &Base{}
-// var _ email.MutableHeader = &Base{}

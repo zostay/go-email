@@ -2,8 +2,6 @@ package field
 
 import (
 	"errors"
-
-	"github.com/zostay/go-email/pkg/email/v2"
 )
 
 var (
@@ -50,6 +48,3 @@ func (f *Raw) Name() string {
 func (f *Raw) Body() string {
 	return string(f.field[f.colon+1:])
 }
-
-var _ email.HeaderField = &Raw{}
-var _ email.Outputter = &Raw{}

@@ -2,8 +2,6 @@ package field
 
 import (
 	"fmt"
-
-	"github.com/zostay/go-email/pkg/email/v2"
 )
 
 // Base implements an email.Field with a baseline
@@ -43,6 +41,3 @@ func (f *Base) String() string {
 func (f *Base) Bytes() []byte {
 	return []byte(f.String())
 }
-
-var _ email.MutableHeaderField = &Base{}
-var _ email.Outputter = &Base{}

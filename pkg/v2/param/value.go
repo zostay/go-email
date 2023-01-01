@@ -5,18 +5,16 @@ import (
 	"mime"
 	"sort"
 	"strings"
-
-	"github.com/zostay/go-email/pkg/email/v2"
 )
 
 const (
 	Filename = "filename"
-	Charset = "charset"
+	Charset  = "charset"
 	Boundary = "boundary"
 )
 
 type Value struct {
-	v string
+	v  string
 	ps map[string]string
 }
 
@@ -30,11 +28,11 @@ func Parse(v string) (*Value, error) {
 }
 
 func New(v string) *Value {
-	return &Value{v, map[string]string{}}, nil
+	return &Value{v, map[string]string{}}
 }
 
 func NewWithParams(v string, ps map[string]string) *Value {
-	return &Value{v, ps}, nil
+	return &Value{v, ps}
 }
 
 type Modifier func(*Value)
@@ -158,12 +156,10 @@ func (pv *Value) Bytes() []byte {
 
 func (pv *Value) Clone() *Value {
 	var copy Value
-	copy.v= pv.v
+	copy.v = pv.v
 	copy.ps = make(map[string]string, len(pv.ps))
 	for k, v := range pv.ps {
 		copy.ps[k] = v
 	}
 	return &copy
 }
-
-var _ email.Outputter = &Value{}

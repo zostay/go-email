@@ -9,7 +9,7 @@ import (
 
 	"github.com/zostay/go-addr/pkg/addr"
 
-	"github.com/zostay/go-email/pkg/email/v2/param"
+	"github.com/zostay/go-email/pkg/v2/param"
 )
 
 var (
@@ -35,14 +35,14 @@ var (
 
 const (
 	ContentDisposition = "Content-disposition"
-	ContentType = "Content-type"
-	Date = "Date"
-	Subject = "Subject"
-	To = "To"
-	Cc = "Cc"
-	Bcc = "Bcc"
-	From = "From"
-	ReplyTo = "Reply-To"
+	ContentType        = "Content-type"
+	Date               = "Date"
+	Subject            = "Subject"
+	To                 = "To"
+	Cc                 = "Cc"
+	Bcc                = "Bcc"
+	From               = "From"
+	ReplyTo            = "Reply-To"
 )
 
 type Header struct {
@@ -226,7 +226,7 @@ func (h *Header) Set(name, body string) {
 
 	// if more than one, we're setting so delete any but the first
 	if len(ixs) > 1 {
-		for i := len(ixs)-1; i > 0; i-- {
+		for i := len(ixs) - 1; i > 0; i-- {
 			// ignore out of range errors, we don't make that mistake here
 			_ = h.DeleteField(ixs[i])
 		}
