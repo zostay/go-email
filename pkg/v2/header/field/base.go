@@ -34,7 +34,7 @@ func (f *Base) SetBody(body string) {
 
 // String returns the complete header field as a string.
 func (f *Base) String() string {
-	return fmt.Sprintf("%s: %s", f.name, f.body)
+	return fmt.Sprintf("%s: %s", f.name, Encode(f.body))
 }
 
 // Bytes returns the complete header field as a slice of bytes.
