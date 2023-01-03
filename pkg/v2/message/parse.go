@@ -103,16 +103,14 @@ func WithUnlimitedRecursion() ParseOption {
 // found. If the header/body split is found, it returns the location of the
 // split (including the split newlines) and the line break to use with the
 // header as a slice of bytes.
-func searchForSplit(buf []byte) (epos int, ecrlf []byte) {
+func searchForSplit(buf []byte) (pos int, crlf []byte) {
 	// Find the split between header/body
-	epos = -1
+	pos = -1
 	for _, s := range splits {
-		if pos := bytes.Index(buf, s); pos > -1 {
-			if ecrlf == nil || pos < epos {
-				epos = pos + len(s)
-				ecrlf = s[0 : len(s)/2]
-				return
-			}
+		if testPos := bytes.Index(buf, s); testPos > -1 {
+			pos = testPos + len(s)
+			crlf = s[0 : len(s)/2]
+			return
 		}
 	}
 
@@ -127,8 +125,6 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 	p := make([]byte, pr.chunkSize)
 	buf := &bytes.Buffer{}
 	searched := 0
-	var epos int
-	var ecrlf []byte
 	for {
 		// read in some bytes
 		n, err := r.Read(p)
@@ -146,11 +142,10 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 		}
 
 		// check the tail of the buffer for end of header
-		epos, ecrlf = searchForSplit(buf.Bytes()[searched:])
-		if epos > -1 {
+		pos, crlf := searchForSplit(buf.Bytes()[searched:])
+		if pos >= 0 {
 			// we found the split, return the data
-			hdr := make([]byte, epos)
-			crlf := ecrlf[0 : len(ecrlf)/2]
+			hdr := make([]byte, pos)
 			_, _ = buf.Read(hdr)
 			return hdr, crlf, &remainder{buf.Bytes(), r}, nil
 		}
