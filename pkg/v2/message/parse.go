@@ -456,3 +456,13 @@ func (r *remainder) Read(p []byte) (n int, err error) {
 
 	return n, err
 }
+
+// Close implements io.Closer, just in case the nested io.Reader needs it. It
+// passes the Close() call through. If the io.Reader is not an io.Closer, this
+// is a no-op.
+func (r *remainder) Close() error {
+	if c, isCloser := r.r.(io.Closer); isCloser {
+		return c.Close()
+	}
+	return nil
+}
