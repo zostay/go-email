@@ -174,22 +174,22 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 	return buf.Bytes(), []byte("\x0d"), &bytes.Buffer{}, nil
 }
 
-// ParseOpaque will turn the given input into an Opaque by detecting the line
-// break used to split the header from the body, using that break to split the
-// header part from the body part, and parsing the header. The body, whatever it
-// is, is kept as an opaque value provided in the io.Reader part of the
-// constructed Opaque object.
-func ParseOpaque(r io.Reader, opts ...ParseOption) (*Opaque, error) {
-	pr := defaultParser.clone()
-	for _, opt := range opts {
-		opt(pr)
-	}
+// // ParseOpaque will turn the given input into an Opaque by detecting the line
+// // break used to split the header from the body, using that break to split the
+// // header part from the body part, and parsing the header. The body, whatever it
+// // is, is kept as an opaque value provided in the io.Reader part of the
+// // constructed Opaque object.
+// func ParseOpaque(r io.Reader, opts ...ParseOption) (*Opaque, error) {
+// 	pr := defaultParser.clone()
+// 	for _, opt := range opts {
+// 		opt(pr)
+// 	}
+//
+// 	return pr.parseOpaque(r)
+// }
 
-	return pr.parseOpaque(r)
-}
-
-// parseOpaque implements ParseOpaque.
-func (pr *parser) parseOpaque(r io.Reader) (*Opaque, error) {
+// parseOpaque turns a reader into an Opaque.
+func (pr *parser) parseToOpaque(r io.Reader) (*Opaque, error) {
 	hdr, crlf, body, err := pr.splitHeadFromBody(r)
 	if err != nil {
 		return nil, err
@@ -226,10 +226,15 @@ func (pr *parser) parseOpaque(r io.Reader) (*Opaque, error) {
 // point a *Multipart will be returned with all the parts broken up into
 // pieces. If the end boundary is missing, it will also return an error
 // ErrMissingEndBoundary.
-func Parse(msg *Opaque, opts ...ParseOption) (Generic, error) {
+func Parse(r io.Reader, opts ...ParseOption) (Generic, error) {
 	pr := defaultParser.clone()
 	for _, opt := range opts {
 		opt(pr)
+	}
+
+	msg, err := pr.parseToOpaque(r)
+	if err != nil {
+		return msg, err
 	}
 
 	return pr.parse(msg, 0)
@@ -404,7 +409,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 		parts = append(parts, part)
 
 		// parse each part as a simple message first
-		opMsg, err := pr.parseOpaque(bytes.NewReader(part))
+		opMsg, err := pr.parseToOpaque(bytes.NewReader(part))
 		if err != nil {
 			return originalMessage(), err
 		}
