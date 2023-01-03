@@ -11,29 +11,23 @@ import (
 	"github.com/zostay/go-email/pkg/v2/header"
 )
 
+// Constants related to Parse() options.
 const (
 	// DefaultMaxMultipartDepth is the default depth the parser will recurse
 	// into a message.
 	DefaultMaxMultipartDepth = 10
 
 	// DefaultChunkSize the default size of chunks to read from the input while
-	// parsing a message. Defaults to 16K.
+	// splitting the message into header and body. Defaults to 16K, though this
+	// could change at any time.
 	DefaultChunkSize = 16_384
 )
 
+// Errors that occur during parsing.
 var (
 	// ErrNoBoundary is returned by Parse when the boundary parameter is not set
 	// on the Content-type field of the message header.
 	ErrNoBoundary = errors.New("the boundary parameter is missing from Content-type")
-
-	// ErrMissingBoundary is returned by Parse when the message body does not
-	// appear to contain a proper set of boundaries.
-	ErrMissingBoundary = errors.New("the provided boundary is not found in the message")
-
-	// ErrMissingEndBoundary is returned by Parse when the message body is
-	// missing the final boundary, which suggests the message may not be
-	// complete.
-	ErrMissingEndBoundary = errors.New("the finally boundary is not found")
 )
 
 // ParseError is returned when one or more errors occur while parsing an email
@@ -436,11 +430,16 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	}, nil
 }
 
+// remainder takes the bytes already read from an io.Reader and make a new
+// reader that returns those bytes first and then passes the reads from the
+// unread part of the io.Reader on to the caller.
 type remainder struct {
 	prefix []byte
 	r      io.Reader
 }
 
+// Read perform a read from the prefix buffer first, if any bytes remain. Once
+// those bytes have been consumed, it starts consuming bytes from the io.Reader.
 func (r *remainder) Read(p []byte) (n int, err error) {
 	// read from prefix first
 	if len(r.prefix) > 0 {

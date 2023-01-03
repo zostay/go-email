@@ -12,6 +12,7 @@ import (
 	"github.com/zostay/go-email/pkg/v2/param"
 )
 
+// Errors returned by various header methods and functions.
 var (
 	// ErrNoSuchField is returned by Header methods when the operation
 	// being performed failed because the header named does not exist.
@@ -33,6 +34,7 @@ var (
 	ErrWrongAddressType = errors.New("incorrect address type during write")
 )
 
+// Helpful constants to common headers.
 const (
 	ContentDisposition = "Content-disposition"
 	ContentType        = "Content-type"
