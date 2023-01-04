@@ -191,6 +191,52 @@ func (h *Header) GetAddressList(name string) (addr.AddressList, error) {
 	return al, nil
 }
 
+// getAllAddressLists will return a slice of addr.AddressList for all headers
+// with the given name or return an error.
+func (h *Header) getAllAddressLists(name string) ([]addr.AddressList, error) {
+	bs, err := h.GetAll(name)
+	if err != nil {
+		return nil, err
+	}
+
+	allAl := make([]addr.AddressList, 0, 10)
+	for _, b := range bs {
+		al, err := addr.ParseEmailAddressList(b)
+		if err != nil {
+			al = parseEmailAddressList(b)
+		}
+
+		allAl = append(allAl, al)
+	}
+
+	h.setValue(name, allAl)
+
+	return allAl, nil
+}
+
+// GetAllAddressLists will return a slice of addr.AddressList for all headers
+// with the given name.
+//
+// This uses a very forgiving parser for email addresses, so it won't error on
+// weird and wonky addresses, but do its best to return them, so you may get
+// weird results from this.
+//
+// If the named field does not exist in the header, this will return nil with
+// ErrNoSuchField.
+func (h *Header) GetAllAddressLists(name string) ([]addr.AddressList, error) {
+	v, found := h.getValue(name)
+	if !found {
+		return h.getAllAddressLists(name)
+	}
+
+	als, isAddrLists := v.([]addr.AddressList)
+	if !isAddrLists {
+		return h.getAllAddressLists(name)
+	}
+
+	return als, nil
+}
+
 // getParamValue will parse a param.Value out of the given field or return an
 // error.
 func (h *Header) getParamValue(name string) (*param.Value, error) {
@@ -237,7 +283,7 @@ func (h *Header) GetParamValue(name string) (*param.Value, error) {
 // getKeywordsList will return keywords for all header fields with the given
 // name or return an error.
 func (h *Header) getKeywordsList(name string) ([]string, error) {
-	bs, err := h.GetAllNamed(name)
+	bs, err := h.GetAll(name)
 	if err != nil {
 		return nil, err
 	}
@@ -278,9 +324,9 @@ func (h *Header) GetKeywordsList(name string) ([]string, error) {
 	return ks, nil
 }
 
-// getAllNamed fetches all the header field bodies for fields with the given
+// getAll fetches all the header field bodies for fields with the given
 // name or returns an error if there are no such fields.
-func (h *Header) getAllNamed(name string) ([]string, error) {
+func (h *Header) getAll(name string) ([]string, error) {
 	fs := h.GetAllFieldsNamed(name)
 	if len(fs) == 0 {
 		return nil, ErrNoSuchField
@@ -296,32 +342,32 @@ func (h *Header) getAllNamed(name string) ([]string, error) {
 	return bs, nil
 }
 
-// GetAllNamed fetches all the header field bodies for fields with the given
+// GetAll fetches all the header field bodies for fields with the given
 // name and returns them as a slice of strings.
 //
 // It returns nil with ErrNoSuchField if no field with the given name is set on
 // the header.
-func (h *Header) GetAllNamed(name string) ([]string, error) {
+func (h *Header) GetAll(name string) ([]string, error) {
 	v, found := h.getValue(name)
 	if !found {
-		return h.getAllNamed(name)
+		return h.getAll(name)
 	}
 
 	ss, isStringSlice := v.([]string)
 	if !isStringSlice {
-		return h.getAllNamed(name)
+		return h.getAll(name)
 	}
 
 	return ss, nil
 }
 
-// SetAllNamed replaces all the header fields with the given name with the
+// SetAll replaces all the header fields with the given name with the
 // bodies given. After a successful completion of this method, the field with
 // the given name will occur exactly len(bodies) times in the header. If the
 // field is already present in the header, existing fields will have their
 // bodies replaced with the new values. Any new fields will be appended to the
 // end of the header.
-func (h *Header) SetAllNamed(name string, bodies []string) {
+func (h *Header) SetAll(name string, bodies []string) {
 	ixs := h.GetIndexesNamed(name)
 
 	for i, b := range bodies {
@@ -398,9 +444,19 @@ func (h *Header) SetTime(name string, body time.Time) {
 // with a single header containing the given addr.AddressList.
 func (h *Header) SetAddressList(name string, body addr.AddressList) {
 	h.setValue(name, body)
-	body[0].Address()
 	bodyStr := body.String()
 	h.Set(name, bodyStr)
+}
+
+// SetAllAddressLists will replace all existing header fields with a new set
+// of header fields from the given slice of addr.AddressList.
+func (h *Header) SetAllAddressLists(name string, bodies []addr.AddressList) {
+	h.setValue(name, bodies)
+	strs := make([]string, len(bodies))
+	for i, body := range bodies {
+		strs[i] = body.String()
+	}
+	h.SetAll(name, strs)
 }
 
 // SetParamValue will replace all existing header fields with the given name
@@ -764,12 +820,12 @@ func (h *Header) SetKeywords(ks []string) {
 
 // GetComments returns the content of the Comments header fields.
 func (h *Header) GetComments() ([]string, error) {
-	return h.GetAllNamed(Comments)
+	return h.GetAll(Comments)
 }
 
 // SetComments replaces all Comments fields with the given bodies.
 func (h *Header) SetComments(cs []string) {
-	h.SetAllNamed(Comments, cs)
+	h.SetAll(Comments, cs)
 }
 
 // GetReferences returns the message ID in the References header, if any.

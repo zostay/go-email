@@ -7,20 +7,20 @@ import (
 // Parse will parse the given slice of bytes into an email header using the
 // given line break string. It will assume the entire string given represents
 // the header to be parsed.
-func Parse(m, lb []byte) (*Header, error) {
-	lines, err := field.ParseLines(m, lb)
+func Parse(m []byte, lb Break) (*Header, error) {
+	lines, err := field.ParseLines(m, lb.Bytes())
 	if err != nil {
 		return nil, err
 	}
 
 	fields := make([]*field.Field, len(lines))
 	for i, line := range lines {
-		fields[i] = field.Parse(line, lb)
+		fields[i] = field.Parse(line, lb.Bytes())
 	}
 
 	h := &Header{
 		Base: Base{
-			lbr:    Break(lb),
+			lbr:    lb,
 			vf:     field.DefaultFoldEncoding,
 			fields: fields,
 		},
