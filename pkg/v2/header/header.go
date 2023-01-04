@@ -2,7 +2,6 @@ package header
 
 import (
 	"errors"
-	"mime"
 	"net/mail"
 	"strings"
 	"time"
@@ -34,20 +33,35 @@ var (
 	ErrWrongAddressType = errors.New("incorrect address type during write")
 )
 
-// Helpful constants to common headers.
+// These are standard headers defined in RFC 5322.
 const (
+	Bcc                = "Bcc"
+	Cc                 = "Cc"
+	Comments           = "Comments"
 	ContentDisposition = "Content-disposition"
 	ContentType        = "Content-type"
 	Date               = "Date"
+	From               = "From"
+	InReplyTo          = "In-reply-to"
+	Keywords           = "Keywords"
+	MessageID          = "Message-id"
+	References         = "References"
+	ReplyTo            = "Reply-to"
+	Sender             = "Sender"
 	Subject            = "Subject"
 	To                 = "To"
-	Cc                 = "Cc"
-	Bcc                = "Bcc"
-	From               = "From"
-	ReplyTo            = "Reply-To"
 )
 
+// Header wraps a Base, which does the actual storage and low-level field
+// manipulation. This provides several methods to make reading and manipulating
+// the header more convenient and some caching for complex values parsed from
+// header fields.
+//
+// The getter methods of this object will return an error if the field being
+// fetched has not been set on the header. The error returned will be
+// ErrNoSuchField.
 type Header struct {
+	// Base provides the low-level storage of header fields.
 	Base
 
 	// valueCache holds the semantic value for a header. As of this time, we
@@ -64,21 +78,29 @@ type Header struct {
 	valueCache map[string]any
 }
 
-// func NewHeader(in mail.Header) *Header {
-// 	if in == nil {
-// 		return &Header{}
-// 	}
-//
-// 	var h Header
-// 	for name, bodies := range in {
-// 		for _, body := range bodies {
-// 			h.InsertBeforeField(h.Size(), name, body)
-// 		}
-// 	}
-//
-// 	return &h
-// }
+// getValue retrieves the cached value. The first value is the cached value
+// (which may be nil). The second value is a boolean that returns true if the
+// cache value was set.
+func (h *Header) getValue(name string) (any, bool) {
+	n := strings.ToLower(name)
+	v, found := h.valueCache[n]
+	return v, found
+}
 
+// setValue replaces the cached value for the given name.
+func (h *Header) setValue(name string, value any) {
+	if h.valueCache == nil {
+		h.valueCache = make(map[string]any, h.Size())
+	}
+	n := strings.ToLower(name)
+	h.valueCache[n] = value
+}
+
+// Get retrieves the string value of the named field.
+//
+// If the named field is not set in the header, it will return an empty string
+// with ErrNoSuchField. If there are multiple headers for the given named field,
+// it will return ErrManyFields.
 func (h *Header) Get(name string) (string, error) {
 	ixs := h.GetIndexesNamed(name)
 	if len(ixs) == 0 {
@@ -92,27 +114,14 @@ func (h *Header) Get(name string) (string, error) {
 	return h.GetField(ixs[0]).Body(), nil
 }
 
-func (h *Header) getValue(name string) (any, bool) {
-	n := strings.ToLower(name)
-	v, found := h.valueCache[n]
-	return v, found
-}
-
-func (h *Header) setValue(name string, value any) {
-	if h.valueCache == nil {
-		h.valueCache = make(map[string]any, h.Size())
-	}
-	n := strings.ToLower(name)
-	h.valueCache[n] = value
-}
-
+// getTime parses the header body as a date and caches the result.
 func (h *Header) getTime(name string) (time.Time, error) {
-	f := h.GetFieldNamed(name, 0)
-	if f == nil {
-		return time.Time{}, ErrNoSuchField
+	body, err := h.Get(name)
+	if err != nil {
+		return time.Time{}, err
 	}
 
-	t, err := mail.ParseDate(f.Body())
+	t, err := mail.ParseDate(body)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -122,6 +131,12 @@ func (h *Header) getTime(name string) (time.Time, error) {
 	return t, nil
 }
 
+// GetTime gets the given date header field as a time.Time.
+//
+// It will return an error if it is unable to parse the time value from the date
+// header. It will return the zero value and ErrNoSuchField if the header does
+// not exist. It will return the zero value and ErrManyFields if more than one
+// field with the name is set on the header.
 func (h *Header) GetTime(name string) (time.Time, error) {
 	v, found := h.getValue(name)
 	if !found {
@@ -136,15 +151,18 @@ func (h *Header) GetTime(name string) (time.Time, error) {
 	return t, nil
 }
 
+// getAddressList will parse an addr.AddressList out of the field or return an
+// error. This falls back onto parseEmailAddressList() if
+// addr.ParseEmailAddrList() lets us down.
 func (h *Header) getAddressList(name string) (addr.AddressList, error) {
-	f := h.GetFieldNamed(name, 0)
-	if f == nil {
-		return nil, ErrNoSuchField
+	body, err := h.Get(name)
+	if err != nil {
+		return nil, err
 	}
 
-	al, err := addr.ParseEmailAddressList(f.Body())
+	al, err := addr.ParseEmailAddressList(body)
 	if err != nil {
-		al = parseEmailAddressList(f.Body())
+		al = parseEmailAddressList(body)
 	}
 
 	h.setValue(name, al)
@@ -152,6 +170,13 @@ func (h *Header) getAddressList(name string) (addr.AddressList, error) {
 	return al, nil
 }
 
+// GetAddressList will return an addr.AddressList for the named field. This
+// method works hard to avoid parse errors and tries to accept anything. As such
+// a badly formatted address field might return a weird address value.
+//
+// It will return nil and ErrNoSuchField if the field is not set on the header.
+// It will return ErrManyFields if the field is set more than once on the
+// header.
 func (h *Header) GetAddressList(name string) (addr.AddressList, error) {
 	v, found := h.getValue(name)
 	if !found {
@@ -166,13 +191,15 @@ func (h *Header) GetAddressList(name string) (addr.AddressList, error) {
 	return al, nil
 }
 
+// getParamValue will parse a param.Value out of the given field or return an
+// error.
 func (h *Header) getParamValue(name string) (*param.Value, error) {
-	f := h.GetFieldNamed(name, 0)
-	if f == nil {
-		return nil, ErrNoSuchField
+	body, err := h.Get(name)
+	if err != nil {
+		return nil, err
 	}
 
-	pv, err := param.Parse(f.Body())
+	pv, err := param.Parse(body)
 	if err != nil {
 		return nil, err
 	}
@@ -182,6 +209,12 @@ func (h *Header) getParamValue(name string) (*param.Value, error) {
 	return pv, nil
 }
 
+// GetParamValue will return a param.Value for the header field matching the
+// given name.
+//
+// This will return an error if it is unable to parse a param.Value. This will
+// ErrNoSuchField if no field with the given name is present. It will return
+// ErrManyFields if mroe than one field with the given name is found.
 func (h *Header) GetParamValue(name string) (*param.Value, error) {
 	v, found := h.getValue(name)
 	if !found {
@@ -201,22 +234,134 @@ func (h *Header) GetParamValue(name string) (*param.Value, error) {
 	return pv.Clone(), nil
 }
 
-func forbiddenBodyChar(c rune) bool {
-	if c == ' ' || c == '\t' {
-		return false
+// getKeywordsList will return keywords for all header fields with the given
+// name or return an error.
+func (h *Header) getKeywordsList(name string) ([]string, error) {
+	bs, err := h.GetAllNamed(name)
+	if err != nil {
+		return nil, err
 	}
-	if c >= 33 && c <= 126 {
-		return false
+
+	allKs := make([]string, 0, len(bs)*2)
+	for _, b := range bs {
+		ks := strings.Split(b, ",")
+		for _, k := range ks {
+			allKs = append(allKs, strings.TrimSpace(k))
+		}
 	}
-	return true
+
+	h.setValue(name, allKs)
+
+	return allKs, nil
 }
 
-func (h *Header) Set(name, body string) {
-	// if the given header body contains forbidden characters, encode the header
-	if strings.IndexFunc(body, forbiddenBodyChar) > -1 {
-		body = mime.BEncoding.Encode("utf-8", body)
+// GetKeywordsList will return a list of strings representing all the keywords
+// set on the named header. These are formatted as for the Keywords header, but
+// this is the generic method that allows for treating other headers as
+// Keywords. There can be zero or more Keywords headers. Each header is, then,
+// a comma-separated list of Keywords. This will collect those values from all
+// the headers with the given name and return them.
+//
+// This method will return nil with ErrNoSuchField if the named field does not
+// exist.
+func (h *Header) GetKeywordsList(name string) ([]string, error) {
+	v, found := h.getValue(name)
+	if !found {
+		return h.getKeywordsList(name)
 	}
 
+	ks, isStringSlice := v.([]string)
+	if !isStringSlice {
+		return h.getKeywordsList(name)
+	}
+
+	return ks, nil
+}
+
+// getAllNamed fetches all the header field bodies for fields with the given
+// name or returns an error if there are no such fields.
+func (h *Header) getAllNamed(name string) ([]string, error) {
+	fs := h.GetAllFieldsNamed(name)
+	if len(fs) == 0 {
+		return nil, ErrNoSuchField
+	}
+
+	bs := make([]string, len(fs))
+	for i, f := range fs {
+		bs[i] = f.Body()
+	}
+
+	h.setValue(name, bs)
+
+	return bs, nil
+}
+
+// GetAllNamed fetches all the header field bodies for fields with the given
+// name and returns them as a slice of strings.
+//
+// It returns nil with ErrNoSuchField if no field with the given name is set on
+// the header.
+func (h *Header) GetAllNamed(name string) ([]string, error) {
+	v, found := h.getValue(name)
+	if !found {
+		return h.getAllNamed(name)
+	}
+
+	ss, isStringSlice := v.([]string)
+	if !isStringSlice {
+		return h.getAllNamed(name)
+	}
+
+	return ss, nil
+}
+
+// SetAllNamed replaces all the header fields with the given name with the
+// bodies given. After a successful completion of this method, the field with
+// the given name will occur exactly len(bodies) times in the header. If the
+// field is already present in the header, existing fields will have their
+// bodies replaced with the new values. Any new fields will be appended to the
+// end of the header.
+func (h *Header) SetAllNamed(name string, bodies []string) {
+	ixs := h.GetIndexesNamed(name)
+
+	for i, b := range bodies {
+		if i < len(ixs) {
+			// Replace existing Comments
+			f := h.GetField(ixs[i])
+			f.SetBody(b)
+			continue
+		}
+
+		// Append more Comments
+		h.InsertBeforeField(h.Size(), name, b)
+	}
+
+	if len(ixs) > len(bodies) {
+		// Delete extra Comments
+		for i := len(ixs); i >= len(bodies); i-- {
+			_ = h.DeleteField(i)
+		}
+	}
+}
+
+// SetKeywordsList will replace all Keywords headers currently set in the
+// header with one Keywords header with all the given keywords separated by
+// a comma.
+func (h *Header) SetKeywordsList(name string, keywords []string) {
+	h.setValue(name, keywords)
+	bodyStr := strings.Join(keywords, ", ")
+	h.Set(name, bodyStr)
+}
+
+// Set will replace all existing header fields with the given name with a single
+// header field with the given name and body. If the field already exists on the
+// header, then the first occurrence will be replaced with this value and any
+// other values will be deleted. If the field does not exist, it will be
+// appended to the end of the header.
+//
+// The procedure for replacing above is used to fall the Set* methods that
+// replace all fields with a single field.
+func (h *Header) Set(name, body string) {
 	// Check for existing fields
 	ixs := h.GetIndexesNamed(name)
 
@@ -240,12 +385,17 @@ func (h *Header) Set(name, body string) {
 	f.SetBody(body)
 }
 
+// SetTime will replace all existing header fields with the given name with a
+// single header field with the given name and time. The time will be formatted
+// via time.RFC1123Z.
 func (h *Header) SetTime(name string, body time.Time) {
 	h.setValue(name, body)
 	bodyStr := body.Format(time.RFC1123Z)
 	h.Set(name, bodyStr)
 }
 
+// SetAddressList will replace all existing header fields with the given name
+// with a single header containing the given addr.AddressList.
 func (h *Header) SetAddressList(name string, body addr.AddressList) {
 	h.setValue(name, body)
 	body[0].Address()
@@ -253,12 +403,16 @@ func (h *Header) SetAddressList(name string, body addr.AddressList) {
 	h.Set(name, bodyStr)
 }
 
+// SetParamValue will replace all existing header fields with the given name
+// with a single param.Value header containing the given param.Value.
 func (h *Header) SetParamValue(name string, body *param.Value) {
 	h.setValue(name, body)
 	bodyStr := body.String()
 	h.Set(name, bodyStr)
 }
 
+// getParamValueValue reads the primary value of the param.Value header or
+// returns an error.
 func (h *Header) getParamValueValue(name string) (string, error) {
 	pv, err := h.GetParamValue(name)
 	if err != nil {
@@ -268,21 +422,30 @@ func (h *Header) getParamValueValue(name string) (string, error) {
 	return pv.Value(), nil
 }
 
+// setParamValueValue sets the primary value of the param.Value header.
 func (h *Header) setParamValueValue(name, v string) {
-	pv, err := h.GetParamValue(name)
-	if err != nil {
-		if errors.Is(err, ErrNoSuchField) {
-			pv := param.New(v)
-			h.SetParamValue(name, pv)
-		}
-		h.Set(name, v)
+	// Before we start, let's make sure we cannot get an ErrManyFields first...
+	ixs := h.GetIndexesNamed(name)
+	for i := len(ixs) - 1; i > 0; i++ {
+		_ = h.DeleteField(ixs[i])
 	}
 
-	newPv := param.Modify(pv, param.Change(v))
+	// Then, pull the param.Value
+	pv, err := h.GetParamValue(name)
+	if err != nil {
+		// we got an error, just overwrite the whole header
+		pv = param.New(v)
+	} else {
+		// preserve everything else and update
+		pv = param.Modify(pv, param.Change(v))
+	}
 
-	h.SetParamValue(name, newPv)
+	// and replace
+	h.SetParamValue(name, pv)
 }
 
+// getParamValueParam gets a parameter value of the param.Value header or
+// returns an error.
 func (h *Header) getParamValueParam(name, p string) (string, error) {
 	pv, err := h.GetParamValue(name)
 	if err != nil {
@@ -296,6 +459,9 @@ func (h *Header) getParamValueParam(name, p string) (string, error) {
 	return "", ErrNoSuchFieldParameter
 }
 
+// setParamValueParam sets a parameter value of the param.Value header or
+// returns an error. The header must already exist before calling this
+// method.
 func (h *Header) setParamValueParam(name, p, v string) error {
 	pv, err := h.GetParamValue(name)
 	if err != nil {
@@ -308,74 +474,150 @@ func (h *Header) setParamValueParam(name, p, v string) error {
 	return nil
 }
 
-// GetContentType returns the MIME type set in the Content-type header (other
+// GetContentType returns the Content-type header as a param.Value.
+//
+// It returns nil and ErrNoSuchField if the field is not set on the header. It
+// returns nil and ErrManyFields if the field is set more than once on the
+// header. It will return nil and an error if there is a problem parsing the
+// param.Value.
+func (h *Header) GetContentType() (*param.Value, error) {
+	return h.GetParamValue(ContentType)
+}
+
+// SetContentType replaces the Content-type with the given param.Value.
+func (h *Header) SetContentType(v *param.Value) {
+	h.SetParamValue(ContentType, v)
+}
+
+// GetMediaType returns the MIME type set in the Content-type header (other
 // parameters will not be returned).
-func (h *Header) GetContentType() (string, error) {
+//
+// It returns nil and ErrNoSuchField if the field is not set on the header. It
+// returns nil and ErrManyFields fi the field is set more than once on the
+// header. It will return nil and an error if there is a problem parsing the
+// media type information out of the header.
+func (h *Header) GetMediaType() (string, error) {
 	return h.getParamValueValue(ContentType)
 }
 
-// SetContentType sets the MIME type on the Content-type header, creating it if
-// it has not been set yet.
-func (h *Header) SetContentType(mt string) {
+// SetMediaType replaces the MIME type on the Content-type header, creating it
+// if it has not been set yet. If the Content-type header already exists, any
+// other parameters already set will be preserved. If this header is set
+// multiple times (in violation of RFC 5322), it will remove all but the first
+// instance and replace the media type of the first instance.
+func (h *Header) SetMediaType(mt string) {
 	h.setParamValueValue(ContentType, mt)
 }
 
-// GetCharset gets the charset from the Content-type header or returns an error
-// if either the Content-type is missing or charset is not set as a parameter on
-// it.
+// GetCharset gets the charset from the Content-type header field.
+//
+// This method returns an empty string with ErrNoSuchField if no field is
+// present in the header. This method returns an empty string with
+// ErrNoSuchFieldParameter if the field is present, but the parameter is not set
+// on the field. This method returns an empty string with ErrManyFields if
+// the field is set more than once on the header. This method returns an empty
+// string and an error if the parameter values cannot be parsed out of the
+// field for some reason.
 func (h *Header) GetCharset() (string, error) {
 	return h.getParamValueParam(ContentType, param.Charset)
 }
 
-// SetCharset sets the charset on the Content-type header or returns an error if
-// Content-type header is not set at all. You must set a MIME type in the
-// Content-type header before setting the charset.
+// SetCharset sets the charset on the Content-type header.
+//
+// This method fails with a ErrNoSuchField if the field is not set on the
+// header. This method fails with an error if the parameter values cannot be
+// parsed out of the field for some reason.
 func (h *Header) SetCharset(c string) error {
 	return h.setParamValueParam(ContentType, param.Charset, c)
 }
 
-// GetBoundary gets the boundary fro the Content-type header or returns an error
-// if either the Content-type is missing or boundary is not set as a parameter
-// on it.
+// GetBoundary gets the boundary from the Content-type header field.
+//
+// This method returns an empty string with ErrNoSuchField if no field is
+// present in the header. This method returns an empty string with
+// ErrNoSuchFieldParameter if the field is present, but the parameter is not set
+// on the field. This method returns an empty string with ErrManyFields if
+// the field is set more than once on the header. This method returns an empty
+// string and an error if the parameter values cannot be parsed out of the
+// field for some reason.
 func (h *Header) GetBoundary() (string, error) {
 	return h.getParamValueParam(ContentType, param.Boundary)
 }
 
-// SetBoundary sets the boundary on the Content-type header or returns ane error
-// if the Content-type header is not set at all. You must set a MIME type in the
-// Content-type header before setting the boundary.
+// SetBoundary sets the boundary on the Content-type header.
+//
+// This method fails with a ErrNoSuchField if the field is not set on the
+// header. This method fails with an error if the parameter values cannot be
+// parsed out of the field for some reason.
 func (h *Header) SetBoundary(b string) error {
 	return h.setParamValueParam(ContentType, param.Boundary, b)
 }
 
-// GetContentDisposition returns the primary value of the Content-disposition
-// header, describing what the function of this part of the message is. This
-// method returns an error if there is no Content-disposition header.
-func (h *Header) GetContentDisposition() (string, error) {
+// GetContentDisposition returns the Content-disposition header as a
+// param.Value.
+//
+// It returns nil and ErrNoSuchField if the field is not set on the header. It
+// returns nil and ErrManyFields if the field is set more than once on the
+// header. It will return nil and an error if there is a problem parsing the
+// param.Value.
+func (h *Header) GetContentDisposition() (*param.Value, error) {
+	return h.GetParamValue(ContentDisposition)
+}
+
+// SetContentDisposition sets the Content-disposition to a new value from a
+// param.Value.
+func (h *Header) SetContentDisposition(v *param.Value) {
+	h.SetParamValue(ContentDisposition, v)
+}
+
+// GetPresentation returns the primary value of the Content-disposition
+// header, describing what the function of this part of the message is.
+//
+// It returns nil and ErrNoSuchField if the field is not set on the header. It
+// returns nil and ErrManyFields fi the field is set more than once on the
+// header. It will return nil and an error if there is a problem parsing the
+// presentation information out of the header.
+func (h *Header) GetPresentation() (string, error) {
 	return h.getParamValueValue(ContentDisposition)
 }
 
-// SetContentDisposition sets the disposition value of the Content-disposition
-// header field.
-func (h *Header) SetContentDisposition(d string) {
+// SetPresentation sets the disposition value of the Content-disposition
+// header field. If the Content-disposition header already exists, any other
+// parameters already set will be preserved. If this header is set multiple
+// times (in violation of RFC 5322), it will remove all but the first instance
+// and replace the presentation of the first instance.
+func (h *Header) SetPresentation(d string) {
 	h.setParamValueValue(ContentDisposition, d)
 }
 
 // GetFilename gets the filename parameter of the Content-disposition header.
-// It returns an error instead if either the Content-disposition header is not
-// set or the filename parameter is not set on the header.
+//
+// This method returns an empty string with ErrNoSuchField if no field is
+// present in the header. This method returns an empty string with
+// ErrNoSuchFieldParameter if the field is present, but the parameter is not set
+// on the field. This method returns an empty string with ErrManyFields if
+// the field is set more than once on the header. This method returns an empty
+// string and an error if the parameter values cannot be parsed out of the
+// field for some reason.
 func (h *Header) GetFilename() (string, error) {
 	return h.getParamValueParam(ContentDisposition, param.Filename)
 }
 
 // SetFilename sets the filename parameter of the Content-disposition header.
-// Returns an error if the Content-disposition header does not exist yet. A
-// disposition must be set before setting a filename.
+//
+// This method fails with a ErrNoSuchField if the field is not set on the
+// header. This method fails with an error if the parameter values cannot be
+// parsed out of the field for some reason.
 func (h *Header) SetFilename(f string) error {
 	return h.setParamValueParam(ContentDisposition, param.Filename, f)
 }
 
 // GetDate retrieves the Date header as a time.Time value.
+//
+// It will return an error if it is unable to parse the time value from the Date
+// header. It will return the zero value and ErrNoSuchField if the header does
+// not exist. It will return the zero value and ErrManyFields if more than one
+// Date field is set on the header.
 func (h *Header) GetDate() (time.Time, error) {
 	return h.GetTime(Date)
 }
@@ -385,93 +627,214 @@ func (h *Header) SetDate(d time.Time) {
 	h.SetTime(Date, d)
 }
 
-// GetSubject returns the header subject or returns an error if the Subject
-// header is not set.
+// GetSubject returns the value of the Subject header field.
+//
+// If Subject is not set in the header, it will return an empty string with
+// ErrNoSuchField. If there are multiple Subject headers, it will return
+// ErrManyFields.
 func (h *Header) GetSubject() (string, error) {
 	return h.Get(Subject)
 }
 
-// SetSubject sets the subject header.
+// SetSubject replaces the Subject header field.
 func (h *Header) SetSubject(s string) {
 	h.Set(Subject, s)
 }
 
+// setAddress allows the setting of an address field either from a string or
+// from an address list or fails with an error.
 func (h *Header) setAddress(n string, a any) error {
+	var al addr.AddressList
 	switch v := a.(type) {
 	case string:
-		h.Set(n, v)
+		var err error
+		al, err = addr.ParseEmailAddressList(v)
+		if err != nil {
+			return err
+		}
 	case addr.AddressList:
-		h.SetAddressList(n, v)
+		al = v
 	default:
 		return ErrWrongAddressType
 	}
+	h.SetAddressList(n, al)
 	return nil
 }
 
-// GetTo returns the To address field as an addr.AddressList or returns an error
-// if the To header does not exist or there's a problem decoding the addresses.
+// GetTo returns the To address field as an addr.AddressList.
+//
+// It will return nil and ErrNoSuchField if the field is not set on the header.
+// It will return ErrManyFields if the field is set more than once on the
+// header.
 func (h *Header) GetTo() (addr.AddressList, error) {
 	return h.GetAddressList(To)
 }
 
 // SetTo sets the To address field with either an addr.AddressList or a string.
+//
 // It will fail with an error returned if something other than those types is
-// provided.
+// provided or if the given string fails to strictly parse.
 func (h *Header) SetTo(a any) error {
 	return h.setAddress(To, a)
 }
 
-// GetCc returns the Cc address field as an addr.AddressList or returns an error
-// if the Cc header does not exist or there's a problem decoding the addresses.
+// GetCc returns the Cc address field as an addr.AddressList.
+//
+// It will return nil and ErrNoSuchField if the field is not set on the header.
+// It will return ErrManyFields if the field is set more than once on the
+// header.
 func (h *Header) GetCc() (addr.AddressList, error) {
 	return h.GetAddressList(Cc)
 }
 
 // SetCc sets the Cc address field with either an addr.AddressList or a string.
+//
 // It will fail with an error returned if something other than those types is
-// provided.
+// provided or if the given string fails to strictly parse.
 func (h *Header) SetCc(a any) error {
 	return h.setAddress(Cc, a)
 }
 
-// GetBcc returns the Bcc address field as an addr.AddressList or returns an error
-// if the Bcc header does not exist or there's a problem decoding the addresses.
+// GetBcc returns the Bcc address field as an addr.AddressList.
+//
+// It will return nil and ErrNoSuchField if the field is not set on the header.
+// It will return ErrManyFields if the field is set more than once on the
+// header.
 func (h *Header) GetBcc() (addr.AddressList, error) {
 	return h.GetAddressList(Bcc)
 }
 
-// SetBcc sets the Bcc address field with either an addr.AddressList or a string.
+// SetBcc sets the Bcc address field with either an addr.AddressList or a
+// string.
+//
 // It will fail with an error returned if something other than those types is
-// provided.
+// provided or if the given string fails to strictly parse.
 func (h *Header) SetBcc(a any) error {
 	return h.setAddress(Bcc, a)
 }
 
-// GetFrom returns the From address field as an addr.AddressList or returns an error
-// if the From header does not exist or there's a problem decoding the addresses.
+// GetFrom returns the From address field as an addr.AddressList.
+//
+// It will return nil and ErrNoSuchField if the field is not set on the header.
+// It will return ErrManyFields if the field is set more than once on the
+// header.
 func (h *Header) GetFrom() (addr.AddressList, error) {
 	return h.GetAddressList(From)
 }
 
-// SetFrom sets the From address field with either an addr.AddressList or a string.
+// SetFrom sets the From address field with either an addr.AddressList or a
+// string.
+//
 // It will fail with an error returned if something other than those types is
-// provided.
+// provided or if the given string fails to strictly parse.
 func (h *Header) SetFrom(a any) error {
 	return h.setAddress(From, a)
 }
 
-// GetReplyTo returns the ReplyTo address field as an addr.AddressList or returns an error
-// if the ReplyTo header does not exist or there's a problem decoding the addresses.
+// GetReplyTo returns the ReplyTo address field as an addr.AddressList.
+//
+// It will return nil and ErrNoSuchField if the field is not set on the header.
+// It will return ErrManyFields if the field is set more than once on the
+// header.
 func (h *Header) GetReplyTo() (addr.AddressList, error) {
 	return h.GetAddressList(ReplyTo)
 }
 
-// SetReplyTo sets the ReplyTo address field with either an addr.AddressList or a string.
+// SetReplyTo sets the ReplyTo address field with either an addr.AddressList or
+// a string.
+//
 // It will fail with an error returned if something other than those types is
-// provided.
+// provided or if the given string fails to strictly parse.
 func (h *Header) SetReplyTo(a any) error {
 	return h.setAddress(ReplyTo, a)
 }
+
+// GetKeywords returns all the keywords set on all the Keywords fields.
+//
+// This method will return nil with ErrNoSuchField if the Keywords field does
+// not exist.
+func (h *Header) GetKeywords() ([]string, error) {
+	return h.GetKeywordsList(Keywords)
+}
+
+// SetKeywords sets keywords on the Keywords header.
+func (h *Header) SetKeywords(ks []string) {
+	h.SetKeywordsList(Keywords, ks)
+}
+
+// GetComments returns the content of the Comments header fields.
+func (h *Header) GetComments() ([]string, error) {
+	return h.GetAllNamed(Comments)
+}
+
+// SetComments replaces all Comments fields with the given bodies.
+func (h *Header) SetComments(cs []string) {
+	h.SetAllNamed(Comments, cs)
+}
+
+// GetReferences returns the message ID in the References header, if any.
+//
+// If References is not set in the header, it will return an empty string with
+// ErrNoSuchField. If there are multiple References headers, it will return
+// ErrManyFields.
+func (h *Header) GetReferences() (string, error) {
+	return h.Get(References)
+}
+
+// SetReferences sets the message ID to store in the References header.
+func (h *Header) SetReferences(ref string) {
+	h.Set(References, ref)
+}
+
+// GetInReplyTo returns the message ID in the In-reply-to header, if any.
+//
+// If In-reply-to is not set in the header, it will return an empty string with
+// ErrNoSuchField. If there are multiple In-reply-to headers, it will return
+// ErrManyFields.
+func (h *Header) GetInReplyTo() (string, error) {
+	return h.Get(InReplyTo)
+}
+
+// SetInReplyTo returns the message ID in the In-reply-to header.
+func (h *Header) SetInReplyTo(ref string) {
+	h.Set(InReplyTo, ref)
+}
+
+// GetMessageID returns the Message ID found in the Message-id header, if any.
+//
+// If Message-id is not set in the header, it will return an empty string with
+// ErrNoSuchField. If there are multiple Message-id headers, it will return
+// ErrManyFields.
+func (h *Header) GetMessageID() (string, error) {
+	return h.Get(MessageID)
+}
+
+// SetMessageID sets the Message-ID header of the message header.
+func (h *Header) SetMessageID(ref string) {
+	h.Set(MessageID, ref)
+}
+
+// GetSender returns the address list in the Sender header, if any.
+//
+// It will return nil and ErrNoSuchField if the field is not set on the header.
+// It will return ErrManyFields if the field is set more than once on the
+// header.
+func (h *Header) GetSender() (addr.AddressList, error) {
+	return h.GetAddressList(Sender)
+}
+
+// SetSender sets the Sender address field with either an addr.AddressList or
+// a string.
+//
+// It will fail with an error returned if something other than those types is
+// provided or if the given string fails to strictly parse.
+func (h *Header) SetSender(a any) error {
+	return h.setAddress(Sender, a)
+}
+
+// TODO Add support for resent blocks
+
+// TODO Add support for trace fields (Return-Path and Received)
 
 // parseEmailAddressList is a fallback method for email address parsing. The
 // parser in github.com/zostay/go-addr is a strict parser, which is useful for

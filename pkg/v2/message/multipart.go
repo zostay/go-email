@@ -58,11 +58,17 @@ type Part interface {
 	// returned is ErrMultipart.
 	GetReader() (io.Reader, error)
 
-	// GetParts provides teh content of a multipart message with sub-parts. This
+	// GetParts provides the content of a multipart message with sub-parts. This
 	// should only be called when IsMultipart() returns true. If you call this
 	// when IsMultipart() would return false, a nil and an error will be
 	// returned. The error that should be returned is ErrNotMultipart.
 	GetParts() ([]Part, error)
+
+	// String returns the message as a string.
+	String() string
+
+	// Bytes returns the message as a slice of bytes.
+	Bytes() []byte
 }
 
 // Generic is just an alias for Part, which is intended to convey

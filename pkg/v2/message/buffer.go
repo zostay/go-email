@@ -125,8 +125,8 @@ func (b *Buffer) Write(p []byte) (int, error) {
 }
 
 func (b *Buffer) prepareForMultipartOutput() {
-	if _, err := b.GetContentType(); errors.Is(err, header.ErrNoSuchField) {
-		b.SetContentType(DefaultMultipartContentType)
+	if _, err := b.GetMediaType(); errors.Is(err, header.ErrNoSuchField) {
+		b.SetMediaType(DefaultMultipartContentType)
 	}
 
 	if _, err := b.GetBoundary(); errors.Is(err, header.ErrNoSuchFieldParameter) {

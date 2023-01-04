@@ -30,19 +30,19 @@ func ExampleOpaqueBuffer() {
 func ExampleMultipartBuffer() {
 	mm := &message.Buffer{}
 	mm.SetSubject("Fancy message")
-	mm.SetContentType("multipart/mixed")
+	mm.SetMediaType("multipart/mixed")
 
 	altPart := &message.Buffer{}
-	mm.SetContentType("multipart/alternative")
+	mm.SetMediaType("multipart/alternative")
 
 	txtPart := &message.Buffer{}
-	txtPart.SetContentType("text/plain")
-	txtPart.SetContentDisposition("attachment")
+	txtPart.SetMediaType("text/plain")
+	txtPart.SetPresentation("attachment")
 	fmt.Fprintln(txtPart, "Hello *World*!")
 
 	htmlPart := &message.Buffer{}
-	htmlPart.SetContentType("text/html")
-	txtPart.SetContentDisposition("attachment")
+	htmlPart.SetMediaType("text/html")
+	txtPart.SetPresentation("attachment")
 	fmt.Fprintln(htmlPart, "Hello <b>World</b>!")
 
 	txtMsg, _ := txtPart.Opaque()
@@ -50,8 +50,8 @@ func ExampleMultipartBuffer() {
 	altPart.Add(txtMsg, htmlMsg)
 
 	imgAttach := &message.Buffer{}
-	imgAttach.SetContentType("image/jpeg")
-	imgAttach.SetContentDisposition("attachment")
+	imgAttach.SetMediaType("image/jpeg")
+	imgAttach.SetPresentation("attachment")
 	imgAttach.SetFilename("image.jpg")
 	img, _ := os.Open("image.jpg")
 	io.Copy(imgAttach, img)
