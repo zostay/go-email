@@ -10,7 +10,7 @@ import (
 // word encoder. It will always output b-type (Base-64) encoding using UTF-8 as
 // the character set.
 func Encode(body string) string {
-	return mime.BEncoding.Encode("UTF-8", body)
+	return mime.BEncoding.Encode("utf-8", body)
 }
 
 // Decode transforms a single header field body and looks for MIME word encoded field
