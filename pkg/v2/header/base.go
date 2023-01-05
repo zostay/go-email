@@ -1,8 +1,8 @@
 package header
 
 import (
-	"bytes"
 	"errors"
+	"io"
 	"strings"
 
 	"github.com/zostay/go-email/pkg/v2/header/field"
@@ -118,21 +118,26 @@ func (h *Base) ListFields() []*field.Field {
 	return fs
 }
 
-// Bytes returns the header as a slice of bytes.
-func (h *Base) Bytes() []byte {
-	var buf bytes.Buffer
+// WriteTo will write the contents of the header to the given io.Writer.
+func (h *Base) WriteTo(w io.Writer) (int64, error) {
+	total := int64(0)
 	for _, f := range h.fields {
 		foldedField := h.FoldEncoding().Fold(f.Bytes(), h.lbr.Bytes())
-		buf.Write(foldedField)
-		buf.Write(h.lbr.Bytes())
-	}
-	buf.Write(h.lbr.Bytes())
-	return buf.Bytes()
-}
+		n, err := w.Write(foldedField)
+		total += int64(n)
+		if err != nil {
+			return total, err
+		}
 
-// String returns the header as a string.
-func (h *Base) String() string {
-	return string(h.Bytes())
+		n, err = w.Write(h.lbr.Bytes())
+		total += int64(n)
+		if err != nil {
+			return total, err
+		}
+	}
+	n, err := w.Write(h.lbr.Bytes())
+	total += int64(n)
+	return total, err
 }
 
 // InsertBeforeField will insert the given name and body values into the header

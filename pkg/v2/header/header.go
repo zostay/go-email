@@ -998,7 +998,3 @@ func parseEmailAddressList(v string) addr.AddressList {
 
 	return as
 }
-
-// var _ email.BasicHeader = &Header{}
-// var _ email.Outputter = &Header{}
-// var _ email.WithMutableBreak = &Header{}

@@ -15,15 +15,16 @@ type Opaque struct {
 
 // WriteTo writes the Opaque header and body to the destination
 // io.Writer.
+//
+// This can only be safely called once as it will consume the io.Reader.
 func (b *Opaque) WriteTo(w io.Writer) (int64, error) {
-	hb := b.Header.Bytes()
-	hn, err := w.Write(hb)
+	hn, err := b.Header.WriteTo(w)
 	if err != nil {
-		return int64(hn), err
+		return hn, err
 	}
 
 	bn, err := io.Copy(w, b.Reader)
-	return int64(hn) + bn, err
+	return hn + bn, err
 }
 
 // IsMultipart always returns false.

@@ -63,12 +63,6 @@ type Part interface {
 	// when IsMultipart() would return false, a nil and an error will be
 	// returned. The error that should be returned is ErrNotMultipart.
 	GetParts() ([]Part, error)
-
-	// String returns the message as a string.
-	String() string
-
-	// Bytes returns the message as a slice of bytes.
-	Bytes() []byte
 }
 
 // Generic is just an alias for Part, which is intended to convey
@@ -116,6 +110,10 @@ func (mm *Multipart) initParts() {
 // This method will fail with an error if the given message does not have a
 // Content-type boundary parameter set. May return an error on an IO error as
 // well.
+//
+// This may only be safely called one time because it will consume all the bytes
+// from all the io.Reader objects associated with all the given Opaque objects
+// within.
 func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 	boundary, err := mm.GetBoundary()
 	if err != nil {
@@ -124,13 +122,12 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 
 	br := mm.Break()
 
-	hb := mm.Header.Bytes()
-	hn, err := w.Write(hb)
+	hn, err := mm.Header.WriteTo(w)
 	if err != nil {
-		return int64(hn), err
+		return hn, err
 	}
 
-	n := int64(hn)
+	n := hn
 	if len(mm.parts) > 0 {
 		for _, part := range mm.parts {
 			bn, err := fmt.Fprintf(w, "--%s%s", boundary, br)

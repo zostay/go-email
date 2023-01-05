@@ -1,6 +1,8 @@
 package header_test
 
 import (
+	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -19,10 +21,14 @@ func TestWordEncodingHeader(t *testing.T) {
 
 	h := &header.Header{}
 	h.Set("To", "\"Name ☺\" <user@host>")
-	assert.Equal(t, "To: =?utf-8?b?Ik5hbWUg4pi6IiA8dXNlckBob3N0Pg==?=\n\n", h.String())
+	s := &bytes.Buffer{}
+	_, _ = h.WriteTo(s)
+	assert.Equal(t, "To: =?utf-8?b?Ik5hbWUg4pi6IiA8dXNlckBob3N0Pg==?=\n\n", s.String())
 
-	s := h.String() + "Test Message\n"
-	m, err := message.Parse(strings.NewReader(s))
+	s = &bytes.Buffer{}
+	_, _ = h.WriteTo(s)
+	_, _ = fmt.Fprintln(s, "Test Message")
+	m, err := message.Parse(s)
 	assert.NoError(t, err)
 	to, err := m.GetHeader().Get("To")
 	assert.NoError(t, err)
@@ -146,7 +152,9 @@ func TestHeader_HeaderSetMediaType(t *testing.T) {
 Content-type: text/html
 
 `
-	assert.Equal(t, afterHeaderStr, h.String())
+	s := &bytes.Buffer{}
+	_, _ = h.WriteTo(s)
+	assert.Equal(t, afterHeaderStr, s.String())
 }
 
 func TestHeader_HeaderContentType(t *testing.T) {
@@ -363,5 +371,7 @@ X-Foo: abc
 `
 
 	require.NoError(t, err)
-	assert.Equal(t, headerStr, h.String())
+	s := &bytes.Buffer{}
+	_, _ = h.WriteTo(s)
+	assert.Equal(t, headerStr, s.String())
 }
