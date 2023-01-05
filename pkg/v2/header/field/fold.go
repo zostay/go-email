@@ -11,6 +11,8 @@ const (
 	DefaultFoldIndent          = " "  // indent placed before folded lines
 	DefaultPreferredFoldLength = 80   // we prefer headers and 7bit/8bit bodies lines shorter than this
 	DefaultForcedFoldLength    = 1000 // we forceably break headers and 7bit/8bit bodies lines longer than this
+
+	DoNotFold = -1 // we prefer not to fold at all
 )
 
 var (
@@ -20,6 +22,13 @@ var (
 		DefaultFoldIndent,
 		DefaultPreferredFoldLength,
 		DefaultForcedFoldLength,
+	}
+
+	// DoNotFoldEncoding is a FoldEncoding that doesn't perform folding.
+	DoNotFoldEncoding = &FoldEncoding{
+		DefaultFoldIndent,
+		DoNotFold,
+		DoNotFold,
 	}
 )
 
@@ -39,6 +48,12 @@ var (
 	// ErrFoldLengthTooShort is returned by NewFoldEncoding when the
 	// forcedFoldLength is shorter than 3 bytes long.
 	ErrFoldLengthTooShort = errors.New("forced fold length cannot be too short")
+
+	// ErrInconsistentFoldLength is returned by NewFoldEncoding when the
+	// preferredFoldLength or forcedFoldLength are set to DoNotFold (-1), but
+	// both are not set that way. You must set both to DoNotFold to prevent
+	// folding or neither to DoNotFold.
+	ErrInconsistentFoldLength = errors.New("preferred fold length and forced fold length must both be -1 if either are -1")
 )
 
 // Break is basically identical to header.Break, but with a focus on bytes.
@@ -74,12 +89,19 @@ func NewFoldEncoding(
 		return nil, ErrFoldIndentTooLong
 	}
 
-	if preferredFoldLength > forcedFoldLength {
-		return nil, ErrFoldLengthTooLong
+	if (preferredFoldLength == DoNotFold && forcedFoldLength != DoNotFold) ||
+		(forcedFoldLength == DoNotFold && preferredFoldLength != DoNotFold) {
+		return nil, ErrInconsistentFoldLength
 	}
 
-	if forcedFoldLength < 3 {
-		return nil, ErrFoldLengthTooShort
+	if preferredFoldLength != DoNotFold {
+		if preferredFoldLength > forcedFoldLength {
+			return nil, ErrFoldLengthTooLong
+		}
+
+		if forcedFoldLength < 3 {
+			return nil, ErrFoldLengthTooShort
+		}
 	}
 
 	return &FoldEncoding{foldIndent, preferredFoldLength, forcedFoldLength}, nil
@@ -138,13 +160,14 @@ func (vf *FoldEncoding) Fold(out io.Writer, f []byte, lb Break) (int64, error) {
 		return bytes.TrimLeft(f, " \t"), nil
 	}
 
-	if len(f) < vf.preferredFoldLength {
+	if len(f) < vf.preferredFoldLength || vf.preferredFoldLength == DoNotFold {
 		_, err := writeFold(f, len(f))
 		return total, err
 	}
 
 	lines := bytes.Split(f, lb)
 	for _, line := range lines {
+		// TODO deciding to force folding here seems premature
 		// Will we be forced to fold?
 		fforced := len(line) > vf.forcedFoldLength-2
 

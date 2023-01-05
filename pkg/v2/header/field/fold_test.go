@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/zostay/go-email/pkg/v2/header"
+	"github.com/zostay/go-email/pkg/v2/header/field"
 	"github.com/zostay/go-email/pkg/v2/message"
 )
 
-func TestMessageFoldIntegration(t *testing.T) {
-	const emailMsg = `Delivered-To: sterling@example.com
+const emailMsg = `Delivered-To: sterling@example.com
 Received: by 1.6.2.1 with SMTP id asdfasdfasdfasd;
         Fri, 30 Jan 2015 19:23:13 -0800 (PST)
 X-Received: by 1.2.8.2 with SMTP id asdfasdfasdfasd.5.3;
@@ -69,7 +69,7 @@ Hello.
 --_----------=_MCPart_433295335--
 `
 
-	const emailMsgFolded = `Delivered-To: sterling@example.com
+const emailMsgFolded = `Delivered-To: sterling@example.com
 Received: by 1.6.2.1 with SMTP id asdfasdfasdfasd;
         Fri, 30 Jan 2015 19:23:13 -0800 (PST)
 X-Received: by 1.2.8.2 with SMTP id asdfasdfasdfasd.5.3;
@@ -136,6 +136,26 @@ Hello.
 --_----------=_MCPart_433295335--
 `
 
+func TestMessageFoldIntegration(t *testing.T) {
+	m, err := message.Parse(strings.NewReader(emailMsg), message.WithoutMultipart())
+	assert.NoError(t, err)
+	require.NotNil(t, m)
+
+	// despite parsing, we want folding
+	m.GetHeader().SetFoldEncoding(field.DefaultFoldEncoding)
+
+	assert.Equal(t, len(m.GetHeader().ListFields()), 30)
+
+	from, err := m.GetHeader().Get(header.From)
+	assert.NoError(t, err)
+	assert.Equal(t, "Example <devsupport@example.com>", from)
+
+	s := &bytes.Buffer{}
+	_, _ = m.WriteTo(s)
+	assert.Equal(t, emailMsgFolded, s.String())
+}
+
+func TestMessageDoNotFoldEncodingIntegration(t *testing.T) {
 	m, err := message.Parse(strings.NewReader(emailMsg), message.WithoutMultipart())
 	assert.NoError(t, err)
 	require.NotNil(t, m)
@@ -148,5 +168,5 @@ Hello.
 
 	s := &bytes.Buffer{}
 	_, _ = m.WriteTo(s)
-	assert.Equal(t, emailMsgFolded, s.String())
+	assert.Equal(t, emailMsg, s.String())
 }
