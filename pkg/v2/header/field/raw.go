@@ -1,25 +1,5 @@
 package field
 
-import (
-	"errors"
-)
-
-var (
-	// ErrRawFieldTooShort is the error returned by the header field parser to
-	// indicate that the given header field is either empty or two short to
-	// be a parseable header. The shortest possible header would be three bytes
-	// long, e.g., []byte("a:\n").
-	ErrRawFieldTooShort = errors.New("header field is empty or too short")
-
-	// ErrRawFieldMissingColon is the error that indicates that the header field
-	// parser is unable to find a colon in the input.
-	ErrRawFieldMissingColon = errors.New("header field is missing colon separating name from body in Raw")
-
-	// ErrRawFieldMissingBreak is the error that indicates that the header field
-	// parser is unable to find a line break in the input.
-	ErrRawFieldMissingBreak = errors.New("header field is missing line break at the end")
-)
-
 // Raw is a email.Field implementation that presents the
 // parsed Raw value. Objects of this type are immutable.
 type Raw struct {
