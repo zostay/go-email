@@ -22,8 +22,11 @@ type Base struct {
 	fields []*field.Field
 }
 
-// initFields initializes the fields value lazily.
-func (h *Base) initFields() {
+// initBase initializes the Break and fields values lazily.
+func (h *Base) initBase() {
+	if h.lbr == "" {
+		h.lbr = LF
+	}
 	if h.fields == nil {
 		h.fields = make([]*field.Field, 0, 10)
 	}
@@ -119,7 +122,7 @@ func (h *Base) ListFields() []*field.Field {
 func (h *Base) Bytes() []byte {
 	var buf bytes.Buffer
 	for _, f := range h.fields {
-		foldedField := h.vf.Fold(f.Bytes(), h.lbr.Bytes())
+		foldedField := h.FoldEncoding().Fold(f.Bytes(), h.lbr.Bytes())
 		buf.Write(foldedField)
 		buf.Write(h.lbr.Bytes())
 	}
@@ -139,7 +142,7 @@ func (h *Base) InsertBeforeField(
 	name,
 	body string,
 ) {
-	h.initFields()
+	h.initBase()
 
 	// cap the range of n to 0..len(h.fields)
 	if n < 0 {
@@ -164,14 +167,14 @@ func (h *Base) InsertBeforeField(
 
 // ClearFields removes all fields from the header.
 func (h *Base) ClearFields() {
-	h.initFields()
+	h.initBase()
 	h.fields = h.fields[:0]
 }
 
 // DeleteField removes the nth field from the header. Fails with an error if the
 // given index is out of range.
 func (h *Base) DeleteField(n int) error {
-	h.initFields()
+	h.initBase()
 
 	// bounds check
 	if n < 0 || n >= len(h.fields) {
