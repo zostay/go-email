@@ -195,7 +195,7 @@ func (pr *parser) parseToOpaque(r io.Reader) (*Opaque, error) {
 		return nil, err
 	}
 
-	head, err := header.Parse(hdr, crlf)
+	head, err := header.Parse(hdr, header.Break(crlf))
 	if err != nil {
 		return nil, err
 	}
