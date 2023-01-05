@@ -15,12 +15,12 @@ import (
 	_ "golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/ianaindex"
 
-	"github.com/zostay/go-email/pkg/email/mime"
+	"github.com/zostay/go-email/pkg/v2/header/field"
 )
 
 func init() {
-	mime.CharsetEncoder = CharsetEncoder
-	mime.CharsetDecoder = CharsetDecoder
+	field.CharsetEncoder = CharsetEncoder
+	field.CharsetDecoder = CharsetDecoder
 }
 
 // CharsetEncoder provides a replacement encoder for mime.CharsetEncoder, which

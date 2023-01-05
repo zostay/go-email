@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -85,6 +84,8 @@ func DefaultCharsetEncoder(charset, s string) ([]byte, error) {
 // When utf-8 is input, the bytes will be read in and transformed into runes
 // such that only valid unicode bytes will be permitted in. Errors will be
 // brought in as unicode.ReplacementChar.
+//
+// When iso-8859-1/latin1 is input, the input is left along as-is.
 func DefaultCharsetDecoder(charset string, b []byte) (string, error) {
 	switch strings.ToLower(charset) {
 	case "us-ascii", "":
@@ -116,7 +117,7 @@ func DefaultCharsetDecoder(charset string, b []byte) (string, error) {
 // interface used by mime.WordDecoder.
 func CharsetDecoderToCharsetReader(decode func(string, []byte) (string, error)) func(string, io.Reader) (io.Reader, error) {
 	return func(charset string, r io.Reader) (io.Reader, error) {
-		bs, err := ioutil.ReadAll(r)
+		bs, err := io.ReadAll(r)
 		if err != nil {
 			return nil, err
 		}
