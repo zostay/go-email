@@ -450,7 +450,7 @@ func (r *remainder) Read(p []byte) (n int, err error) {
 	// if reading from prefix did not fill p, read from reader too
 	if n < len(p) {
 		var rn int
-		rn, err = r.Read(p[n:])
+		rn, err = r.r.Read(p[n:])
 		n += rn
 	}
 
