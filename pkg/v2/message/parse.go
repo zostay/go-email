@@ -30,21 +30,6 @@ var (
 	ErrNoBoundary = errors.New("the boundary parameter is missing from Content-type")
 )
 
-// ParseError is returned when one or more errors occur while parsing an email
-// message. It collects all the errors and returns them as a group.
-type ParseError struct {
-	Errs []error // the list of errors that occurred during parsing
-}
-
-// Error returns the list of errors encountered while parsing an email message.
-func (err *ParseError) Error() string {
-	errs := make([]string, len(err.Errs))
-	for i, e := range err.Errs {
-		errs[i] = e.Error()
-	}
-	return "error parsing MIME message: " + strings.Join(errs, ", ")
-}
-
 var splits = [][]byte{
 	[]byte("\x0d\x0a\x0d\x0a"), // \r\n\r\n
 	[]byte("\x0a\x0d\x0a\x0d"), // \n\r\n\r, extremely unlikely, possibly never
