@@ -122,14 +122,7 @@ func (h *Base) ListFields() []*field.Field {
 func (h *Base) WriteTo(w io.Writer) (int64, error) {
 	total := int64(0)
 	for _, f := range h.fields {
-		foldedField := h.FoldEncoding().Fold(f.Bytes(), h.lbr.Bytes())
-		n, err := w.Write(foldedField)
-		total += int64(n)
-		if err != nil {
-			return total, err
-		}
-
-		n, err = w.Write(h.lbr.Bytes())
+		n, err := h.FoldEncoding().Fold(w, f.Bytes(), field.Break(h.lbr))
 		total += int64(n)
 		if err != nil {
 			return total, err

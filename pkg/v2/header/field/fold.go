@@ -3,6 +3,7 @@ package field
 import (
 	"bytes"
 	"errors"
+	"io"
 	"strings"
 )
 
@@ -96,31 +97,50 @@ func (vf *FoldEncoding) Unfold(f []byte) []byte {
 	return uf
 }
 
-func isCRLF(c rune) bool  { return c == '\r' || c == '\n' }
-func isSpace(c rune) bool { return c == ' ' || c == '\t' }
+func isCRLF(c rune) bool     { return c == '\r' || c == '\n' }
+func isSpace(c rune) bool    { return c == ' ' || c == '\t' }
+func isNonSpace(c rune) bool { return c != ' ' && c != '\t' }
 
 // Fold will take an unfolded or perhaps partially folded value from an
 // email and fold it. It will make sure that every fold line is properly
 // indented, try to break lines on appropriate spaces, and force long lines to
 // be broken before the maximum line length.
-func (vf *FoldEncoding) Fold(f []byte, lb Break) []byte {
-	if len(f) < vf.preferredFoldLength {
-		return f
+//
+// Writes the folded output to the given io.Writer and returns the number of
+// bytes written and returns an error if there's an error writing the data.
+func (vf *FoldEncoding) Fold(out io.Writer, f []byte, lb Break) (int64, error) {
+	total := int64(0)
+	continuingLine := false
+	writeFold := func(f []byte, end int) ([]byte, error) {
+		// only indent if there's no space already present at the break
+		if continuingLine && !isSpace(rune(f[0])) {
+			n, err := out.Write([]byte(vf.foldIndent))
+			total += int64(n)
+			if err != nil {
+				return nil, err
+			}
+		}
+		n, err := out.Write(f[:end])
+		total += int64(n)
+		if err != nil {
+			return nil, err
+		}
+
+		n, err = out.Write(lb)
+		total += int64(n)
+		if err != nil {
+			return nil, err
+		}
+
+		f = f[end:]
+		continuingLine = true
+
+		return bytes.TrimLeft(f, " \t"), nil
 	}
 
-	var out bytes.Buffer
-	foldSpace := false
-	writeFold := func(f []byte, end int) []byte {
-		// only indent if there's no space already present at the break
-		if foldSpace && !isSpace(rune(f[0])) {
-			out.WriteString(vf.foldIndent)
-		}
-		out.Write(f[:end])
-		out.Write(lb)
-		f = f[end:]
-		foldSpace = true
-
-		return bytes.TrimLeft(f, " \t")
+	if len(f) < vf.preferredFoldLength {
+		_, err := writeFold(f, len(f))
+		return total, err
 	}
 
 	lines := bytes.Split(f, lb)
@@ -130,37 +150,71 @@ func (vf *FoldEncoding) Fold(f []byte, lb Break) []byte {
 
 	FoldingSingle:
 		for len(line) > 0 {
+			var err error
 
 			// Do we need to fold lines?
 			fneed := len(line) > vf.preferredFoldLength-2
 			if !fneed {
-				line = writeFold(line, len(line))
+				line, err = writeFold(line, len(line))
+				if err != nil {
+					return total, err
+				}
 				continue FoldingSingle
 			}
 
-			// best case, we find a space in the first 78 chars, break there
-			if ix := bytes.LastIndexFunc(line[0:vf.preferredFoldLength-2], isSpace); ix > -1 {
-				line = writeFold(line, ix)
+			var firstChar int
+			if continuingLine {
+				// if we're past the first line, the first non-space is the first char
+				firstChar = bytes.IndexFunc(line, isNonSpace)
+			} else {
+				// if we're on the first line, the first none space after the colon is the first char
+				colon := bytes.IndexRune(line, ':')
+				firstChar = bytes.IndexFunc(line[colon+1:], isNonSpace)
+				if firstChar >= 0 {
+					firstChar += colon + 1
+				}
+			}
+
+			if firstChar < -1 {
+				// TODO Consider if this is really necessary or if it should result in an error insteat
+				firstChar = 0
+			}
+
+			// best case, we find a space in the first n-2 chars, break there
+			if ix := bytes.LastIndexFunc(line[firstChar:vf.preferredFoldLength-2], isSpace); ix >= 0 {
+				line, err = writeFold(line, ix+firstChar)
+				if err != nil {
+					return total, err
+				}
 				continue FoldingSingle
 			}
 
-			// barring that, try to find a space after the 78 char mark
-			if ix := bytes.IndexFunc(line, isSpace); ix > -1 && ix < vf.forcedFoldLength-2 {
-				line = writeFold(line, ix)
+			// barring that, try to find a space after the n-2 char mark
+			if ix := bytes.IndexFunc(line[firstChar:], isSpace); ix >= 0 && ix < vf.forcedFoldLength-2 {
+				line, err = writeFold(line, ix+firstChar)
+				if err != nil {
+					return total, err
+				}
 				continue FoldingSingle
 			}
 
 			// but if it's really long with no space, force a break at 78
 			if fforced {
-				line = writeFold(line, vf.preferredFoldLength-2)
+				line, err = writeFold(line, vf.preferredFoldLength-2)
+				if err != nil {
+					return total, err
+				}
 				continue FoldingSingle
 			}
 
 			// We're not forced to fold this line. Allow it to be longer than we
 			// prefer.
-			line = writeFold(line, len(line))
+			line, err = writeFold(line, len(line))
+			if err != nil {
+				return total, err
+			}
 		}
 	}
 
-	return out.Bytes()
+	return total, nil
 }
