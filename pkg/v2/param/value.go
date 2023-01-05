@@ -41,15 +41,15 @@ func Parse(v string) (*Value, error) {
 	return &Value{mt, ps}, nil
 }
 
-// New creates a new parameterized header field with no parameters.
-func New(v string) *Value {
-	return &Value{v, map[string]string{}}
-}
-
-// NewWithParams creates a new parametersized header field with the given
-// parameters.
-func NewWithParams(v string, ps map[string]string) *Value {
-	return &Value{v, ps}
+// New creates a new parameterized header field with or without parameters.
+func New(v string, ps ...map[string]string) *Value {
+	pv := &Value{v, map[string]string{}}
+	for _, p := range ps {
+		for k, v := range p {
+			pv.ps[k] = v
+		}
+	}
+	return pv
 }
 
 // Modifier is a modification to apply to a Value when calling the Modify()
@@ -97,9 +97,9 @@ func (pv *Value) Value() string {
 	return pv.v
 }
 
-// Disposition is a synonym for Value() and returns the Content-disposition,
+// Presentation is a synonym for Value() and returns the Content-disposition,
 // either "inline" or "attachment".
-func (pv *Value) Disposition() string {
+func (pv *Value) Presentation() string {
 	return pv.v
 }
 
