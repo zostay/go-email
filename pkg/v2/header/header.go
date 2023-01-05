@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/araddon/dateparse"
 	"github.com/zostay/go-addr/pkg/addr"
 
 	"github.com/zostay/go-email/pkg/v2/param"
@@ -123,7 +124,10 @@ func (h *Header) getTime(name string) (time.Time, error) {
 
 	t, err := mail.ParseDate(body)
 	if err != nil {
-		return time.Time{}, err
+		t, err = dateparse.ParseAny(body)
+		if err != nil {
+			return t, err
+		}
 	}
 
 	h.setValue(name, t)
@@ -131,7 +135,9 @@ func (h *Header) getTime(name string) (time.Time, error) {
 	return t, nil
 }
 
-// GetTime gets the given date header field as a time.Time.
+// GetTime gets the given date header field as a time.Time. It will attempt to
+// parse the date in many formats, not just the format specified by RFC 5322
+// (though, it will try that first).
 //
 // It will return an error if it is unable to parse the time value from the date
 // header. It will return the zero value and ErrNoSuchField if the header does
