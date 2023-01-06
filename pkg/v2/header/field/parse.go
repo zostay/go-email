@@ -80,15 +80,17 @@ func ParseLines(m, lb []byte) (Lines, error) {
 func Parse(f Line, lb []byte) *Field {
 	rawField := bytes.TrimRight(f, string(lb))
 
+	off := 1
 	ix := bytes.Index(rawField, []byte{':'})
 	if ix < 0 {
 		ix = len(rawField)
+		off = 0
 	}
 
 	// it's fine to use the default fold encoding because unfold is not affected
 	// by choices made when folding
 	name := string(DefaultFoldEncoding.Unfold(rawField[:ix]))
-	body := string(bytes.TrimSpace(DefaultFoldEncoding.Unfold(rawField[ix+1:])))
+	body := string(bytes.TrimSpace(DefaultFoldEncoding.Unfold(rawField[ix+off:])))
 	decBody, err := Decode(body)
 	if err == nil {
 		body = decBody

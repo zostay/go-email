@@ -26,5 +26,9 @@ func (f *Raw) Name() string {
 // Body returns the body part of the Raw as bytes. Please note that the value
 // returned may be folded.
 func (f *Raw) Body() string {
-	return string(f.field[f.colon+1:])
+	off := 1
+	if f.colon == len(f.field) {
+		off = 0
+	}
+	return string(f.field[f.colon+off:])
 }
