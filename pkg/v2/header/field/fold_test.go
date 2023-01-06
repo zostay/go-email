@@ -170,3 +170,73 @@ func TestMessageDoNotFoldEncodingIntegration(t *testing.T) {
 	_, _ = m.WriteTo(s)
 	assert.Equal(t, emailMsg, s.String())
 }
+
+func TestNewFoldEncoding(t *testing.T) {
+	_, err := field.NewFoldEncoding("", 0, 0)
+	assert.ErrorIs(t, err, field.ErrFoldIndentTooShort)
+
+	_, err = field.NewFoldEncoding(" x", 0, 0)
+	assert.ErrorIs(t, err, field.ErrFoldIndentSpace)
+
+	_, err = field.NewFoldEncoding("     ", 0, 0)
+	assert.ErrorIs(t, err, field.ErrFoldIndentTooLong)
+
+	_, err = field.NewFoldEncoding(field.DefaultFoldIndent, field.DoNotFold, 1000)
+	assert.ErrorIs(t, err, field.ErrDoNotFold)
+
+	_, err = field.NewFoldEncoding(field.DefaultFoldIndent, 80, field.DoNotFold)
+	assert.ErrorIs(t, err, field.ErrDoNotFold)
+
+	vf, err := field.NewFoldEncoding(field.DefaultFoldIndent, field.DoNotFold, field.DoNotFold)
+	assert.NoError(t, err)
+	assert.NotNil(t, vf)
+
+	vf, err = field.NewFoldEncoding("\t\t", field.DefaultPreferredFoldLength, field.DefaultForcedFoldLength)
+	assert.NoError(t, err)
+	assert.NotNil(t, vf)
+
+	_, err = field.NewFoldEncoding(field.DefaultFoldIndent, 1000, 80)
+	assert.ErrorIs(t, err, field.ErrFoldLengthTooLong)
+
+	_, err = field.NewFoldEncoding(field.DefaultFoldIndent, 2, 1000)
+	assert.Error(t, err, field.ErrFoldLengthTooShort)
+
+	// never do this... it's allowed because there's no sensible guess at a real
+	// minimum width, but probably <80 is unnecessary in almost every situation
+	vf, err = field.NewFoldEncoding("\t", 3, 3)
+	assert.NoError(t, err)
+	assert.NotNil(t, vf)
+}
+
+func TestFoldEncoding_Unfold(t *testing.T) {
+	vf := field.DefaultFoldEncoding
+
+	uf := vf.Unfold([]byte("a\n b\n\tc\n d\n"))
+	assert.Equal(t, []byte("a b\tc d"), uf)
+}
+
+func TestFoldEncoding_Fold(t *testing.T) {
+	vf, err := field.NewFoldEncoding(field.DefaultFoldIndent, 10, 20)
+	assert.NoError(t, err)
+
+	// no fold
+	buf := &bytes.Buffer{}
+	n, err := vf.Fold(buf, []byte("a b c d"), field.Break("\n"))
+	assert.Equal(t, int64(8), n)
+	assert.NoError(t, err)
+	assert.Equal(t, "a b c d\n", buf.String())
+
+	// preferred fold
+	buf.Truncate(0)
+	n, err = vf.Fold(buf, []byte("aaaaa bbbbb"), field.Break("\n"))
+	assert.Equal(t, int64(13), n)
+	assert.NoError(t, err)
+	assert.Equal(t, "aaaaa\n bbbbb\n", buf.String())
+
+	// forced fold
+	buf.Truncate(0)
+	n, err = vf.Fold(buf, []byte("aaaaabbbbbcccccdddddeeeeefffff"), field.Break("\n"))
+	assert.Equal(t, int64(35), n)
+	assert.NoError(t, err)
+	assert.Equal(t, "aaaaabbb\n bbcccccd\n ddddeeeeefffff\n", buf.String())
+}

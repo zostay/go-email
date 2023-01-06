@@ -37,6 +37,10 @@ var (
 	// character is put in the foldIndent setting.
 	ErrFoldIndentSpace = errors.New("fold indent may only contains spaces and tabs")
 
+	// ErrFoldIndentTooShort is returned by NewFoldEncoding when the foldIndent
+	// is empty.
+	ErrFoldIndentTooShort = errors.New("fold indent must contain at least one space or tab")
+
 	// ErrFoldIndentTooLong is returned by NewFoldEncoding when the foldIndent
 	// setting is equal to or longer than the preferredFoldLength.
 	ErrFoldIndentTooLong = errors.New("fold indent must be shorter than the preferred fold length")
@@ -47,13 +51,13 @@ var (
 
 	// ErrFoldLengthTooShort is returned by NewFoldEncoding when the
 	// forcedFoldLength is shorter than 3 bytes long.
-	ErrFoldLengthTooShort = errors.New("forced fold length cannot be too short")
+	ErrFoldLengthTooShort = errors.New("preferred fold length and forced fold length cannot be too short")
 
-	// ErrInconsistentFoldLength is returned by NewFoldEncoding when the
-	// preferredFoldLength or forcedFoldLength are set to DoNotFold (-1), but
-	// both are not set that way. You must set both to DoNotFold to prevent
-	// folding or neither to DoNotFold.
-	ErrInconsistentFoldLength = errors.New("preferred fold length and forced fold length must both be -1 if either are -1")
+	// ErrDoNotFold is returned by NewFoldEncoding when the preferredFoldLength
+	// or forcedFoldLength are set to DoNotFold (-1), but both are not set that
+	// way. You must set both to DoNotFold to prevent folding or neither to
+	// DoNotFold.
+	ErrDoNotFold = errors.New("preferred fold length and forced fold length must both be -1 if either are -1")
 )
 
 // Break is basically identical to header.Break, but with a focus on bytes.
@@ -85,21 +89,31 @@ func NewFoldEncoding(
 		return nil, ErrFoldIndentSpace
 	}
 
-	if len(foldIndent) >= preferredFoldLength {
-		return nil, ErrFoldIndentTooLong
+	if len(foldIndent) < 1 {
+		return nil, ErrFoldIndentTooShort
 	}
 
 	if (preferredFoldLength == DoNotFold && forcedFoldLength != DoNotFold) ||
 		(forcedFoldLength == DoNotFold && preferredFoldLength != DoNotFold) {
-		return nil, ErrInconsistentFoldLength
+		return nil, ErrDoNotFold
 	}
 
 	if preferredFoldLength != DoNotFold {
+		// if we aren't folding, we don't have to worry about these
+		if len(foldIndent) >= preferredFoldLength {
+			return nil, ErrFoldIndentTooLong
+		}
+
 		if preferredFoldLength > forcedFoldLength {
 			return nil, ErrFoldLengthTooLong
 		}
 
-		if forcedFoldLength < 3 {
+		// This is WAY too short. Probably 80 is a good general minimum and
+		// maybe as short as 50 or 60 for extreme cases, but less than that is
+		// probably a bad idea. However, I'm not the too short line police, so
+		// we just stop it at the point something in the code will choke and die
+		// on.
+		if preferredFoldLength < 3 || forcedFoldLength < 3 {
 			return nil, ErrFoldLengthTooShort
 		}
 	}
@@ -165,15 +179,16 @@ func (vf *FoldEncoding) Fold(out io.Writer, f []byte, lb Break) (int64, error) {
 		return total, err
 	}
 
+	// NOTE: We just assume the lb will be 2 chars.
+
 	lines := bytes.Split(f, lb)
 	for _, line := range lines {
-		// TODO deciding to force folding here seems premature
-		// Will we be forced to fold?
-		fforced := len(line) > vf.forcedFoldLength-2
-
 	FoldingSingle:
 		for len(line) > 0 {
 			var err error
+
+			// Will we be forced to fold?
+			fforced := len(line) > vf.forcedFoldLength-2
 
 			// Do we need to fold lines?
 			fneed := len(line) > vf.preferredFoldLength-2
@@ -221,7 +236,7 @@ func (vf *FoldEncoding) Fold(out io.Writer, f []byte, lb Break) (int64, error) {
 				continue FoldingSingle
 			}
 
-			// but if it's really long with no space, force a break at 78
+			// but if it's really long with no space, force a break at n-2
 			if fforced {
 				line, err = writeFold(line, vf.preferredFoldLength-2)
 				if err != nil {
