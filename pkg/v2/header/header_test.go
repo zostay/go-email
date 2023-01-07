@@ -764,3 +764,261 @@ func TestHeader_SetAllAddressLists(t *testing.T) {
 		stuStr,
 	}, bs)
 }
+
+func TestHeader_SetParamValue(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.SetParamValue("X-Type", param.New("image/jpeg", map[string]string{
+		"boundary": "testboundary",
+		"charset":  "latin1",
+	}))
+
+	b, err := h.Get("X-Type")
+	assert.NoError(t, err)
+	assert.Equal(t, "image/jpeg; boundary=testboundary; charset=latin1", b)
+}
+
+func TestHeader_GetContentType(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	_, err := h.GetContentType()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.InsertBeforeField(0, "content-type", "application/json; charset=utf-8")
+
+	pv, err := h.GetContentType()
+	assert.NoError(t, err)
+	assert.Equal(t, "application/json", pv.MediaType())
+	assert.Equal(t, "utf-8", pv.Charset())
+}
+
+func TestHeader_SetContentType(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.SetContentType(param.New("text/plain", map[string]string{"boundary": "abc123"}))
+
+	b, err := h.Get(header.ContentType)
+	assert.NoError(t, err)
+	assert.Equal(t, "text/plain; boundary=abc123", b)
+}
+
+func TestHeader_GetMediaType(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	_, err := h.GetContentType()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.InsertBeforeField(0, "content-type", "application/json; charset=utf-8")
+
+	mt, err := h.GetMediaType()
+	assert.NoError(t, err)
+	assert.Equal(t, "application/json", mt)
+}
+
+func TestHeader_GetCharset(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, header.ContentType, "something; charset=greek7")
+
+	c, err := h.GetCharset()
+	assert.NoError(t, err)
+	assert.Equal(t, "greek7", c)
+}
+
+func TestHeader_SetCharset(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	err := h.SetCharset("something")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.SetMediaType("something")
+	err = h.SetCharset("something")
+	assert.NoError(t, err)
+
+	b, err := h.Get(header.ContentType)
+	assert.NoError(t, err)
+	assert.Equal(t, "something; charset=something", b)
+}
+
+func TestHeader_SetBoundary(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	err := h.SetBoundary("something")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.SetMediaType("something")
+	err = h.SetBoundary("something")
+	assert.NoError(t, err)
+
+	b, err := h.Get(header.ContentType)
+	assert.NoError(t, err)
+	assert.Equal(t, "something; boundary=something", b)
+}
+
+func TestHeader_GetContentDisposition(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	_, err := h.GetContentDisposition()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.InsertBeforeField(0, "content-disposition", "inline; filename=uh")
+
+	pv, err := h.GetContentDisposition()
+	assert.NoError(t, err)
+	assert.Equal(t, "inline", pv.MediaType())
+	assert.Equal(t, "uh", pv.Filename())
+}
+
+func TestHeader_SetContentDisposition(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.SetContentDisposition(param.New("attachment", map[string]string{"filename": "abc123"}))
+
+	b, err := h.Get(header.ContentDisposition)
+	assert.NoError(t, err)
+	assert.Equal(t, "attachment; filename=abc123", b)
+}
+
+func TestHeader_GetPresentation(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	_, err := h.GetContentType()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.InsertBeforeField(0, "content-disposition", "attachment; filename=foo.json")
+
+	mt, err := h.GetPresentation()
+	assert.NoError(t, err)
+	assert.Equal(t, "attachment", mt)
+}
+
+func TestHeader_GetFilename(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	_, err := h.GetFilename()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.SetPresentation("something")
+
+	_, err = h.GetFilename()
+	assert.ErrorIs(t, err, header.ErrNoSuchFieldParameter)
+
+	err = h.SetFilename("else")
+	assert.NoError(t, err)
+
+	f, err := h.GetFilename()
+	assert.NoError(t, err)
+	assert.Equal(t, "else", f)
+}
+
+func TestHeader_SetFilename(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	err := h.SetFilename("something")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.SetPresentation("something")
+	err = h.SetFilename("something")
+	assert.NoError(t, err)
+
+	b, err := h.Get(header.ContentDisposition)
+	assert.NoError(t, err)
+	assert.Equal(t, "something; filename=something", b)
+}
+
+func TestHeader_GetDate(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	now := time.Now().Truncate(time.Second)
+	h.InsertBeforeField(0, "Date", now.Format(time.RFC1123Z))
+
+	d, err := h.GetDate()
+	assert.NoError(t, err)
+	assert.Equal(t, now, d)
+}
+
+func TestHeader_GetSubject(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "SUBJEct", "this is a test")
+
+	s, err := h.GetSubject()
+	assert.NoError(t, err)
+	assert.Equal(t, "this is a test", s)
+}
+
+func TestHeader_SetSubject(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.SetSubject("woo boo too")
+
+	b, err := h.Get(header.Subject)
+	assert.NoError(t, err)
+	assert.Equal(t, "woo boo too", b)
+}
+
+func TestHeader_Get_BccCcToFromSenderReplyTo(t *testing.T) {
+	t.Parallel()
+
+	const sterling = `sterling@example.com`
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "to", sterling)
+	h.InsertBeforeField(1, "cc", sterling)
+	h.InsertBeforeField(2, "bcc", sterling)
+	h.InsertBeforeField(3, "from", sterling)
+	h.InsertBeforeField(4, "sender", sterling)
+	h.InsertBeforeField(5, "reply-to", sterling)
+
+	sterlingAddr, err := addr.ParseEmailAddrSpec(sterling)
+	assert.NoError(t, err)
+
+	sa := addr.AddressList{sterlingAddr}
+
+	to, err := h.GetTo()
+	assert.NoError(t, err)
+	assert.Equal(t, sa, to)
+
+	cc, err := h.GetCc()
+	assert.NoError(t, err)
+	assert.Equal(t, sa, cc)
+
+	bcc, err := h.GetBcc()
+	assert.NoError(t, err)
+	assert.Equal(t, sa, bcc)
+
+	from, err := h.GetFrom()
+	assert.NoError(t, err)
+	assert.Equal(t, sa, from)
+
+	sender, err := h.GetSender()
+	assert.NoError(t, err)
+	assert.Equal(t, sa, sender)
+
+	replyTo, err := h.GetReplyTo()
+	assert.NoError(t, err)
+	assert.Equal(t, sa, replyTo)
+}
