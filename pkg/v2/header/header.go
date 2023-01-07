@@ -390,8 +390,8 @@ func (h *Header) SetAll(name string, bodies []string) {
 
 	if len(ixs) > len(bodies) {
 		// Delete extra Comments
-		for i := len(ixs); i >= len(bodies); i-- {
-			_ = h.DeleteField(i)
+		for i := len(ixs) - 1; i >= len(bodies); i-- {
+			_ = h.DeleteField(ixs[i])
 		}
 	}
 }

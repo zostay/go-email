@@ -588,3 +588,179 @@ func TestHeader_GetAll(t *testing.T) {
 	_, err = h.GetAll("Six")
 	assert.Error(t, header.ErrNoSuchField)
 }
+
+func TestHeader_SetAll(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "A", "b")
+	h.InsertBeforeField(1, "C", "d")
+	h.InsertBeforeField(2, "E", "f")
+	h.InsertBeforeField(3, "E", "g")
+
+	h.SetAll("A", []string{"one", "two"})
+	h.SetAll("B", []string{"three", "four"})
+	h.SetAll("C", []string{"five", "six"})
+	h.SetAll("E", []string{"seven"})
+
+	const expect = `A: one
+C: five
+E: seven
+A: two
+B: three
+B: four
+C: six
+
+`
+
+	buf := &bytes.Buffer{}
+	n, err := h.WriteTo(buf)
+	assert.Equal(t, int64(56), n)
+	assert.NoError(t, err)
+	assert.Equal(t, expect, buf.String())
+
+	h.SetAll("C", []string{})
+	_, err = h.GetAll("C")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+}
+
+func TestHeader_SetKeywordsList(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "A", "b")
+	h.InsertBeforeField(1, "C", "d")
+	h.InsertBeforeField(2, "C", "e")
+	h.InsertBeforeField(3, "F", "g")
+
+	h.SetKeywordsList("C", []string{"one", "two", "three"})
+
+	b, err := h.Get("C")
+	assert.NoError(t, err)
+	assert.Equal(t, "one, two, three", b)
+
+	h.SetKeywordsList("C", []string{})
+
+	b, err = h.Get("C")
+	assert.NoError(t, err)
+	assert.Equal(t, "", b)
+}
+
+func TestHeader_Set(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "A", "b")
+	h.InsertBeforeField(1, "C", "d")
+	h.InsertBeforeField(2, "E", "f")
+	h.InsertBeforeField(3, "E", "g")
+
+	h.Set("A", "one")
+	h.Set("B", "two")
+	h.Set("C", "three")
+	h.Set("E", "four")
+
+	const expect = `A: one
+C: three
+E: four
+B: two
+
+`
+	buf := &bytes.Buffer{}
+	n, err := h.WriteTo(buf)
+	assert.Equal(t, int64(32), n)
+	assert.NoError(t, err)
+	assert.Equal(t, expect, buf.String())
+}
+
+func TestHeader_Set2(t *testing.T) {
+	// check the edge case when the deleted field is last
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "A", "b")
+	h.InsertBeforeField(1, "C", "d")
+	h.InsertBeforeField(2, "E", "f")
+	h.InsertBeforeField(3, "E", "g")
+
+	h.Set("A", "one")
+	h.Set("C", "three")
+	h.Set("E", "four")
+
+	const expect = `A: one
+C: three
+E: four
+
+`
+	buf := &bytes.Buffer{}
+	n, err := h.WriteTo(buf)
+	assert.Equal(t, int64(25), n)
+	assert.NoError(t, err)
+	assert.Equal(t, expect, buf.String())
+}
+
+func TestHeader_SetTime(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	now := time.Now().Truncate(time.Second)
+	h.SetTime("X-Date", now)
+
+	b, err := h.Get("X-Date")
+	assert.NoError(t, err)
+	assert.Equal(t, now.Format(time.RFC1123Z), b)
+}
+
+func TestHeader_SetAddressList(t *testing.T) {
+	t.Parallel()
+
+	sterling, err := addr.ParseEmailMailbox("sterling@example.com")
+	assert.NoError(t, err)
+	steve, err := addr.ParseEmailMailbox(`"Steve" <steve@example.com>`)
+	assert.NoError(t, err)
+
+	h := &header.Header{}
+	h.SetAddressList("X-To", addr.AddressList{sterling, steve})
+
+	b, err := h.Get("X-To")
+	assert.NoError(t, err)
+	assert.Equal(t, `sterling@example.com, Steve <steve@example.com>`, b)
+}
+
+func TestHeader_SetAllAddressLists(t *testing.T) {
+	t.Parallel()
+
+	const (
+		sterlingStr = "sterling@example.com"
+		steveStr    = `"Steve Steverson" <steve@example.com>`
+		stanStr     = `"Stan Stanson" <stan@example.com>`
+		stuStr      = `"Stu Stuson" <stu@example.com>`
+	)
+
+	sterling, err := addr.ParseEmailAddrSpec(sterlingStr)
+	assert.NoError(t, err)
+
+	steve, err := addr.ParseEmailMailbox(steveStr)
+	assert.NoError(t, err)
+
+	stan, err := addr.ParseEmailMailbox(stanStr)
+	assert.NoError(t, err)
+
+	stu, err := addr.ParseEmailMailbox(stuStr)
+	assert.NoError(t, err)
+
+	h := &header.Header{}
+	h.SetAllAddressLists("X-Addr", []addr.AddressList{
+		{sterling},
+		{steve, stan},
+		{stu},
+	})
+
+	bs, err := h.GetAll("X-Addr")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{
+		sterlingStr,
+		strings.Join([]string{steveStr, stanStr}, ", "),
+		stuStr,
+	}, bs)
+}
