@@ -67,8 +67,8 @@ func (h *Base) GetField(n int) *field.Field {
 	return h.fields[n]
 }
 
-// Size returns the number of header fields in the header.
-func (h *Base) Size() int {
+// Len returns the number of header fields in the header.
+func (h *Base) Len() int {
 	return len(h.fields)
 }
 

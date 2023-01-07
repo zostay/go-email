@@ -91,7 +91,7 @@ func (h *Header) getValue(name string) (any, bool) {
 // setValue replaces the cached value for the given name.
 func (h *Header) setValue(name string, value any) {
 	if h.valueCache == nil {
-		h.valueCache = make(map[string]any, h.Size())
+		h.valueCache = make(map[string]any, h.Len())
 	}
 	n := strings.ToLower(name)
 	h.valueCache[n] = value
@@ -385,7 +385,7 @@ func (h *Header) SetAll(name string, bodies []string) {
 		}
 
 		// Append more Comments
-		h.InsertBeforeField(h.Size(), name, b)
+		h.InsertBeforeField(h.Len(), name, b)
 	}
 
 	if len(ixs) > len(bodies) {
@@ -419,7 +419,7 @@ func (h *Header) Set(name, body string) {
 
 	// if none, insert the new field and we're done
 	if len(ixs) == 0 {
-		h.InsertBeforeField(h.Size(), name, body)
+		h.InsertBeforeField(h.Len(), name, body)
 		return
 	}
 
