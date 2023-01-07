@@ -22,19 +22,3 @@ func (b Break) String() string {
 func (b Break) Bytes() []byte {
 	return []byte(b)
 }
-
-// WithBreak is an object that has associated line breaks.
-type WithBreak interface {
-	// Break returns the line break to use with this object.
-	Break() Break
-}
-
-// WithMutableBreak is an object whose associated line breaks can be changed.
-// Changing the line break must immediately change the entire format of the
-// object to use those line breaks.
-type WithMutableBreak interface {
-	WithBreak
-
-	// SetBreak sets the line break to the newly given value.
-	SetBreak(Break)
-}
