@@ -375,3 +375,216 @@ X-Foo: abc
 	_, _ = h.WriteTo(s)
 	assert.Equal(t, headerStr, s.String())
 }
+
+func TestHeader_Get(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "A", "b")
+	h.InsertBeforeField(1, "C", "d")
+	h.InsertBeforeField(2, "E", "f")
+	h.InsertBeforeField(3, "E", "g")
+
+	b, err := h.Get("A")
+	assert.NoError(t, err)
+	assert.Equal(t, "b", b)
+
+	b, err = h.Get("C")
+	assert.NoError(t, err)
+	assert.Equal(t, "d", b)
+
+	b, err = h.Get("E")
+	assert.ErrorIs(t, err, header.ErrManyFields)
+}
+
+func TestHeader_GetTime(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().Truncate(time.Second)
+	h := &header.Header{}
+	h.InsertBeforeField(0, "X-Date", "2010-10-10 10:10:10-0600")
+	h.InsertBeforeField(1, "Date", now.Format(time.RFC1123Z))
+	h.InsertBeforeField(2, "Not-Date", "blah")
+	h.InsertBeforeField(3, "Dup", "")
+	h.InsertBeforeField(4, "Dup", "")
+
+	d, err := h.GetTime("x-date")
+	assert.NoError(t, err)
+	assert.Equal(t, "2010-10-10 10:10:10 -0600 -0600", d.String())
+
+	d, err = h.GetTime("DATE")
+	assert.NoError(t, err)
+	assert.Equal(t, now.String(), d.String())
+
+	_, err = h.GetTime("Not-date")
+	assert.Error(t, err)
+
+	_, err = h.GetTime("Nothing-burger")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	_, err = h.GetTime("Dup")
+	assert.ErrorIs(t, err, header.ErrManyFields)
+}
+
+func TestHeader_GetAddressList(t *testing.T) {
+	t.Parallel()
+
+	const (
+		sterlingStr = "sterling@example.com"
+		steveStr    = `"Steve Steverson" <steve@example.com>`
+		stanStr     = `"Stan Stanson" <stan@example.com>`
+		stuStr      = `"Stu Stuson" <stu@example.com>`
+	)
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "From", sterlingStr)
+	h.InsertBeforeField(1, "To", steveStr)
+	h.InsertBeforeField(2, "Cc", strings.Join([]string{stanStr, stuStr}, ", "))
+	h.InsertBeforeField(3, "Not-Addr", "blah")
+	h.InsertBeforeField(4, "Dup", "")
+	h.InsertBeforeField(5, "Dup", "")
+
+	sterling, err := addr.ParseEmailAddrSpec(sterlingStr)
+	assert.NoError(t, err)
+
+	steve, err := addr.ParseEmailMailbox(steveStr)
+	assert.NoError(t, err)
+
+	stan, err := addr.ParseEmailMailbox(stanStr)
+	assert.NoError(t, err)
+
+	stu, err := addr.ParseEmailMailbox(stuStr)
+	assert.NoError(t, err)
+
+	al, err := h.GetAddressList("From")
+	assert.NoError(t, err)
+	assert.Equal(t, addr.AddressList{sterling}, al)
+
+	al, err = h.GetAddressList("To")
+	assert.NoError(t, err)
+	assert.Equal(t, addr.AddressList{steve}, al)
+
+	al, err = h.GetAddressList("cc")
+	assert.NoError(t, err)
+	assert.Equal(t, addr.AddressList{stan, stu}, al)
+
+	blah, err := addr.NewMailboxParsed("",
+		addr.NewAddrSpecParsed("blah", "", "blah"),
+		"", "blah",
+	)
+
+	al, err = h.GetAddressList("not-addr")
+	assert.NoError(t, err)
+	assert.Equal(t, addr.AddressList{blah}, al)
+
+	_, err = h.GetAddressList("NOPE")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	_, err = h.GetAddressList("dup")
+	assert.ErrorIs(t, err, header.ErrManyFields)
+}
+
+func TestHeader_GetAllAddressLists(t *testing.T) {
+	t.Parallel()
+
+	const (
+		sterlingStr = "sterling@example.com"
+		steveStr    = `"Steve Steverson" <steve@example.com>`
+		stanStr     = `"Stan Stanson" <stan@example.com>`
+		stuStr      = `"Stu Stuson" <stu@example.com>`
+	)
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "Delivered-To", sterlingStr)
+	h.InsertBeforeField(1, "Delivered-To", steveStr)
+	h.InsertBeforeField(2, "Delivered-To", strings.Join([]string{stanStr, stuStr}, ", "))
+
+	sterling, err := addr.ParseEmailAddrSpec(sterlingStr)
+	assert.NoError(t, err)
+
+	steve, err := addr.ParseEmailMailbox(steveStr)
+	assert.NoError(t, err)
+
+	stan, err := addr.ParseEmailMailbox(stanStr)
+	assert.NoError(t, err)
+
+	stu, err := addr.ParseEmailMailbox(stuStr)
+	assert.NoError(t, err)
+
+	als, err := h.GetAllAddressLists("DELIVered-tO")
+	assert.NoError(t, err)
+	assert.Equal(t, []addr.AddressList{
+		{sterling},
+		{steve},
+		{stan, stu},
+	}, als)
+
+	_, err = h.GetAllAddressLists("not-a-thing")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+}
+
+func TestHeader_GetParamValue(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "mime-thing", "media/type; charset=transylvanian1; bob=upanddown")
+	h.InsertBeforeField(1, "anothering", "xyx")
+	h.InsertBeforeField(2, "dup", "")
+	h.InsertBeforeField(3, "dup", "")
+
+	pv, err := h.GetParamValue("mime-thing")
+	assert.NoError(t, err)
+	assert.Equal(t, "media/type", pv.MediaType())
+	assert.Equal(t, "transylvanian1", pv.Charset())
+	assert.Equal(t, "upanddown", pv.Parameter("bob"))
+
+	pv, err = h.GetParamValue("anothering")
+	assert.NoError(t, err)
+	assert.Equal(t, "xyx", pv.Value())
+
+	_, err = h.GetParamValue("zip")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	_, err = h.GetParamValue("dup")
+	assert.ErrorIs(t, err, header.ErrManyFields)
+}
+
+func TestHeader_GetKeywordsList(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "word-things", "one, two, three, four, five")
+	h.InsertBeforeField(1, "word-things", `\six, \seven, \eight, \nine, \ten`)
+	h.InsertBeforeField(2, "word-things", "eleven twelve")
+
+	ks, err := h.GetKeywordsList("WORD-THINGS")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{
+		"one", "two", "three", "four", "five",
+		`\six`, `\seven`, `\eight`, `\nine`, `\ten`,
+		"eleven twelve",
+	}, ks)
+
+	_, err = h.GetKeywordsList("null")
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+}
+
+func TestHeader_GetAll(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.InsertBeforeField(0, "One", "two")
+	h.InsertBeforeField(2, "Three", "four")
+	h.InsertBeforeField(1, "One", "five")
+
+	bs, err := h.GetAll("One")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"two", "five"}, bs)
+
+	bs, err = h.GetAll("Three")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"four"}, bs)
+
+	_, err = h.GetAll("Six")
+	assert.Error(t, header.ErrNoSuchField)
+}
