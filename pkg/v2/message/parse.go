@@ -320,6 +320,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 						// we didn't find a regular boundary, but we're at EOF, so
 						// it's time to search for the final boundary
 						mode = modeEnd
+						err = scanner.ErrContinue
 					}
 					// else, we aren't at EOF, so there's more input and we may
 					// yet find more interior boundaries to split on

@@ -177,8 +177,9 @@ func (b *Buffer) Opaque() (*Opaque, error) {
 			for _, part := range b.parts {
 				_, _ = fmt.Fprintf(buf, "--%s%s", boundary, b.Break())
 				_, _ = part.WriteTo(buf)
+				_, _ = fmt.Fprint(buf, b.Break())
 			}
-			_, _ = fmt.Fprintf(buf, "--%s%s", boundary, b.Break())
+			_, _ = fmt.Fprintf(buf, "--%s--%s", boundary, b.Break())
 		}
 
 		return &Opaque{
@@ -228,7 +229,9 @@ func (b *Buffer) Multipart() (*Multipart, error) {
 		return nil, ErrModeUnset
 	case ModeOpaque:
 		msg := &Opaque{b.Header, b.buf}
-		gmsg, err := Parse(msg, WithoutRecursion())
+		pr := defaultParser.clone()
+		WithoutRecursion()(pr)
+		gmsg, err := pr.parse(msg, 0)
 		switch vmsg := gmsg.(type) {
 		case *Opaque:
 			if err != nil {
