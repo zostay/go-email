@@ -298,7 +298,10 @@ func (h *Header) getKeywordsList(name string) ([]string, error) {
 	for _, b := range bs {
 		ks := strings.Split(b, ",")
 		for _, k := range ks {
-			allKs = append(allKs, strings.TrimSpace(k))
+			nextK := strings.TrimSpace(k)
+			if nextK != "" {
+				allKs = append(allKs, nextK)
+			}
 		}
 	}
 
@@ -373,7 +376,7 @@ func (h *Header) GetAll(name string) ([]string, error) {
 // field is already present in the header, existing fields will have their
 // bodies replaced with the new values. Any new fields will be appended to the
 // end of the header.
-func (h *Header) SetAll(name string, bodies []string) {
+func (h *Header) SetAll(name string, bodies ...string) {
 	ixs := h.GetIndexesNamed(name)
 
 	for i, b := range bodies {
@@ -399,7 +402,7 @@ func (h *Header) SetAll(name string, bodies []string) {
 // SetKeywordsList will replace all Keywords headers currently set in the
 // header with one Keywords header with all the given keywords separated by
 // a comma.
-func (h *Header) SetKeywordsList(name string, keywords []string) {
+func (h *Header) SetKeywordsList(name string, keywords ...string) {
 	h.setValue(name, keywords)
 	bodyStr := strings.Join(keywords, ", ")
 	h.Set(name, bodyStr)
@@ -448,21 +451,21 @@ func (h *Header) SetTime(name string, body time.Time) {
 
 // SetAddressList will replace all existing header fields with the given name
 // with a single header containing the given addr.AddressList.
-func (h *Header) SetAddressList(name string, body addr.AddressList) {
+func (h *Header) SetAddressList(name string, body ...addr.Address) {
 	h.setValue(name, body)
-	bodyStr := body.String()
+	bodyStr := addr.AddressList(body).String()
 	h.Set(name, bodyStr)
 }
 
 // SetAllAddressLists will replace all existing header fields with a new set
 // of header fields from the given slice of addr.AddressList.
-func (h *Header) SetAllAddressLists(name string, bodies []addr.AddressList) {
+func (h *Header) SetAllAddressLists(name string, bodies ...addr.AddressList) {
 	h.setValue(name, bodies)
 	strs := make([]string, len(bodies))
 	for i, body := range bodies {
 		strs[i] = body.String()
 	}
-	h.SetAll(name, strs)
+	h.SetAll(name, strs...)
 }
 
 // SetParamValue will replace all existing header fields with the given name
@@ -705,21 +708,24 @@ func (h *Header) SetSubject(s string) {
 
 // setAddress allows the setting of an address field either from a string or
 // from an address list or fails with an error.
-func (h *Header) setAddress(n string, a any) error {
+func (h *Header) setAddress(n string, as []any) error {
 	var al addr.AddressList
-	switch v := a.(type) {
-	case string:
-		var err error
-		al, err = addr.ParseEmailAddressList(v)
-		if err != nil {
-			return err
+	for _, a := range as {
+		switch v := a.(type) {
+		case string:
+			var err error
+			add, err := addr.ParseEmailAddress(v)
+			if err != nil {
+				return err
+			}
+			al = append(al, add)
+		case addr.Address:
+			al = append(al, v)
+		default:
+			return ErrWrongAddressType
 		}
-	case addr.AddressList:
-		al = v
-	default:
-		return ErrWrongAddressType
 	}
-	h.SetAddressList(n, al)
+	h.SetAddressList(n, al...)
 	return nil
 }
 
@@ -736,7 +742,7 @@ func (h *Header) GetTo() (addr.AddressList, error) {
 //
 // It will fail with an error returned if something other than those types is
 // provided or if the given string fails to strictly parse.
-func (h *Header) SetTo(a any) error {
+func (h *Header) SetTo(a ...any) error {
 	return h.setAddress(To, a)
 }
 
@@ -753,7 +759,7 @@ func (h *Header) GetCc() (addr.AddressList, error) {
 //
 // It will fail with an error returned if something other than those types is
 // provided or if the given string fails to strictly parse.
-func (h *Header) SetCc(a any) error {
+func (h *Header) SetCc(a ...any) error {
 	return h.setAddress(Cc, a)
 }
 
@@ -771,7 +777,7 @@ func (h *Header) GetBcc() (addr.AddressList, error) {
 //
 // It will fail with an error returned if something other than those types is
 // provided or if the given string fails to strictly parse.
-func (h *Header) SetBcc(a any) error {
+func (h *Header) SetBcc(a ...any) error {
 	return h.setAddress(Bcc, a)
 }
 
@@ -789,7 +795,7 @@ func (h *Header) GetFrom() (addr.AddressList, error) {
 //
 // It will fail with an error returned if something other than those types is
 // provided or if the given string fails to strictly parse.
-func (h *Header) SetFrom(a any) error {
+func (h *Header) SetFrom(a ...any) error {
 	return h.setAddress(From, a)
 }
 
@@ -807,7 +813,7 @@ func (h *Header) GetReplyTo() (addr.AddressList, error) {
 //
 // It will fail with an error returned if something other than those types is
 // provided or if the given string fails to strictly parse.
-func (h *Header) SetReplyTo(a any) error {
+func (h *Header) SetReplyTo(a ...any) error {
 	return h.setAddress(ReplyTo, a)
 }
 
@@ -820,8 +826,8 @@ func (h *Header) GetKeywords() ([]string, error) {
 }
 
 // SetKeywords sets keywords on the Keywords header.
-func (h *Header) SetKeywords(ks []string) {
-	h.SetKeywordsList(Keywords, ks)
+func (h *Header) SetKeywords(ks ...string) {
+	h.SetKeywordsList(Keywords, ks...)
 }
 
 // GetComments returns the content of the Comments header fields.
@@ -830,8 +836,8 @@ func (h *Header) GetComments() ([]string, error) {
 }
 
 // SetComments replaces all Comments fields with the given bodies.
-func (h *Header) SetComments(cs []string) {
-	h.SetAll(Comments, cs)
+func (h *Header) SetComments(cs ...string) {
+	h.SetAll(Comments, cs...)
 }
 
 // GetReferences returns the message ID in the References header, if any.
@@ -890,7 +896,7 @@ func (h *Header) GetSender() (addr.AddressList, error) {
 //
 // It will fail with an error returned if something other than those types is
 // provided or if the given string fails to strictly parse.
-func (h *Header) SetSender(a any) error {
+func (h *Header) SetSender(a ...any) error {
 	return h.setAddress(Sender, a)
 }
 

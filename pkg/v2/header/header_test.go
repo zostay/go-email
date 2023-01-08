@@ -296,7 +296,7 @@ func TestHeader_HeaderSetAddressList(t *testing.T) {
 	people, err := addr.ParseEmailAddressList("sterling@example.com, steve@example.com, bob@example.com")
 	require.NoError(t, err)
 
-	m.GetHeader().SetAddressList("To", people)
+	m.GetHeader().SetAddressList("To", people...)
 
 	const afterHeaderStr = `Subject: test
 To: sterling@example.com, steve@example.com, bob@example.com
@@ -555,6 +555,7 @@ func TestHeader_GetKeywordsList(t *testing.T) {
 	h := &header.Header{}
 	h.InsertBeforeField(0, "word-things", "one, two, three, four, five")
 	h.InsertBeforeField(1, "word-things", `\six, \seven, \eight, \nine, \ten`)
+	h.InsertBeforeField(2, "word-things", "")
 	h.InsertBeforeField(2, "word-things", "eleven twelve")
 
 	ks, err := h.GetKeywordsList("WORD-THINGS")
@@ -598,10 +599,10 @@ func TestHeader_SetAll(t *testing.T) {
 	h.InsertBeforeField(2, "E", "f")
 	h.InsertBeforeField(3, "E", "g")
 
-	h.SetAll("A", []string{"one", "two"})
-	h.SetAll("B", []string{"three", "four"})
-	h.SetAll("C", []string{"five", "six"})
-	h.SetAll("E", []string{"seven"})
+	h.SetAll("A", "one", "two")
+	h.SetAll("B", "three", "four")
+	h.SetAll("C", "five", "six")
+	h.SetAll("E", "seven")
 
 	const expect = `A: one
 C: five
@@ -619,7 +620,7 @@ C: six
 	assert.NoError(t, err)
 	assert.Equal(t, expect, buf.String())
 
-	h.SetAll("C", []string{})
+	h.SetAll("C")
 	_, err = h.GetAll("C")
 	assert.ErrorIs(t, err, header.ErrNoSuchField)
 }
@@ -633,13 +634,13 @@ func TestHeader_SetKeywordsList(t *testing.T) {
 	h.InsertBeforeField(2, "C", "e")
 	h.InsertBeforeField(3, "F", "g")
 
-	h.SetKeywordsList("C", []string{"one", "two", "three"})
+	h.SetKeywordsList("C", "one", "two", "three")
 
 	b, err := h.Get("C")
 	assert.NoError(t, err)
 	assert.Equal(t, "one, two, three", b)
 
-	h.SetKeywordsList("C", []string{})
+	h.SetKeywordsList("C")
 
 	b, err = h.Get("C")
 	assert.NoError(t, err)
@@ -720,7 +721,7 @@ func TestHeader_SetAddressList(t *testing.T) {
 	assert.NoError(t, err)
 
 	h := &header.Header{}
-	h.SetAddressList("X-To", addr.AddressList{sterling, steve})
+	h.SetAddressList("X-To", sterling, steve)
 
 	b, err := h.Get("X-To")
 	assert.NoError(t, err)
@@ -750,11 +751,11 @@ func TestHeader_SetAllAddressLists(t *testing.T) {
 	assert.NoError(t, err)
 
 	h := &header.Header{}
-	h.SetAllAddressLists("X-Addr", []addr.AddressList{
-		{sterling},
-		{steve, stan},
-		{stu},
-	})
+	h.SetAllAddressLists("X-Addr",
+		addr.AddressList{sterling},
+		addr.AddressList{steve, stan},
+		addr.AddressList{stu},
+	)
 
 	bs, err := h.GetAll("X-Addr")
 	assert.NoError(t, err)
@@ -1021,4 +1022,236 @@ func TestHeader_Get_BccCcToFromSenderReplyTo(t *testing.T) {
 	replyTo, err := h.GetReplyTo()
 	assert.NoError(t, err)
 	assert.Equal(t, sa, replyTo)
+}
+
+func TestHeader_Set_ToCcBccFromSenderReplyTo_String(t *testing.T) {
+	t.Parallel()
+
+	{
+		// parse error test
+		const broken = `example.com`
+
+		h := &header.Header{}
+
+		err := h.SetTo(broken)
+		assert.Error(t, err)
+
+		err = h.SetCc(broken)
+		assert.Error(t, err)
+
+		err = h.SetBcc(broken)
+		assert.Error(t, err)
+
+		err = h.SetFrom(broken)
+		assert.Error(t, err)
+
+		err = h.SetSender(broken)
+		assert.Error(t, err)
+
+		err = h.SetReplyTo(broken)
+		assert.Error(t, err)
+
+		assert.Equal(t, 0, h.Len())
+	}
+
+	{
+		// bad input error test
+		h := &header.Header{}
+
+		err := h.SetTo(42)
+		assert.ErrorIs(t, err, header.ErrWrongAddressType)
+
+		err = h.SetCc(42)
+		assert.ErrorIs(t, err, header.ErrWrongAddressType)
+
+		err = h.SetBcc(42)
+		assert.ErrorIs(t, err, header.ErrWrongAddressType)
+
+		err = h.SetFrom(42)
+		assert.ErrorIs(t, err, header.ErrWrongAddressType)
+
+		err = h.SetSender(42)
+		assert.ErrorIs(t, err, header.ErrWrongAddressType)
+
+		err = h.SetReplyTo(42)
+		assert.ErrorIs(t, err, header.ErrWrongAddressType)
+
+		assert.Equal(t, 0, h.Len())
+	}
+
+	{
+		// str ok input
+		h := &header.Header{}
+
+		const str = `sterling@example.com`
+		ad, err := addr.ParseEmailAddrSpec(str)
+		assert.NoError(t, err)
+
+		add := addr.AddressList{ad}
+
+		err = h.SetTo(str)
+		assert.NoError(t, err)
+		b, err := h.GetTo()
+		assert.NoError(t, err)
+		assert.Equal(t, add, b)
+
+		err = h.SetCc(str)
+		assert.NoError(t, err)
+		b, err = h.GetCc()
+		assert.NoError(t, err)
+		assert.Equal(t, add, b)
+
+		err = h.SetBcc(str)
+		assert.NoError(t, err)
+		b, err = h.GetBcc()
+		assert.NoError(t, err)
+		assert.Equal(t, add, b)
+
+		err = h.SetFrom(str)
+		assert.NoError(t, err)
+		b, err = h.GetFrom()
+		assert.NoError(t, err)
+		assert.Equal(t, add, b)
+
+		err = h.SetSender(str)
+		assert.NoError(t, err)
+		b, err = h.GetSender()
+		assert.NoError(t, err)
+		assert.Equal(t, add, b)
+
+		err = h.SetReplyTo(str)
+		assert.NoError(t, err)
+		b, err = h.GetReplyTo()
+		assert.NoError(t, err)
+		assert.Equal(t, add, b)
+
+		const expect = `To: sterling@example.com
+Cc: sterling@example.com
+Bcc: sterling@example.com
+From: sterling@example.com
+Sender: sterling@example.com
+Reply-to: sterling@example.com
+
+`
+
+		buf := &bytes.Buffer{}
+		n, err := h.WriteTo(buf)
+		assert.Equal(t, int64(164), n)
+		assert.NoError(t, err)
+		assert.Equal(t, expect, buf.String())
+	}
+
+	{
+		// addr ok input
+		h := &header.Header{}
+
+		const str = `sterling@example.com`
+		ad, err := addr.ParseEmailAddrSpec(str)
+		assert.NoError(t, err)
+
+		err = h.SetTo(ad)
+		assert.NoError(t, err)
+		b, err := h.Get(header.To)
+		assert.NoError(t, err)
+		assert.Equal(t, str, b)
+
+		err = h.SetCc(ad)
+		assert.NoError(t, err)
+		b, err = h.Get(header.Cc)
+		assert.NoError(t, err)
+		assert.Equal(t, str, b)
+
+		err = h.SetBcc(ad)
+		assert.NoError(t, err)
+		b, err = h.Get(header.Bcc)
+		assert.NoError(t, err)
+		assert.Equal(t, str, b)
+
+		err = h.SetFrom(ad)
+		assert.NoError(t, err)
+		b, err = h.Get(header.From)
+		assert.NoError(t, err)
+		assert.Equal(t, str, b)
+
+		err = h.SetSender(ad)
+		assert.NoError(t, err)
+		b, err = h.Get(header.Sender)
+		assert.NoError(t, err)
+		assert.Equal(t, str, b)
+
+		err = h.SetReplyTo(ad)
+		assert.NoError(t, err)
+		b, err = h.Get(header.ReplyTo)
+		assert.NoError(t, err)
+		assert.Equal(t, str, b)
+
+		const expect = `To: sterling@example.com
+Cc: sterling@example.com
+Bcc: sterling@example.com
+From: sterling@example.com
+Sender: sterling@example.com
+Reply-to: sterling@example.com
+
+`
+
+		buf := &bytes.Buffer{}
+		n, err := h.WriteTo(buf)
+		assert.Equal(t, int64(164), n)
+		assert.NoError(t, err)
+		assert.Equal(t, expect, buf.String())
+	}
+}
+
+func TestHeader_GetKeywords(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	_, err := h.GetKeywords()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.InsertBeforeField(0, "Keywords", "a, b, c")
+	h.InsertBeforeField(1, "Keywords", "d")
+	h.InsertBeforeField(3, "Keywords", "e, f")
+
+	ks, err := h.GetKeywords()
+	assert.Equal(t, []string{"a", "b", "c", "d", "e", "f"}, ks)
+}
+
+func TestHeader_SetKeywords(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	h.InsertBeforeField(0, "Keywords", "a, b, c")
+	h.InsertBeforeField(1, "Keywords", "d")
+	h.InsertBeforeField(3, "Keywords", "e, f")
+
+	h.SetKeywords("one", "two", "three")
+
+	const expect = `Keywords: one, two, three
+
+`
+
+	buf := &bytes.Buffer{}
+	n, err := h.WriteTo(buf)
+	assert.Equal(t, int64(27), n)
+	assert.NoError(t, err)
+	assert.Equal(t, expect, buf.String())
+}
+
+func TestHeader_GetComments(t *testing.T) {
+	// TODO implement this test
+}
+
+func TestHeader_SetComments(t *testing.T) {
+	// TODO implement this test
+}
+
+func TestHeader_Get_ReferencesInReplyToMessageID(t *testing.T) {
+	// TODO implement this test
+}
+
+func TestHeader_Set_ReferencesInReplyToMessageID(t *testing.T) {
+	// TODO implement this test
 }
