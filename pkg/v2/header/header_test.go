@@ -575,12 +575,13 @@ func TestHeader_GetAll(t *testing.T) {
 
 	h := &header.Header{}
 	h.InsertBeforeField(0, "One", "two")
-	h.InsertBeforeField(2, "Three", "four")
 	h.InsertBeforeField(1, "One", "five")
+	h.InsertBeforeField(2, "Three", "four")
+	h.InsertBeforeField(3, "One", "")
 
 	bs, err := h.GetAll("One")
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"two", "five"}, bs)
+	assert.Equal(t, []string{"two", "five", ""}, bs)
 
 	bs, err = h.GetAll("Three")
 	assert.NoError(t, err)
@@ -1241,17 +1242,89 @@ func TestHeader_SetKeywords(t *testing.T) {
 }
 
 func TestHeader_GetComments(t *testing.T) {
-	// TODO implement this test
+	t.Parallel()
+
+	h := &header.Header{}
+
+	h.InsertBeforeField(0, "Comments", "a")
+	h.InsertBeforeField(1, "Comments", "b")
+	h.InsertBeforeField(2, "Comments", "c")
+
+	cs, err := h.GetComments()
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"a", "b", "c"}, cs)
 }
 
 func TestHeader_SetComments(t *testing.T) {
-	// TODO implement this test
+	t.Parallel()
+
+	h := &header.Header{}
+
+	h.SetComments("one", "two", "three")
+
+	const expect = `Comments: one
+Comments: two
+Comments: three
+
+`
+
+	buf := &bytes.Buffer{}
+	n, err := h.WriteTo(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(45), n)
+	assert.Equal(t, expect, buf.String())
 }
 
 func TestHeader_Get_ReferencesInReplyToMessageID(t *testing.T) {
-	// TODO implement this test
+	t.Parallel()
+
+	h := &header.Header{}
+
+	_, err := h.GetReferences()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	_, err = h.GetInReplyTo()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	_, err = h.GetMessageID()
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
+
+	h.InsertBeforeField(0, "References", "abc123")
+	h.InsertBeforeField(1, "In-Reply-To", "def456")
+	h.InsertBeforeField(2, "Message-id", "ghi789")
+
+	b, err := h.GetReferences()
+	assert.NoError(t, err)
+	assert.Equal(t, "abc123", b)
+
+	b, err = h.GetInReplyTo()
+	assert.NoError(t, err)
+	assert.Equal(t, "def456", b)
+
+	b, err = h.GetMessageID()
+	assert.NoError(t, err)
+	assert.Equal(t, "ghi789", b)
 }
 
 func TestHeader_Set_ReferencesInReplyToMessageID(t *testing.T) {
-	// TODO implement this test
+	t.Parallel()
+
+	h := &header.Header{}
+
+	h.SetMessageID("foo")
+	h.SetReferences("bar")
+	h.SetInReplyTo("baz")
+
+	const expect = `Message-id: foo
+References: bar
+In-reply-to: baz
+
+`
+
+	buf := &bytes.Buffer{}
+	n, err := h.WriteTo(buf)
+	assert.Equal(t, int64(50), n)
+	assert.NoError(t, err)
+	assert.Equal(t, expect, buf.String())
+
 }
