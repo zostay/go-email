@@ -129,7 +129,18 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 
 	n := hn
 	if len(mm.parts) > 0 {
+		first := true
 		for _, part := range mm.parts {
+			if !first {
+				bn, err := fmt.Fprint(w, br)
+				n += int64(bn)
+				if err != nil {
+					return n, err
+				}
+			} else {
+				first = false
+			}
+
 			bn, err := fmt.Fprintf(w, "--%s%s", boundary, br)
 			n += int64(bn)
 			if err != nil {
@@ -143,7 +154,7 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 			}
 		}
 
-		bn, err := fmt.Fprintf(w, "--%s%s", boundary, br)
+		bn, err := fmt.Fprintf(w, "%s--%s--%s", br, boundary, br)
 		n += int64(bn)
 		return n, err
 	}

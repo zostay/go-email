@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/zostay/go-email/pkg/v2/header"
+	"github.com/zostay/go-email/pkg/v2/internal/scanner"
 )
 
 // Constants related to Parse() options.
@@ -255,13 +256,13 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	// dealing with the first, we will also look for the newline before the
 	// found boundary to ensure the prefix is captured correctly.
 	//
-	// For the purpose of capturing content, the newline before the boundary is
-	// left with the prefix or the part, but the newline after the boundary is
-	// considered part of the boundary.
+	// For the purpose of capturing content, the newlines before and after the
+	// boundary belong to the boundary. Otherwise, we'd have some ambiguity that
+	// would make it difficult to carefully round-trip a message with zero byte
+	// changes.
 	sb := []byte(fmt.Sprintf("--%s%s", pv.Boundary(), msg.Break()))
 	mb := []byte(fmt.Sprintf("%s--%s%s", msg.Break(), pv.Boundary(), msg.Break()))
 	eb := []byte(fmt.Sprintf("%s--%s--%s", msg.Break(), pv.Boundary(), msg.Break()))
-	brkLen := len(msg.Break().Bytes())
 
 	const (
 		modeStart = iota
@@ -277,86 +278,87 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	mode := modeStart
 	awaitingPrefix := true
 	sc.Split(
-		func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-			if mode == modeStart {
-				// looking for an empty prefix
-				if atEOF || len(data) >= len(sb) {
-					if bytes.Equal(data[:len(sb)], sb) {
-						// initial string is the boundary, so we have an empty
-						// prefix
-						prefix = []byte{}
-						awaitingPrefix = false
-						advance = len(sb)
+		scanner.MakeSplitFuncExitByAdvance( // bufio.SplitFunc sucks
+			func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+				if mode == modeStart {
+					// looking for an empty prefix
+					if atEOF || len(data) >= len(sb) {
+						if bytes.Equal(data[:len(sb)], sb) {
+							// initial string is the boundary, so we have an empty
+							// prefix
+							prefix = []byte{}
+							awaitingPrefix = false
+							advance = len(sb)
+						}
+						// else, no zero-length prefix
+
+						// either way, move on to modeMiddle
+						mode = modeMiddle
 					}
-					// else, no zero-length prefix
+					// else, we don't have enough data to know if we've got a
+					// zero-length prefix yet or not.
 
-					// either way, move on to modeMiddle
-					mode = modeMiddle
-				}
-				// else, we don't have enough data to know if we've got a
-				// zero-length prefix yet or not.
-
-			} else if mode == modeMiddle {
-				// we are now looking for parts or possibly the prefix if it is
-				// not a zero byte prefix
-				if ix := bytes.Index(data, mb); ix >= 0 {
-					// we found a \n--boundary\n string:
-					// |-> advance past the boundary for the next token
-					// |-> if awaitingPrefix, capture prefix
-					// |-> if not awaitingPrefix, return token
-					// |-> prefix/token will keep their final newline
-					advance = ix + len(mb)
+				} else if mode == modeMiddle {
+					// we are now looking for parts or possibly the prefix if it is
+					// not a zero byte prefix
+					if ix := bytes.Index(data, mb); ix >= 0 {
+						// we found a \n--boundary\n string:
+						// |-> advance past the boundary for the next token
+						// |-> if awaitingPrefix, capture prefix
+						// |-> if not awaitingPrefix, return token
+						advance = ix + len(mb)
+						if awaitingPrefix {
+							// this is the first boundary, so the input so far is
+							// the prefix
+							prefix = data[:ix]
+							awaitingPrefix = false
+						} else {
+							// this is a subsequent boundary, so the input is a part
+							token = data[:ix]
+						}
+					} else if atEOF {
+						// we didn't find a regular boundary, but we're at EOF, so
+						// it's time to search for the final boundary
+						mode = modeEnd
+					}
+					// else, we aren't at EOF, so there's more input and we may
+					// yet find more interior boundaries to split on
+				} else if mode == modeEnd {
+					// If we get here and we are still awaitingPrefix, this message
+					// is badly formatted. We have no initial boundary at all. We
+					// record that by setting prefix to nil so that when
+					// round-tripping, the initial prefix will be missing. Then, we
+					// treat the data before the final boundary as if it is the
+					// message.
 					if awaitingPrefix {
-						// this is the first boundary, so the input so far is
-						// the prefix
-						prefix = data[:ix-brkLen]
-						awaitingPrefix = false
-					} else {
-						// this is a subsequent boundary, so the input is a part
-						token = data[:ix-brkLen]
+						prefix = nil
 					}
-				} else if atEOF {
-					// we didn't find a regular boundary, but we're at EOF, so
-					// it's time to search for the final boundary
-					mode = modeEnd
-				}
-				// else, we aren't at EOF, so there's more input and we may
-				// yet find more interior boundaries to split on
-			} else if mode == modeEnd {
-				// If we get here and we are still awaitingPrefix, this message
-				// is badly formatted. We have no initial boundary at all. We
-				// record that by setting prefix to nil so that when
-				// round-tripping, the initial prefix will be missing. Then, we
-				// treat the data before the final boundary as if it is the
-				// message.
-				if awaitingPrefix {
-					prefix = nil
-				}
 
-				// if we are here, we know that atEOF is true
-				if ix := bytes.Index(data, eb); ix >= 0 {
-					// we found the final \n--boundary--\n string:
-					// |-> capture the suffix, which is everything after the
-					// |   boundary
-					// |-> capture the token to return as the final part
-					token = data[:ix-brkLen]
-					suffix = data[ix+len(eb):]
+					// if we are here, we know that atEOF is true
+					if ix := bytes.Index(data, eb); ix >= 0 {
+						// we found the final \n--boundary--\n string:
+						// |-> capture the suffix, which is everything after the
+						// |   boundary
+						// |-> capture the token to return as the final part
+						token = data[:ix]
+						suffix = data[ix+len(eb):]
+					} else {
+						// bummer, we have no final boundary, so we'll just treat
+						// the rest of the data as the final part and record that
+						// we have no suffix (when round-tripping, the final
+						// boundary will still be omitted).
+						token = data
+						suffix = nil
+					}
+					// either way, we're done
+					err = bufio.ErrFinalToken
 				} else {
-					// bummer, we have no final boundary, so we'll just treat
-					// the rest of the data as the final part and record that
-					// we have no suffix (when round-tripping, the final
-					// boundary will still be omitted).
-					token = data
-					suffix = nil
+					// never happens, right?
+					panic("unexpected parser state")
 				}
-				// either way, we're done
-				err = bufio.ErrFinalToken
-			} else {
-				// never happens, right?
-				panic("unexpected parser state")
-			}
-			return
-		},
+				return
+			},
+		),
 	)
 
 	// This function will recover the original message if we get an error
