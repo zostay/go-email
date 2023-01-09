@@ -114,6 +114,9 @@ func TestBuffer_Add(t *testing.T) {
 
 	assert.Equal(t, message.ModeMultipart, buf.Mode())
 
+	_, err = buf.Write([]byte{})
+	assert.ErrorIs(t, err, message.ErrPartsBuffer)
+
 	m, err := buf.Multipart()
 	assert.NoError(t, err)
 
@@ -147,6 +150,11 @@ func TestBuffer_Write(t *testing.T) {
 	n, err := fmt.Fprintln(buf, "This is a simple opaque message.")
 	assert.Equal(t, 33, n)
 	assert.NoError(t, err)
+
+	assert.Equal(t, message.ModeOpaque, buf.Mode())
+
+	err = buf.Add(makePart())
+	assert.ErrorIs(t, err, message.ErrOpaqueBuffer)
 
 	m, err := buf.Opaque()
 	assert.NoError(t, err)
