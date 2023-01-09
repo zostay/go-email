@@ -36,21 +36,22 @@ var (
 
 // These are standard headers defined in RFC 5322.
 const (
-	Bcc                = "Bcc"
-	Cc                 = "Cc"
-	Comments           = "Comments"
-	ContentDisposition = "Content-disposition"
-	ContentType        = "Content-type"
-	Date               = "Date"
-	From               = "From"
-	InReplyTo          = "In-reply-to"
-	Keywords           = "Keywords"
-	MessageID          = "Message-id"
-	References         = "References"
-	ReplyTo            = "Reply-to"
-	Sender             = "Sender"
-	Subject            = "Subject"
-	To                 = "To"
+	Bcc                     = "Bcc"
+	Cc                      = "Cc"
+	Comments                = "Comments"
+	ContentDisposition      = "Content-disposition"
+	ContentTransferEncoding = "Content-transfer-encoding"
+	ContentType             = "Content-type"
+	Date                    = "Date"
+	From                    = "From"
+	InReplyTo               = "In-reply-to"
+	Keywords                = "Keywords"
+	MessageID               = "Message-id"
+	References              = "References"
+	ReplyTo                 = "Reply-to"
+	Sender                  = "Sender"
+	Subject                 = "Subject"
+	To                      = "To"
 )
 
 // Header wraps a Base, which does the actual storage and low-level field
@@ -898,6 +899,21 @@ func (h *Header) GetSender() (addr.AddressList, error) {
 // provided or if the given string fails to strictly parse.
 func (h *Header) SetSender(a ...any) error {
 	return h.setAddress(Sender, a)
+}
+
+// GetTransferEncoding returns the content of the Content-transfer-encoding
+// header.
+//
+// It will return ErrNoSuchField if the header is not set. it will return
+// ErrManyFields if the field is set more than once.
+func (h *Header) GetTransferEncoding() (string, error) {
+	return h.Get(ContentTransferEncoding)
+}
+
+// SetTransferEncoding replaces the Content-transfer-encoding with the given
+// value.
+func (h *Header) SetTransferEncoding(b string) {
+	h.Set(ContentTransferEncoding, b)
 }
 
 // TODO Add support for resent blocks

@@ -9,6 +9,7 @@ import (
 
 	"github.com/zostay/go-email/v2/header"
 	"github.com/zostay/go-email/v2/internal/scanner"
+	"github.com/zostay/go-email/v2/transfer"
 )
 
 // Constants related to Parse() options.
@@ -40,6 +41,7 @@ var splits = [][]byte{
 type parser struct {
 	maxDepth  int
 	chunkSize int
+	decode    bool
 }
 
 func (pr *parser) clone() *parser {
@@ -47,11 +49,19 @@ func (pr *parser) clone() *parser {
 	return &p
 }
 
-var defaultParser = &parser{DefaultMaxMultipartDepth, DefaultChunkSize}
+var defaultParser = &parser{DefaultMaxMultipartDepth, DefaultChunkSize, false}
 
 // ParseOption refers to options that may be passed to the Parse function to
 // modify how the parser works.
 type ParseOption func(pr *parser)
+
+// DecodeTransferEncoding is a ParseOption that enables the decoding of
+// Content-transfer-encoding. By default, Content-transfer-encoding will not be
+// decoded, which allows for safer round-tripping of messages. However, if you
+// want to display or process the message body, you will want to enable this.
+func DecodeTransferEncoding() ParseOption {
+	return func(pr *parser) { pr.decode = true }
+}
 
 // WithChunkSize is a ParseOption that controls how many bytes to read at a time
 // while parsing an email message. The default chunk size is DefaultChunkSize.
@@ -159,20 +169,6 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 	return buf.Bytes(), []byte("\x0d"), &bytes.Buffer{}, nil
 }
 
-// // ParseOpaque will turn the given input into an Opaque by detecting the line
-// // break used to split the header from the body, using that break to split the
-// // header part from the body part, and parsing the header. The body, whatever it
-// // is, is kept as an opaque value provided in the io.Reader part of the
-// // constructed Opaque object.
-// func ParseOpaque(r io.Reader, opts ...ParseOption) (*Opaque, error) {
-// 	pr := defaultParser.clone()
-// 	for _, opt := range opts {
-// 		opt(pr)
-// 	}
-//
-// 	return pr.parseOpaque(r)
-// }
-
 // parseOpaque turns a reader into an Opaque.
 func (pr *parser) parseToOpaque(r io.Reader) (*Opaque, error) {
 	hdr, crlf, body, err := pr.splitHeadFromBody(r)
@@ -185,7 +181,11 @@ func (pr *parser) parseToOpaque(r io.Reader) (*Opaque, error) {
 		return nil, err
 	}
 
-	return &Opaque{*head, body}, nil
+	if pr.decode {
+		body = transfer.ApplyTransferDecoding(head, body)
+	}
+
+	return &Opaque{*head, body, !pr.decode}, nil
 }
 
 // Parse will transform a *Opaque into a *Multipart or return a *Opaque if
@@ -211,6 +211,15 @@ func (pr *parser) parseToOpaque(r io.Reader) (*Opaque, error) {
 // point a *Multipart will be returned with all the parts broken up into
 // pieces. If the end boundary is missing, it will also return an error
 // ErrMissingEndBoundary.
+//
+// 5. If the DecodeTransferEncoding() option is passed, the parts of the message
+// that do not have sub-parts and have a Content-transfer-encoding header set,
+// will be decoded. This is not the default behavior because we want to prefer
+// preserving the body byte-for-byte for round-tripping and decoding and
+// re-encoding this data is likely to result in changes. If decoded, rendering
+// the message with WriteTo() will write encoded data to the destination
+// writer. However, if you read the data using the io.Reader, you will receive
+// un-encoded bytes.
 func Parse(r io.Reader, opts ...ParseOption) (Generic, error) {
 	pr := defaultParser.clone()
 	for _, opt := range opts {

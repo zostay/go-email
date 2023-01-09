@@ -191,6 +191,22 @@ func (b *Buffer) Opaque() (*Opaque, error) {
 	return nil, errors.New("unknown mode")
 }
 
+// OpaqueAlreadyEncoded works just like Opaque(), but marks the object as
+// already having the Content-transfer-encoding applied. Use this when you write
+// a message in encoded form.
+//
+// NOTE: This does not perform any encoding! If you want the output to be
+// automatically encoded, you actually want to call Opaque() and then WriteTo()
+// on the returned object will perform encoding. This method is for indicating
+// that you have already performed the required encodigin.
+func (b *Buffer) OpaqueAlreadyEncoded() (*Opaque, error) {
+	msg, err := b.Opaque()
+	if msg != nil {
+		msg.encoded = true
+	}
+	return msg, err
+}
+
 // Multipart will return a Multipart message based upon the content written to
 // the Buffer. This method will fail with an error if there's a problem. The
 // behavior of this method depends on which mode the Buffer is in when called.
@@ -228,7 +244,7 @@ func (b *Buffer) Multipart() (*Multipart, error) {
 	case ModeUnset:
 		return nil, ErrModeUnset
 	case ModeOpaque:
-		msg := &Opaque{b.Header, b.buf}
+		msg := &Opaque{b.Header, b.buf, false}
 		pr := defaultParser.clone()
 		WithoutRecursion()(pr)
 		gmsg, err := pr.parse(msg, 0)

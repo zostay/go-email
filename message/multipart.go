@@ -49,6 +49,20 @@ type Part interface {
 	// methods directly so long as you check for the errors they may return.
 	IsMultipart() bool
 
+	// IsEncoded will return true if this Part will return the original bytes
+	// from the associated io.Reader returned from GetReader(). If it returns
+	// false, then the bytes returned from that io.Reader will have had any
+	// Content-transfer-encoding decoded first. This does not indicate whether
+	// any Content-transfer-encoding header is present or whether the encoding
+	// made any changes to the bytes (e.g., the Content-transfer-encoding is set
+	// to 7bit, we keep the data as-is and no special decoding is performed by
+	// default).
+	//
+	// This method must return false if IsMultipart() returns true. As transfer
+	// encodings cannot be applied to parts with sub-parts, this method makes
+	// no sense in that circumstance anyway.
+	IsEncoded() bool
+
 	// GetHeader is available on all Part objects.
 	GetHeader() *header.Header
 
@@ -165,6 +179,11 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 // IsMultipart always returns true.
 func (mm *Multipart) IsMultipart() bool {
 	return true
+}
+
+// IsEncoded always returns false.
+func (mm *Multipart) IsEncoded() bool {
+	return false
 }
 
 // GetHeader returns the header for the message.

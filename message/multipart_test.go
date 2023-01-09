@@ -26,6 +26,7 @@ func TestMultipart(t *testing.T) {
 	assert.Error(t, err, message.ErrMultipart)
 
 	assert.True(t, m.IsMultipart())
+	assert.False(t, m.IsEncoded())
 
 	out := &bytes.Buffer{}
 	n, err := m.WriteTo(out)

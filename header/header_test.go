@@ -14,6 +14,7 @@ import (
 	"github.com/zostay/go-email/v2/header"
 	"github.com/zostay/go-email/v2/message"
 	"github.com/zostay/go-email/v2/param"
+	"github.com/zostay/go-email/v2/transfer"
 )
 
 func TestWordEncodingHeader(t *testing.T) {
@@ -1327,4 +1328,33 @@ In-reply-to: baz
 	assert.NoError(t, err)
 	assert.Equal(t, expect, buf.String())
 
+}
+
+func TestHeader_GetTransferEncoding(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+
+	h.InsertBeforeField(0, header.ContentTransferEncoding, transfer.Bit7)
+
+	cte, err := h.GetTransferEncoding()
+	assert.NoError(t, err)
+	assert.Equal(t, transfer.Bit7, cte)
+}
+
+func TestHeader_SetTransferEncoding(t *testing.T) {
+	t.Parallel()
+
+	h := &header.Header{}
+	h.SetTransferEncoding(transfer.QuotedPrintable)
+
+	const expect = `Content-transfer-encoding: quoted-printable
+
+`
+
+	buf := &bytes.Buffer{}
+	n, err := h.WriteTo(buf)
+	assert.Equal(t, int64(len(expect)), n)
+	assert.NoError(t, err)
+	assert.Equal(t, expect, buf.String())
 }
