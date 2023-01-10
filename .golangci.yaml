@@ -19,3 +19,4 @@ linters:
     - gocritic
     - godot
     - gofmt
+    - gosec

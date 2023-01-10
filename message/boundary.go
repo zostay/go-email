@@ -12,7 +12,7 @@ var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 func GenerateBoundary() string {
 	s := make([]rune, 30)
 	for i := range s {
-		s[i] = letters[rand.Intn(len(letters))]
+		s[i] = letters[rand.Intn(len(letters))] //nolint:gosec // part boundary is not a secure feature
 	}
 	return string(s)
 }
