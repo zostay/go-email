@@ -85,11 +85,11 @@ func (m *Opaque) GetHeader() *header.Header {
 // may differ from the data that would be written via WriteTo(). This is
 // because the data here will have been decoded, but WriteTo() will encode the
 // data anew as it writes.
-func (m *Opaque) GetReader() (io.Reader, error) {
-	return m.Reader, nil
+func (m *Opaque) GetReader() io.Reader {
+	return m.Reader
 }
 
 // GetParts always returns nil and ErrNotMultipart.
-func (m *Opaque) GetParts() ([]Part, error) {
-	return nil, ErrNotMultipart
+func (m *Opaque) GetParts() []Part {
+	return nil
 }

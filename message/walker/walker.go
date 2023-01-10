@@ -21,11 +21,10 @@ func (w PartWalker) Walk(msg message.Generic) error {
 	openStack := make([]part, 0, 10)
 
 	pushStack := func(depth int, msg message.Generic) {
-		if parts, err := msg.GetParts(); err == nil {
-			for i := len(parts) - 1; i >= 0; i-- {
-				p := parts[i]
-				openStack = append(openStack, part{depth, i, p})
-			}
+		parts := msg.GetParts()
+		for i := len(parts) - 1; i >= 0; i-- {
+			p := parts[i]
+			openStack = append(openStack, part{depth, i, p})
 		}
 	}
 

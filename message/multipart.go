@@ -1,23 +1,10 @@
 package message
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/zostay/go-email/v2/header"
-)
-
-var (
-	// ErrNotMultipart is the error that should be returned from GetParts() when
-	// that method is called on a Part that is not a branch Part with
-	// sub-parts.
-	ErrNotMultipart = errors.New("not a multipart message")
-
-	// ErrMultipart is the error that should be returend from GetReader() when
-	// that method is called on a Part that is not a leaf Part with a
-	// body to be read.
-	ErrMultipart = errors.New("this is a multipart message")
 )
 
 // Part is an interface define the parts of a Multipart. Each Part is
@@ -67,16 +54,13 @@ type Part interface {
 	GetHeader() *header.Header
 
 	// GetReader provides the content of the message, but only if IsMultipart()
-	// returns false. This will return nil and error if IsMultipart() would
-	// return true because this is a leaf part. The error that should be
-	// returned is ErrMultipart.
-	GetReader() (io.Reader, error)
+	// returns false. This must return nil if IsMultipart() returns true.
+	GetReader() io.Reader
 
 	// GetParts provides the content of a multipart message with sub-parts. This
-	// should only be called when IsMultipart() returns true. If you call this
-	// when IsMultipart() would return false, a nil and an error will be
-	// returned. The error that should be returned is ErrNotMultipart.
-	GetParts() ([]Part, error)
+	// should only be called when IsMultipart() returns true. This must return
+	// nil if IsMultipart() is false.
+	GetParts() []Part
 }
 
 // Generic is just an alias for Part, which is intended to convey
@@ -186,11 +170,11 @@ func (mm *Multipart) GetHeader() *header.Header {
 }
 
 // GetReader always returns nil and ErrMultipart.
-func (mm *Multipart) GetReader() (io.Reader, error) {
-	return nil, ErrMultipart
+func (mm *Multipart) GetReader() io.Reader {
+	return nil
 }
 
 // GetParts returns the sub-parts of this message or nil if there aren't any.
-func (mm *Multipart) GetParts() ([]Part, error) {
-	return mm.parts, nil
+func (mm *Multipart) GetParts() []Part {
+	return mm.parts
 }

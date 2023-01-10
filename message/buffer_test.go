@@ -191,11 +191,11 @@ func TestBuffer_Opaque_FromSimple(t *testing.T) {
 
 	assert.False(t, m.IsMultipart())
 
-	_, err = m.GetParts()
-	assert.ErrorIs(t, err, message.ErrNotMultipart)
+	ps := m.GetParts()
+	assert.Nil(t, ps)
 
-	_, err = m.GetReader()
-	assert.NoError(t, err)
+	r := m.GetReader()
+	assert.NotNil(t, r)
 
 	buf := &bytes.Buffer{}
 	n, err := m.WriteTo(buf)
@@ -224,11 +224,11 @@ func TestBuffer_Opaque_FromMultipart(t *testing.T) {
 	// it may be constructed as multipart, but it's been returned opaque
 	assert.False(t, m.IsMultipart())
 
-	_, err = m.GetParts()
-	assert.ErrorIs(t, err, message.ErrNotMultipart)
+	ps := m.GetParts()
+	assert.Nil(t, ps)
 
-	_, err = m.GetReader()
-	assert.NoError(t, err)
+	r := m.GetReader()
+	assert.NotNil(t, r)
 
 	buf := &bytes.Buffer{}
 	n, err := m.WriteTo(buf)
@@ -266,12 +266,11 @@ func TestBuffer_Multipart_FromMultipart(t *testing.T) {
 
 	assert.True(t, m.IsMultipart())
 
-	p, err := m.GetParts()
-	assert.NoError(t, err)
+	p := m.GetParts()
 	assert.Len(t, p, 1)
 
-	_, err = m.GetReader()
-	assert.ErrorIs(t, err, message.ErrMultipart)
+	r := m.GetReader()
+	assert.Nil(t, r)
 
 	buf := &bytes.Buffer{}
 	n, err := m.WriteTo(buf)
@@ -299,12 +298,11 @@ func TestBuffer_Multipart_FromOpaqueMultipart(t *testing.T) {
 
 	assert.True(t, m.IsMultipart())
 
-	p, err := m.GetParts()
-	assert.NoError(t, err)
+	p := m.GetParts()
 	assert.Len(t, p, 1)
 
-	_, err = m.GetReader()
-	assert.ErrorIs(t, err, message.ErrMultipart)
+	r := m.GetReader()
+	assert.Nil(t, r)
 
 	buf := &bytes.Buffer{}
 	n, err := m.WriteTo(buf)

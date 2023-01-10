@@ -21,11 +21,11 @@ func TestOpaque(t *testing.T) {
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 
-	_, err = m.GetParts()
-	assert.Error(t, err, message.ErrNotMultipart)
+	ps := m.GetParts()
+	assert.Nil(t, ps)
 
-	_, err = m.GetReader()
-	assert.NoError(t, err)
+	r := m.GetReader()
+	assert.NotNil(t, r)
 
 	assert.False(t, m.IsMultipart())
 	assert.False(t, m.IsEncoded())
@@ -70,11 +70,11 @@ func TestOpaque_TransferEncodingEncoded(t *testing.T) {
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 
-	_, err = m.GetParts()
-	assert.Error(t, err, message.ErrNotMultipart)
+	ps := m.GetParts()
+	assert.Nil(t, ps)
 
-	_, err = m.GetReader()
-	assert.NoError(t, err)
+	r := m.GetReader()
+	assert.NotNil(t, r)
 
 	assert.False(t, m.IsMultipart())
 	assert.False(t, m.IsEncoded())
@@ -102,11 +102,11 @@ func TestOpaque_TransferEncodingDecoded(t *testing.T) {
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 
-	_, err = m.GetParts()
-	assert.Error(t, err, message.ErrNotMultipart)
+	ps := m.GetParts()
+	assert.Nil(t, ps)
 
-	_, err = m.GetReader()
-	assert.NoError(t, err)
+	r := m.GetReader()
+	assert.NotNil(t, r)
 
 	assert.False(t, m.IsMultipart())
 	assert.True(t, m.IsEncoded())

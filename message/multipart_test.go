@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/zostay/go-email/v2/message"
 )
 
 func TestMultipart(t *testing.T) {
@@ -20,12 +18,12 @@ func TestMultipart(t *testing.T) {
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 
-	ps, err := m.GetParts()
+	ps := m.GetParts()
 	assert.NoError(t, err)
 	assert.Len(t, ps, 1)
 
-	_, err = m.GetReader()
-	assert.Error(t, err, message.ErrMultipart)
+	r := m.GetReader()
+	assert.Nil(t, r)
 
 	assert.True(t, m.IsMultipart())
 	assert.False(t, m.IsEncoded())
