@@ -12,7 +12,7 @@ const (
 	// Content-type header.
 	Charset = "charset"
 
-	// Boundary is the name of the boundary paramter that may be present in the
+	// Boundary is the name of the boundary parameter that may be present in the
 	// Content-type header.
 	Boundary = "boundary"
 
@@ -122,7 +122,7 @@ func (pv *Value) Type() string {
 	return ""
 }
 
-// Subtype is only intended for use with teh Content-type header. It searches
+// Subtype is only intended for use with the Content-type header. It searches
 // the MediaType() for a slash. If found, it will return the string after that
 // slash. If no slash is found, it returns an empty string.
 //

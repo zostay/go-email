@@ -267,7 +267,7 @@ func (h *Header) getParamValue(name string) (*param.Value, error) {
 //
 // This will return an error if it is unable to parse a param.Value. This will
 // ErrNoSuchField if no field with the given name is present. It will return
-// ErrManyFields if mroe than one field with the given name is found.
+// ErrManyFields if more than one field with the given name is found.
 func (h *Header) GetParamValue(name string) (*param.Value, error) {
 	v, found := h.getValue(name)
 	if !found {

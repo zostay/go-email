@@ -22,7 +22,7 @@ func (f *Base) SetName(name string) {
 	f.name = name
 }
 
-// Body returns teh value of the header field as a string.
+// Body returns the value of the header field as a string.
 func (f *Base) Body() string {
 	return f.body
 }
