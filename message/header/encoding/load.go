@@ -15,7 +15,7 @@ import (
 	_ "golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/ianaindex"
 
-	"github.com/zostay/go-email/v2/header/field"
+	"github.com/zostay/go-email/v2/message/header/field"
 )
 
 func init() {

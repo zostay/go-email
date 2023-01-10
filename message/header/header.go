@@ -9,7 +9,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/zostay/go-addr/pkg/addr"
 
-	"github.com/zostay/go-email/v2/param"
+	"github.com/zostay/go-email/v2/message/header/param"
 )
 
 // Errors returned by various header methods and functions.

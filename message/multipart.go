@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/zostay/go-email/v2/header"
+	"github.com/zostay/go-email/v2/message/header"
 )
 
 // Part is an interface define the parts of a Multipart. Each Part is

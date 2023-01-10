@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/zostay/go-email/v2/param"
+	"github.com/zostay/go-email/v2/message/header/param"
 )
 
 func TestParse(t *testing.T) {

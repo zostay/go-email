@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/zostay/go-email/v2/header"
-	"github.com/zostay/go-email/v2/header/field"
 	"github.com/zostay/go-email/v2/message"
+	"github.com/zostay/go-email/v2/message/header"
+	"github.com/zostay/go-email/v2/message/header/field"
 )
 
 const emailMsg = `Delivered-To: sterling@example.com

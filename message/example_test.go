@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
+	"unicode"
 
 	"github.com/zostay/go-email/v2/message"
 )
@@ -81,8 +84,7 @@ func Example_readme_synopsis_1() {
 
 	out := &message.Buffer{}
 	out.Header = *m.GetHeader()
-	content := m.GetReader()
-	_, err = io.Copy(out, content)
+	_, err = io.Copy(out, m.GetReader())
 	if err != nil {
 		panic(err)
 	}
@@ -110,4 +112,66 @@ func Example_readme_synopsis_1() {
 			panic(err)
 		}
 	}
+}
+
+func Example_readme_synopsis_2() {
+	var fileCount = 0
+	isUnsafeExt := func(c rune) bool {
+		return !unicode.IsLetter(c) && !unicode.IsDigit(c)
+	}
+
+	outputSafeFilename := func(fn string) string {
+		safeExt := filepath.Ext(fn)
+		if strings.IndexFunc(safeExt, isUnsafeExt) > -1 {
+			safeExt = ".wasnotsafe" // check your input
+		}
+		fileCount++
+		return fmt.Sprintf("%d.%s", fileCount, safeExt)
+	}
+
+	var saveAttachments func(message.Generic)
+	saveAttachments = func(m message.Generic) {
+		if m.IsMultipart() {
+			for _, p := range m.GetParts() {
+				saveAttachments(p)
+			}
+			return
+		}
+
+		h := m.GetHeader()
+
+		presentation, err := h.GetPresentation()
+		if err != nil {
+			panic(err)
+		}
+
+		fn, err := h.GetFilename()
+		if err != nil {
+			panic(err)
+		}
+
+		if presentation == "attachment" && fn != "" {
+			of := outputSafeFilename(fn)
+			outMsg, err := os.Create(of)
+			if err != nil {
+				panic(err)
+			}
+			_, err = io.Copy(outMsg, m.GetReader())
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	msg, err := os.Open("input.msg")
+	if err != nil {
+		panic(err)
+	}
+
+	m, err := message.Parse(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	saveAttachments(m)
 }

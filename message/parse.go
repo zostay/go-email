@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/zostay/go-email/v2/header"
 	"github.com/zostay/go-email/v2/internal/scanner"
-	"github.com/zostay/go-email/v2/transfer"
+	"github.com/zostay/go-email/v2/message/header"
+	"github.com/zostay/go-email/v2/message/transfer"
 )
 
 // Constants related to Parse() options.

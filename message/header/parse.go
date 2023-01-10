@@ -1,7 +1,7 @@
 package header
 
 import (
-	"github.com/zostay/go-email/v2/header/field"
+	"github.com/zostay/go-email/v2/message/header/field"
 )
 
 // Parse will parse the given slice of bytes into an email header using the

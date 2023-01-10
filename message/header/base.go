@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/zostay/go-email/v2/header/field"
+	"github.com/zostay/go-email/v2/message/header/field"
 )
 
 var (

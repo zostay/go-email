@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/zostay/go-email/v2/header/field"
+	"github.com/zostay/go-email/v2/message/header/field"
 )
 
 func TestEncode(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/zostay/go-email/v2/header"
+	"github.com/zostay/go-email/v2/message/header"
 )
 
 const (

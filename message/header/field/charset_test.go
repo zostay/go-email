@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	_ "github.com/zostay/go-email/v2/header/encoding"
-	"github.com/zostay/go-email/v2/header/field"
+	_ "github.com/zostay/go-email/v2/message/header/encoding"
+	"github.com/zostay/go-email/v2/message/header/field"
 )
 
 // Εν αρχη ητο ο Λογος, και ο Λογος ητο παρα τω Θεω, και Θεος ητο ο Λογος.

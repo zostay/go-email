@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zostay/go-addr/pkg/addr"
 
-	"github.com/zostay/go-email/v2/header"
 	"github.com/zostay/go-email/v2/message"
-	"github.com/zostay/go-email/v2/param"
-	"github.com/zostay/go-email/v2/transfer"
+	"github.com/zostay/go-email/v2/message/header"
+	"github.com/zostay/go-email/v2/message/header/param"
+	"github.com/zostay/go-email/v2/message/transfer"
 )
 
 func TestWordEncodingHeader(t *testing.T) {
