@@ -946,26 +946,28 @@ func parseEmailAddressList(v string) addr.AddressList {
 		var clean, comment strings.Builder
 		nestLevel := 0
 		for _, c := range s {
-			if c == '(' {
+			switch {
+			case c == '(':
 				nestLevel++
 				if nestLevel == 1 {
 					continue
 				} else {
 					comment.WriteRune(c)
 				}
-			} else if c == ')' {
+			case c == ')':
 				nestLevel--
-				if nestLevel == 0 {
+				switch {
+				case nestLevel == 0:
 					continue
-				} else if nestLevel < 0 {
+				case nestLevel < 0:
 					nestLevel = 0
 					clean.WriteRune(c)
-				} else {
+				default:
 					comment.WriteRune(c)
 				}
-			} else if nestLevel > 0 {
+			case nestLevel > 0:
 				comment.WriteRune(c)
-			} else {
+			default:
 				clean.WriteRune(c)
 			}
 		}
@@ -984,12 +986,13 @@ func parseEmailAddressList(v string) addr.AddressList {
 		parts := strings.Fields(mb)
 
 		var dn, email string
-		if len(parts) == 0 {
+		switch {
+		case len(parts) == 0:
 			email = ""
-		} else if len(parts) > 1 {
+		case len(parts) > 1:
 			dn = strings.Join(parts[:len(parts)-1], " ")
 			email = parts[len(parts)-1]
-		} else {
+		default:
 			email = parts[0]
 		}
 

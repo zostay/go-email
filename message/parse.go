@@ -289,7 +289,8 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	sc.Split(
 		scanner.MakeSplitFuncExitByAdvance( // bufio.SplitFunc sucks
 			func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-				if mode == modeStart {
+				switch mode {
+				case modeStart:
 					// looking for an empty prefix
 					if atEOF || len(data) >= len(sb) {
 						if bytes.Equal(data[:len(sb)], sb) {
@@ -307,7 +308,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 					// else, we don't have enough data to know if we've got a
 					// zero-length prefix yet or not.
 
-				} else if mode == modeMiddle {
+				case modeMiddle:
 					// we are now looking for parts or possibly the prefix if it is
 					// not a zero byte prefix
 					if ix := bytes.Index(data, mb); ix >= 0 {
@@ -333,7 +334,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 					}
 					// else, we aren't at EOF, so there's more input and we may
 					// yet find more interior boundaries to split on
-				} else if mode == modeEnd {
+				case modeEnd:
 					// If we get here and we are still awaitingPrefix, this message
 					// is badly formatted. We have no initial boundary at all. We
 					// record that by setting prefix to nil so that when
@@ -362,7 +363,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 					}
 					// either way, we're done
 					err = bufio.ErrFinalToken
-				} else {
+				default:
 					// never happens, right?
 					panic("unexpected parser state")
 				}

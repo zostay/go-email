@@ -95,5 +95,5 @@ func TestCharsetDecoderToCharsetReader(t *testing.T) {
 	assert.NoError(t, err)
 	dec, err := io.ReadAll(out)
 	assert.NoError(t, err)
-	assert.Equal(t, unicodeText, []byte(dec))
+	assert.Equal(t, unicodeText, dec)
 }
