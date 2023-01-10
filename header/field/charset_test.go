@@ -36,7 +36,7 @@ var unicodeText = []byte{
 	0xcf, 0x82, 0x2e,
 }
 
-// contains one illegal char to test out the encoding
+// Contains one illegal char to test out the encoding.
 var asciiText = "In the beginning was the Word, and the Word was with God, and the Word was God. 🖊"
 var asciiTextEnc = "In the beginning was the Word, and the Word was with God, and the Word was God. \x1a"
 var asciiTextDec = "In the beginning was the Word, and the Word was with God, and the Word was God. \xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd"

@@ -29,11 +29,11 @@ const (
 
 var (
 	// ErrPartsBuffer is returned by Write() if that method is called after
-	// calling Add()
+	// calling the Add() method.
 	ErrPartsBuffer = errors.New("message buffer is in parts mode")
 
 	// ErrOpaqueBuffer is returned by Add() if that method is called after
-	// calling Write()
+	// calling the Write() method.
 	ErrOpaqueBuffer = errors.New("message buffer is in opaque mode")
 
 	// ErrModeUnset is returned by Opaque() and Multipart() when they are called

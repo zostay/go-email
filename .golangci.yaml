@@ -17,3 +17,5 @@ linters:
     - exhaustive
     - exportloopref
     - gocritic
+    - godot
+    - gofmt
