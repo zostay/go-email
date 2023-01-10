@@ -109,7 +109,7 @@ func TestOpaque_TransferEncodingDecoded(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.False(t, m.IsMultipart())
-	assert.False(t, m.IsEncoded())
+	assert.True(t, m.IsEncoded())
 
 	out := &bytes.Buffer{}
 	n, err := m.WriteTo(out)
