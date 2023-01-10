@@ -36,7 +36,7 @@ This is a simple message.
 	return buf, expect, err
 }
 
-func makeOpaqueMultipart() (*message.Buffer, string, error) {
+func makeOpaqueMultipart() (*message.Buffer, string, error) { //nolint:unparam // this is a test
 	const expect = `Subject: test multipart
 Content-type: multipart/alternative; boundary=testing
 
@@ -69,7 +69,7 @@ Test message.
 	return buf, expect, nil
 }
 
-func makeMultipart() (*message.Buffer, string, error) {
+func makeMultipart() (*message.Buffer, string, error) { //nolint:unparam // this is a test
 	const expect = `Subject: test multipart
 Content-type: multipart/alternative; boundary=testing
 

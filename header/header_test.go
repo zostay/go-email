@@ -1329,7 +1329,6 @@ In-reply-to: baz
 	assert.Equal(t, int64(50), n)
 	assert.NoError(t, err)
 	assert.Equal(t, expect, buf.String())
-
 }
 
 func TestHeader_GetTransferEncoding(t *testing.T) {
