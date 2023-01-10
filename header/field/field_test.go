@@ -9,6 +9,8 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+
 	f := field.New("Subject", "testing")
 
 	assert.Equal(t, "Subject: testing", f.String())

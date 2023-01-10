@@ -7,6 +7,8 @@ import (
 )
 
 func TestRaw(t *testing.T) {
+	t.Parallel()
+
 	f := &Raw{[]byte("Subject: test"), 7}
 	assert.Equal(t, "Subject", f.Name())
 	assert.Equal(t, " test", f.Body())

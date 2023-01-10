@@ -9,6 +9,8 @@ import (
 )
 
 func TestBase(t *testing.T) {
+	t.Parallel()
+
 	b := &field.Base{}
 
 	b.SetName("subject")

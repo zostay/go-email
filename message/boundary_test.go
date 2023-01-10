@@ -20,7 +20,7 @@ func TestGenerateBoundary(t *testing.T) {
 	assert.False(t, nonAlphaNumericMatch.MatchString(b))
 }
 
-func TestGenerateSafeBoundary(t *testing.T) {
+func TestGenerateSafeBoundary(t *testing.T) { //nolint:paralleltest // testing globals
 	// Do not test in parallel. This might be okay, but I don't trust that
 	// setting the global seed does not have consequences elsewhere.
 

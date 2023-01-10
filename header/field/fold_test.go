@@ -137,6 +137,8 @@ Hello.
 `
 
 func TestMessageFoldIntegration(t *testing.T) {
+	t.Parallel()
+
 	m, err := message.Parse(strings.NewReader(emailMsg), message.WithoutMultipart())
 	assert.NoError(t, err)
 	require.NotNil(t, m)
@@ -156,6 +158,8 @@ func TestMessageFoldIntegration(t *testing.T) {
 }
 
 func TestMessageDoNotFoldEncodingIntegration(t *testing.T) {
+	t.Parallel()
+
 	m, err := message.Parse(strings.NewReader(emailMsg), message.WithoutMultipart())
 	assert.NoError(t, err)
 	require.NotNil(t, m)
@@ -172,6 +176,8 @@ func TestMessageDoNotFoldEncodingIntegration(t *testing.T) {
 }
 
 func TestNewFoldEncoding(t *testing.T) {
+	t.Parallel()
+
 	_, err := field.NewFoldEncoding("", 0, 0)
 	assert.ErrorIs(t, err, field.ErrFoldIndentTooShort)
 
@@ -209,6 +215,8 @@ func TestNewFoldEncoding(t *testing.T) {
 }
 
 func TestFoldEncoding_Unfold(t *testing.T) {
+	t.Parallel()
+
 	vf := field.DefaultFoldEncoding
 
 	uf := vf.Unfold([]byte("a\n b\n\tc\n d\n"))
@@ -216,6 +224,8 @@ func TestFoldEncoding_Unfold(t *testing.T) {
 }
 
 func TestFoldEncoding_Fold(t *testing.T) {
+	t.Parallel()
+
 	vf, err := field.NewFoldEncoding(field.DefaultFoldIndent, 10, 20)
 	assert.NoError(t, err)
 

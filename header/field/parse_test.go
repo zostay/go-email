@@ -10,6 +10,8 @@ import (
 )
 
 func TestParseLines(t *testing.T) {
+	t.Parallel()
+
 	// basic parse, no folding
 	input := []byte("a:\nb:\nc:\nd:\n")
 	lb := field.Break("\n")
@@ -49,6 +51,8 @@ func TestParseLines(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
+	t.Parallel()
+
 	f := field.Parse([]byte("Subject: test\n"), []byte{'\n'})
 	require.NotNil(t, f)
 	require.NotNil(t, f.Raw)

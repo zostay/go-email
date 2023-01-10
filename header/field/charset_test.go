@@ -42,6 +42,8 @@ var asciiTextEnc = "In the beginning was the Word, and the Word was with God, an
 var asciiTextDec = "In the beginning was the Word, and the Word was with God, and the Word was God. \xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd\xef\xbf\xbd"
 
 func TestDefaultCharsetDecoder(t *testing.T) {
+	t.Parallel()
+
 	_, err := field.DefaultCharsetDecoder("greek", greekText)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported byte encoding")
@@ -58,6 +60,8 @@ func TestDefaultCharsetDecoder(t *testing.T) {
 }
 
 func TestCharsetDecoder(t *testing.T) {
+	t.Parallel()
+
 	// testing the full version from header/encoding
 	dec, err := field.CharsetDecoder("greek", greekText)
 	assert.NoError(t, err)
@@ -65,6 +69,8 @@ func TestCharsetDecoder(t *testing.T) {
 }
 
 func TestDefaultCharsetEncoder(t *testing.T) {
+	t.Parallel()
+
 	_, err := field.DefaultCharsetEncoder("greek", string(unicodeText))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported byte encoding")
@@ -81,6 +87,8 @@ func TestDefaultCharsetEncoder(t *testing.T) {
 }
 
 func TestCharsetEncoder(t *testing.T) {
+	t.Parallel()
+
 	// testing the full version from header/encoding
 	enc, err := field.CharsetEncoder("greek", string(unicodeText))
 	assert.NoError(t, err)
@@ -88,6 +96,8 @@ func TestCharsetEncoder(t *testing.T) {
 }
 
 func TestCharsetDecoderToCharsetReader(t *testing.T) {
+	t.Parallel()
+
 	cr := field.CharsetDecoderToCharsetReader(field.CharsetDecoder)
 	in := bytes.NewReader(greekText)
 

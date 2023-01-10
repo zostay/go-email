@@ -21,3 +21,8 @@ linters:
     - gofmt
     - gosec
     - misspell
+    - nolintlint
+    - paralleltest
+    - prealloc
+    - predeclared
+    - tparallel

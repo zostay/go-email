@@ -9,6 +9,8 @@ import (
 )
 
 func TestBreak_Bytes(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, []byte{}, header.Meh.Bytes())
 	assert.Equal(t, []byte{0x0d, 0x0a}, header.CRLF.Bytes())
 	assert.Equal(t, []byte{0x0a}, header.LF.Bytes())
@@ -17,6 +19,8 @@ func TestBreak_Bytes(t *testing.T) {
 }
 
 func TestBreak_String(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, "", header.Meh.String())
 	assert.Equal(t, "\r\n", header.CRLF.String())
 	assert.Equal(t, "\n", header.LF.String())

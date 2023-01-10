@@ -10,6 +10,8 @@ import (
 )
 
 func TestMultipart(t *testing.T) {
+	t.Parallel()
+
 	buf, expect, err := makeMultipart()
 	assert.NoError(t, err)
 

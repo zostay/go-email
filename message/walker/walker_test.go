@@ -56,6 +56,8 @@ Content-type: text/plain
 `
 
 func TestPartWalker_Walk(t *testing.T) {
+	t.Parallel()
+
 	msg, err := message.Parse(strings.NewReader(msg))
 	assert.NoError(t, err)
 
@@ -78,6 +80,8 @@ func TestPartWalker_Walk(t *testing.T) {
 }
 
 func TestPartWalker_WalkOpaque(t *testing.T) {
+	t.Parallel()
+
 	msg, err := message.Parse(strings.NewReader(msg))
 	assert.NoError(t, err)
 
@@ -100,6 +104,8 @@ func TestPartWalker_WalkOpaque(t *testing.T) {
 }
 
 func TestPartWalker_WalkMultipart(t *testing.T) {
+	t.Parallel()
+
 	msg, err := message.Parse(strings.NewReader(msg))
 	assert.NoError(t, err)
 
