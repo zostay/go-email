@@ -84,11 +84,11 @@ func Delete(name string) Modifier {
 //	v, _ := value.Parse("multipart/mixed; boundary=abc123; charset=latin1")
 //	nv := value.Modify(v, Change("multipart/alternate"), Set("charset", "utf-8"))
 func Modify(pv *Value, changes ...Modifier) *Value {
-	copy := pv.Clone()
+	cp := pv.Clone()
 	for _, change := range changes {
-		change(copy)
+		change(cp)
 	}
-	return copy
+	return cp
 }
 
 // Value returns the primary value of the Value. This is the value before the
@@ -192,11 +192,11 @@ func (pv *Value) Bytes() []byte {
 
 // Clone returns a deep copy of the Value.
 func (pv *Value) Clone() *Value {
-	var copy Value
-	copy.v = pv.v
-	copy.ps = make(map[string]string, len(pv.ps))
+	var cp Value
+	cp.v = pv.v
+	cp.ps = make(map[string]string, len(pv.ps))
 	for k, v := range pv.ps {
-		copy.ps[k] = v
+		cp.ps[k] = v
 	}
-	return &copy
+	return &cp
 }

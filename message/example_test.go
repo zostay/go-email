@@ -9,25 +9,25 @@ import (
 	"github.com/zostay/go-email/v2/message"
 )
 
-func ExampleMessage_WriteTo() {
+func ExampleOpaque_WriteTo() {
 	buf := bytes.NewBufferString("Hello World")
 	msg := &message.Opaque{Reader: buf}
 	msg.SetSubject("A message to nowhere")
-	msg.WriteTo(os.Stdout)
+	_, _ = msg.WriteTo(os.Stdout)
 }
 
-func ExampleOpaqueBuffer() {
+func ExampleBuffer_opaque_buffer() {
 	buf := &message.Buffer{}
 	buf.SetSubject("Some spam for you inbox")
-	fmt.Fprintln(buf, "Hello World!")
+	_, _ = fmt.Fprintln(buf, "Hello World!")
 	msg, err := buf.Opaque()
 	if err != nil {
 		panic(err)
 	}
-	msg.WriteTo(os.Stdout)
+	_, _ = msg.WriteTo(os.Stdout)
 }
 
-func ExampleMultipartBuffer() {
+func ExampleBuffer_multipart_buffer() {
 	mm := &message.Buffer{}
 	mm.SetSubject("Fancy message")
 	mm.SetMediaType("multipart/mixed")
@@ -38,31 +38,31 @@ func ExampleMultipartBuffer() {
 	txtPart := &message.Buffer{}
 	txtPart.SetMediaType("text/plain")
 	txtPart.SetPresentation("attachment")
-	fmt.Fprintln(txtPart, "Hello *World*!")
+	_, _ = fmt.Fprintln(txtPart, "Hello *World*!")
 
 	htmlPart := &message.Buffer{}
 	htmlPart.SetMediaType("text/html")
 	txtPart.SetPresentation("attachment")
-	fmt.Fprintln(htmlPart, "Hello <b>World</b>!")
+	_, _ = fmt.Fprintln(htmlPart, "Hello <b>World</b>!")
 
 	txtMsg, _ := txtPart.Opaque()
 	htmlMsg, _ := htmlPart.Opaque()
-	altPart.Add(txtMsg, htmlMsg)
+	_ = altPart.Add(txtMsg, htmlMsg)
 
 	imgAttach := &message.Buffer{}
 	imgAttach.SetMediaType("image/jpeg")
 	imgAttach.SetPresentation("attachment")
-	imgAttach.SetFilename("image.jpg")
+	_ = imgAttach.SetFilename("image.jpg")
 	img, _ := os.Open("image.jpg")
-	io.Copy(imgAttach, img)
+	_, _ = io.Copy(imgAttach, img)
 
 	altMsg, _ := altPart.Multipart()
 	imgMsg, _ := imgAttach.Opaque()
-	mm.Add(altMsg, imgMsg)
+	_ = mm.Add(altMsg, imgMsg)
 
 	msg, err := mm.Multipart()
 	if err != nil {
 		panic(err)
 	}
-	msg.WriteTo(os.Stdout)
+	_, _ = msg.WriteTo(os.Stdout)
 }

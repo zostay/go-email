@@ -112,9 +112,7 @@ func (h *Base) GetIndexesNamed(name string) []int {
 // ListFields returns all the fields in the header.
 func (h *Base) ListFields() []*field.Field {
 	fs := make([]*field.Field, len(h.fields))
-	for i := range h.fields {
-		fs[i] = h.fields[i]
-	}
+	copy(fs, h.fields)
 	return fs
 }
 
@@ -123,7 +121,7 @@ func (h *Base) WriteTo(w io.Writer) (int64, error) {
 	total := int64(0)
 	for _, f := range h.fields {
 		n, err := h.FoldEncoding().Fold(w, f.Bytes(), field.Break(h.lbr))
-		total += int64(n)
+		total += n
 		if err != nil {
 			return total, err
 		}

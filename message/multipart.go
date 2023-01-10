@@ -114,12 +114,6 @@ type Multipart struct {
 	parts []Part
 }
 
-func (mm *Multipart) initParts() {
-	if mm.parts == nil {
-		mm.parts = make([]Part, 0, 10)
-	}
-}
-
 // WriteTo writes the Opaque header and parts to the destination io.Writer.
 // This method will fail with an error if the given message does not have a
 // Content-type boundary parameter set. May return an error on an IO error as

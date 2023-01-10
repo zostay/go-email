@@ -133,7 +133,7 @@ Badly-formatted-type: x-text:foo; charset=UTF-8
 	assert.ErrorIs(t, err, header.ErrNoSuchField)
 	assert.Nil(t, mt)
 
-	mt, err = m.GetHeader().GetParamValue("badly-formatted-type")
+	_, err = m.GetHeader().GetParamValue("badly-formatted-type")
 	assert.Error(t, err)
 }
 
@@ -394,7 +394,7 @@ func TestHeader_Get(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "d", b)
 
-	b, err = h.Get("E")
+	_, err = h.Get("E")
 	assert.ErrorIs(t, err, header.ErrManyFields)
 }
 
@@ -473,6 +473,7 @@ func TestHeader_GetAddressList(t *testing.T) {
 		addr.NewAddrSpecParsed("blah", "", "blah"),
 		"", "blah",
 	)
+	assert.NoError(t, err)
 
 	al, err = h.GetAddressList("not-addr")
 	assert.NoError(t, err)
@@ -589,7 +590,7 @@ func TestHeader_GetAll(t *testing.T) {
 	assert.Equal(t, []string{"four"}, bs)
 
 	_, err = h.GetAll("Six")
-	assert.Error(t, header.ErrNoSuchField)
+	assert.ErrorIs(t, err, header.ErrNoSuchField)
 }
 
 func TestHeader_SetAll(t *testing.T) {
@@ -1218,6 +1219,7 @@ func TestHeader_GetKeywords(t *testing.T) {
 
 	ks, err := h.GetKeywords()
 	assert.Equal(t, []string{"a", "b", "c", "d", "e", "f"}, ks)
+	assert.NoError(t, err)
 }
 
 func TestHeader_SetKeywords(t *testing.T) {

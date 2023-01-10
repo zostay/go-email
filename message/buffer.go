@@ -110,9 +110,7 @@ func (b *Buffer) Add(msgs ...Part) error {
 	if err := b.initParts(); err != nil {
 		return err
 	}
-	for _, msg := range msgs {
-		b.parts = append(b.parts, msg)
-	}
+	b.parts = append(b.parts, msgs...)
 	return nil
 }
 

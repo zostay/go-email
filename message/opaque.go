@@ -32,14 +32,14 @@ type Opaque struct {
 // created via a Buffer), then this will encode the data as it is being written.
 //
 // This can only be safely called once as it will consume the io.Reader.
-func (b *Opaque) WriteTo(w io.Writer) (int64, error) {
+func (m *Opaque) WriteTo(w io.Writer) (int64, error) {
 	var tw io.WriteCloser
-	if !b.encoded {
-		tw = transfer.ApplyTransferEncoding(&b.Header, w)
+	if !m.encoded {
+		tw = transfer.ApplyTransferEncoding(&m.Header, w)
 		defer func() { _ = tw.Close() }()
 	}
 
-	hn, err := b.Header.WriteTo(w)
+	hn, err := m.Header.WriteTo(w)
 	if err != nil {
 		return hn, err
 	}
@@ -48,7 +48,7 @@ func (b *Opaque) WriteTo(w io.Writer) (int64, error) {
 		w = tw
 	}
 
-	bn, err := io.Copy(w, b.Reader)
+	bn, err := io.Copy(w, m.Reader)
 	return hn + bn, err
 }
 
