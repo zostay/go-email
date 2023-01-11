@@ -23,10 +23,7 @@ func ExampleBuffer_opaque_buffer() {
 	buf := &message.Buffer{}
 	buf.SetSubject("Some spam for you inbox")
 	_, _ = fmt.Fprintln(buf, "Hello World!")
-	msg, err := buf.Opaque()
-	if err != nil {
-		panic(err)
-	}
+	msg := buf.Opaque()
 	_, _ = msg.WriteTo(os.Stdout)
 }
 
@@ -48,9 +45,7 @@ func ExampleBuffer_multipart_buffer() {
 	txtPart.SetPresentation("attachment")
 	_, _ = fmt.Fprintln(htmlPart, "Hello <b>World</b>!")
 
-	txtMsg, _ := txtPart.Opaque()
-	htmlMsg, _ := htmlPart.Opaque()
-	_ = altPart.Add(txtMsg, htmlMsg)
+	altPart.Add(txtPart.Opaque(), htmlPart.Opaque())
 
 	imgAttach := &message.Buffer{}
 	imgAttach.SetMediaType("image/jpeg")
@@ -59,15 +54,9 @@ func ExampleBuffer_multipart_buffer() {
 	img, _ := os.Open("image.jpg")
 	_, _ = io.Copy(imgAttach, img)
 
-	altMsg, _ := altPart.Multipart()
-	imgMsg, _ := imgAttach.Opaque()
-	_ = mm.Add(altMsg, imgMsg)
+	mm.Add(altPart.Opaque(), imgAttach.Opaque())
 
-	msg, err := mm.Multipart()
-	if err != nil {
-		panic(err)
-	}
-	_, _ = msg.WriteTo(os.Stdout)
+	_, _ = mm.Opaque().WriteTo(os.Stdout)
 }
 
 func Example_readme_synopsis_1() {

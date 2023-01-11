@@ -89,10 +89,7 @@ Test message.
 		return nil, expect, err
 	}
 
-	err = buf.Add(makePart())
-	if err != nil {
-		return nil, expect, err
-	}
+	buf.Add(makePart())
 
 	return buf, expect, nil
 }
@@ -109,13 +106,13 @@ func TestBuffer_Add(t *testing.T) {
 
 	assert.Equal(t, message.ModeUnset, buf.Mode())
 
-	err = buf.Add(makePart())
-	assert.NoError(t, err)
+	buf.Add(makePart())
 
 	assert.Equal(t, message.ModeMultipart, buf.Mode())
 
-	_, err = buf.Write([]byte{})
-	assert.ErrorIs(t, err, message.ErrPartsBuffer)
+	assert.Panics(t, func() {
+		_, _ = buf.Write([]byte{})
+	})
 
 	m, err := buf.Multipart()
 	assert.NoError(t, err)
@@ -153,11 +150,11 @@ func TestBuffer_Write(t *testing.T) {
 
 	assert.Equal(t, message.ModeOpaque, buf.Mode())
 
-	err = buf.Add(makePart())
-	assert.ErrorIs(t, err, message.ErrOpaqueBuffer)
+	assert.Panics(t, func() {
+		buf.Add(makePart())
+	})
 
-	m, err := buf.Opaque()
-	assert.NoError(t, err)
+	m := buf.Opaque()
 
 	const expected = `Subject: test opaque
 Content-type: text/plain
@@ -178,8 +175,7 @@ func TestBuffer_Opaque_FromSimple(t *testing.T) {
 	s, expect, err := makeSimple()
 	assert.NoError(t, err)
 
-	m, err := s.Opaque()
-	assert.NoError(t, err)
+	m := s.Opaque()
 
 	subj, err := m.GetSubject()
 	assert.NoError(t, err)
@@ -210,8 +206,7 @@ func TestBuffer_Opaque_FromMultipart(t *testing.T) {
 	s, expect, err := makeMultipart()
 	assert.NoError(t, err)
 
-	m, err := s.Opaque()
-	assert.NoError(t, err)
+	m := s.Opaque()
 
 	subj, err := m.GetSubject()
 	assert.NoError(t, err)

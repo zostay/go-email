@@ -105,19 +105,22 @@ func (b *Buffer) initParts() error {
 	return nil
 }
 
-// Add will add one or more parts to the message.
-func (b *Buffer) Add(msgs ...Part) error {
+// Add will add one or more parts to the message. It will panic if you attempt
+// to call this function after already calling Write() or using this object as
+// an io.Writer.
+func (b *Buffer) Add(msgs ...Part) {
 	if err := b.initParts(); err != nil {
-		return err
+		panic(err)
 	}
 	b.parts = append(b.parts, msgs...)
-	return nil
 }
 
-// Write implements io.Writer so you can write the message to this buffer.
+// Write implements io.Writer so you can write the message to this buffer. This
+// will panic if you attempt to call this method or use this object as an
+// io.Writer after calling Add.
 func (b *Buffer) Write(p []byte) (int, error) {
 	if err := b.initBuffer(); err != nil {
-		return 0, err
+		panic(err)
 	}
 	return b.buf.Write(p)
 }
@@ -134,10 +137,8 @@ func (b *Buffer) prepareForMultipartOutput() {
 
 // Opaque will return an Opaque message based upon the content written to the
 // Buffer. The behavior of this method depends on which mode the Buffer is in.
-// This method fails with an error if there's a problem.
 //
-// If the BufferMode is ModeUnset, nil will be returned with the ErrModeUnset
-// error.
+// This method will panic if the BufferMode is ModeUnset.
 //
 // If the BufferMode is ModeOpaque, the Header and the bytes written to the
 // internal buffer will be returned in the *Opaque. Opaque will return a MIME
@@ -157,15 +158,13 @@ func (b *Buffer) prepareForMultipartOutput() {
 // It will also check to see if the Content-type boundary is set and set it to
 // something random using mime.GenerateBound() automatically. This boundary
 // will then be used when joining the parts together during serialization.
-func (b *Buffer) Opaque() (*Opaque, error) {
+func (b *Buffer) Opaque() *Opaque {
 	switch b.Mode() {
-	case ModeUnset:
-		return nil, ErrModeUnset
 	case ModeOpaque:
 		return &Opaque{
 			Header: b.Header,
 			Reader: b.buf,
-		}, nil
+		}
 	case ModeMultipart:
 		b.prepareForMultipartOutput()
 		boundary, _ := b.GetBoundary()
@@ -183,10 +182,11 @@ func (b *Buffer) Opaque() (*Opaque, error) {
 		return &Opaque{
 			Header: b.Header,
 			Reader: buf,
-		}, nil
+		}
+	case ModeUnset:
+		panic(ErrModeUnset)
 	}
-
-	return nil, errors.New("unknown mode")
+	panic("unknown error")
 }
 
 // OpaqueAlreadyEncoded works just like Opaque(), but marks the object as
@@ -196,18 +196,23 @@ func (b *Buffer) Opaque() (*Opaque, error) {
 // NOTE: This does not perform any encoding! If you want the output to be
 // automatically encoded, you actually want to call Opaque() and then WriteTo()
 // on the returned object will perform encoding. This method is for indicating
-// that you have already performed the required encodigin.
-func (b *Buffer) OpaqueAlreadyEncoded() (*Opaque, error) {
-	msg, err := b.Opaque()
+// that you have already performed the required encoding.
+func (b *Buffer) OpaqueAlreadyEncoded() *Opaque {
+	msg := b.Opaque()
 	if msg != nil {
 		msg.encoded = true
 	}
-	return msg, err
+	return msg
 }
 
 // Multipart will return a Multipart message based upon the content written to
 // the Buffer. This method will fail with an error if there's a problem. The
 // behavior of this method depends on which mode the Buffer is in when called.
+//
+// If you are just generating a message to output to a file or network socket
+// (e.g., an SMTP connection), you probably do not want to call this method.
+// Calling Opaque is generally preferable in that case. However, this is
+// provided in cases when you really do want a Multipart for some reason.
 //
 // Whenever you plan on calling this method, you should set the Content-Type
 // header yourself to one of the multipart/* types (e.g., multipart/alternative
@@ -221,8 +226,7 @@ func (b *Buffer) OpaqueAlreadyEncoded() (*Opaque, error) {
 // something random using mime.GenerateBound() automatically. This boundary
 // will then be used when joining the parts together during serialization.
 //
-// If the BufferMode is ModeUnset, nil will be returned with the ErrModeUnset
-// error.
+// If the BufferMode is ModeUnset, this method will panic.
 //
 // If the BufferMode is ModeOpaque, the bytes that have been written to the
 // buffer must be parsed in order to generate the returned *Multipart. In that
@@ -239,8 +243,6 @@ func (b *Buffer) OpaqueAlreadyEncoded() (*Opaque, error) {
 func (b *Buffer) Multipart() (*Multipart, error) {
 	b.prepareForMultipartOutput()
 	switch b.Mode() {
-	case ModeUnset:
-		return nil, ErrModeUnset
 	case ModeOpaque:
 		msg := &Opaque{b.Header, b.buf, false}
 		pr := defaultParser.clone()
@@ -263,6 +265,8 @@ func (b *Buffer) Multipart() (*Multipart, error) {
 			suffix: []byte{},
 			parts:  b.parts,
 		}, nil
+	case ModeUnset:
+		panic(ErrModeUnset)
 	}
-	return nil, errors.New("unknown mode")
+	panic("unknown error")
 }

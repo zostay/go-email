@@ -16,8 +16,7 @@ func TestOpaque(t *testing.T) {
 	buf, expect, err := makeSimple()
 	assert.NoError(t, err)
 
-	m, err := buf.Opaque()
-	assert.NoError(t, err)
+	m := buf.Opaque()
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 
@@ -65,8 +64,7 @@ func TestOpaque_TransferEncodingEncoded(t *testing.T) {
 	buf, expectEnc, expectDec, err := makeSimpleWithEncoding()
 	assert.NoError(t, err)
 
-	m, err := buf.Opaque()
-	assert.NoError(t, err)
+	m := buf.Opaque()
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 
@@ -97,8 +95,7 @@ func TestOpaque_TransferEncodingDecoded(t *testing.T) {
 	// This is actually wrong since the data created by makeSimpleWithEncoding
 	// is not encoded. However, we just want to test that no encoding is
 	// performed if we all OpaqueAlreadyEncoded.
-	m, err := buf.OpaqueAlreadyEncoded()
-	assert.NoError(t, err)
+	m := buf.OpaqueAlreadyEncoded()
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 
