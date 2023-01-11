@@ -65,7 +65,7 @@ func TestPartWalker_Walk(t *testing.T) {
 	expectDepth := []int{0, 1, 2, 2, 1, 2, 2, 1, 2, 2}
 	expectIndex := []int{0, 0, 0, 1, 1, 0, 1, 2, 0, 1}
 	i := 0
-	var pw walker.PartWalker = func(depth, j int, msg message.Part) error {
+	var pw walker.Parts = func(depth, j int, msg message.Part) error {
 		where, err := msg.GetHeader().Get("X-Where")
 		assert.NoError(t, err)
 		assert.Equal(t, expectOrder[i], where)
@@ -89,7 +89,7 @@ func TestPartWalker_WalkOpaque(t *testing.T) {
 	expectDepth := []int{2, 2, 2, 2, 2, 2}
 	expectIndex := []int{0, 1, 0, 1, 0, 1}
 	i := 0
-	var pw walker.PartWalker = func(depth, j int, msg message.Part) error {
+	var pw walker.Parts = func(depth, j int, msg message.Part) error {
 		where, err := msg.GetHeader().Get("X-Where")
 		assert.NoError(t, err)
 		assert.Equal(t, expectOrder[i], where)
@@ -113,7 +113,7 @@ func TestPartWalker_WalkMultipart(t *testing.T) {
 	expectDepth := []int{0, 1, 1, 1}
 	expectIndex := []int{0, 0, 1, 2}
 	i := 0
-	var pw walker.PartWalker = func(depth, j int, msg message.Part) error {
+	var pw walker.Parts = func(depth, j int, msg message.Part) error {
 		where, err := msg.GetHeader().Get("X-Where")
 		assert.NoError(t, err)
 		assert.Equal(t, expectOrder[i], where)
