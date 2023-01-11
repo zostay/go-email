@@ -22,6 +22,14 @@ const (
 	// splitting the message into header and body. Defaults to 16K, though this
 	// could change at any time.
 	DefaultChunkSize = 16_384
+
+	// DefaultMaxHeaderLength is the default maximum byte length to scan before
+	// giving up on finding the end of the header.
+	DefaultMaxHeaderLength = bufio.MaxScanTokenSize
+
+	// DefaultMaxPartLength is the default maximum byte length to scan before
+	// given up on scanning a message part at any given level.
+	DefaultMaxPartLength = bufio.MaxScanTokenSize
 )
 
 // Errors that occur during parsing.
@@ -29,6 +37,15 @@ var (
 	// ErrNoBoundary is returned by Parse when the boundary parameter is not set
 	// on the Content-type field of the message header.
 	ErrNoBoundary = errors.New("the boundary parameter is missing from Content-type")
+
+	// ErrLargeHeader is returned by Parse when the header is longer than the
+	// configured WithMaxHeaderLength option (or the default,
+	// DefaultMaxHeaderLength).
+	ErrLargeHeader = errors.New("the header exceeds the maximum parse length")
+
+	// ErrLargePart is returned by Parse when  apart is longer than the configured
+	// WithMaxPartLength option (or the default, DefaultMaxPartLength).
+	ErrLargePart = errors.New("a message part exceeds the maximum parse length")
 )
 
 var splits = [][]byte{
@@ -39,9 +56,11 @@ var splits = [][]byte{
 }
 
 type parser struct {
-	maxDepth  int
-	chunkSize int
-	decode    bool
+	maxHeaderLen int
+	maxPartLen   int
+	maxDepth     int
+	chunkSize    int
+	decode       bool
 }
 
 func (pr *parser) clone() *parser {
@@ -49,11 +68,38 @@ func (pr *parser) clone() *parser {
 	return &p
 }
 
-var defaultParser = &parser{DefaultMaxMultipartDepth, DefaultChunkSize, false}
+var defaultParser = &parser{
+	maxHeaderLen: DefaultMaxHeaderLength,
+	maxPartLen:   DefaultMaxPartLength,
+	maxDepth:     DefaultMaxMultipartDepth,
+	chunkSize:    DefaultChunkSize,
+	decode:       false,
+}
 
 // ParseOption refers to options that may be passed to the Parse function to
 // modify how the parser works.
 type ParseOption func(pr *parser)
+
+// WithMaxHeaderLength is a ParseOption that sets the maximum size the buffer is
+// allowed to reach before parsing exits with an ErrLargeHeader error. During
+// parsing, the io.Reader will be read from a chunk at a time until the end of
+// the header is found. This setting prevents bad input from resulting in an out
+// of memory error. Setting this to a value less than or equal to 0 will result
+// in there being no maximum length. The default value is
+// DefaultMaxHeaderLength.
+func WithMaxHeaderLength(n int) ParseOption {
+	return func(pr *parser) { pr.maxHeaderLen = n }
+}
+
+// WithMaxPartLength is a ParseOption that sets the maximum size the buffer is
+// allowed to reach while scanning for message parts at any level. The parts are
+// parsed out at each level of depth separately, so this must be large enough to
+// accommodate the largest part at the top level being parsed. If the part gets
+// too large, Parse will fail with an ErrLargePart error. There is, at this
+// time, no way to disable this limit.
+func WithMaxPartLength(n int) ParseOption {
+	return func(pr *parser) { pr.maxPartLen = n }
+}
 
 // DecodeTransferEncoding is a ParseOption that enables the decoding of
 // Content-transfer-encoding. By default, Content-transfer-encoding will not be
@@ -123,6 +169,12 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 	for {
 		// read in some bytes
 		n, err := r.Read(p)
+
+		// check to see if the header is too long
+		if pr.maxHeaderLen > 0 && n+buf.Len() > pr.maxHeaderLen {
+			return nil, nil, nil, ErrLargeHeader
+		}
+
 		isEof := false
 		if errors.Is(err, io.EOF) {
 			isEof = true
@@ -188,38 +240,66 @@ func (pr *parser) parseToOpaque(r io.Reader) (*Opaque, error) {
 	return &Opaque{*head, body, !pr.decode}, nil
 }
 
-// Parse will transform a *Opaque into a *Multipart or return a *Opaque if
-// the object does not represent a multipart message. The parse of the message
-// will proceed as follows:
+// Parse will consume input from the given reader and return a Generic message
+// containing the parsed content. Parse will proceed in two or three phases.
 //
-// 1. We check to see if the Content-type is a multipart/* or message/* type. If
-// it is not, the original message will be returned as-is and no parsing of the
-// body of the message will be attempted.
+// During the first phase, the given io.Reader will be read in chunks at a time,
+// as defined by the WithChunkSize() option (or by the default,
+// DefaultChunkSize). Each chunk will be checked for a double line break of some
+// kind (e.g., "\r\n\r\n" or "\n\n" are the most common). Once found, that line
+// break is used to determine what line break the message will use for breaking
+// up the header into fields. The fields will be parsed from the accumulated
+// header chunks using the bytes read in so far preceding the header break.
 //
-// 2. We check to see if the boundary parameter is set on the Content-type
-// header. If not, the original message is returned without attempting to read
-// the body, but an error is returned, ErrNoBoundary, because a multipart
-// message cannot be parsed without a boundary.
+// The last part of the final chunk read and the remainder of the io.Reader will
+// then make up the body content of an *Opaque message.
 //
-// 3. If Content-type and boundary checks both pass, the message body will be
-// read to search for boundary markers. If no initial boundary marker is found
-// when reading starts, a new message will be returned containing the original
-// message data and an ErrMissingBoundary error will be returned.
+// If accumulated header chunks total larger than the WithMaxHeaderLength()
+// option (or the default, DefaultMaxHeaderLength) while searching for the
+// double line break, the Parse will fail with an error and return
+// ErrLargeHeader. If this happens, the io.Reader may be in a partial read
+// state.
 //
-// 4. If we get thi far and the initial boundary is found, then the remaining
-// boundaries continue to be read until we reach the end of the message. At this
-// point a *Multipart will be returned with all the parts broken up into
-// pieces. If the end boundary is missing, it will also return an error
-// ErrMissingEndBoundary.
+// If the first phase completes successfully, the second phase will begin.
+// During the second phase, the *Opaque message created during the first phase
+// may be transformed into a *Multipart, if the message seems to be a multipart
+// message. The way this will proceed is determined by the WithMaxDepth()
+// related options and also the WithMaxPartLength() option.
 //
-// 5. If the DecodeTransferEncoding() option is passed, the parts of the message
-// that do not have sub-parts and have a Content-transfer-encoding header set,
-// will be decoded. This is not the default behavior because we want to prefer
-// preserving the body byte-for-byte for round-tripping and decoding and
-// re-encoding this data is likely to result in changes. If decoded, rendering
-// the message with WriteTo() will write encoded data to the destination
-// writer. However, if you read the data using the io.Reader, you will receive
-// un-encoded bytes.
+// If the Content-type of the message is a multipart/* MIME type and the
+// WithMaxDepth() option (or the default, DefaultMaxMultipartDepth) is less than
+// or greater than 0, the body will be scanned to break it into parts according
+// to the boundary parameter set on the Content-type. The parts must be smaller
+// than the setting in WithMaxPartLength() option (or the default,
+// DefaultMaxPartLength). If not, the parse will fail with ErrLargePart.
+//
+// These newly broken up parts will each go through the two phase parsing
+// process themselves. This continues until either the deepest multipart sub-part is
+// parsed or the maximum depth is reached.
+//
+// If the DecodeTransferEncoding() option is passed, a third phase of parsing
+// will also be performed. The parts of the message that do not have sub-parts
+// and have a Content-transfer-encoding header set, will be decoded.
+//
+// This third phase is not the default behavior because one of those goals of
+// this library is to try and preserve the original bytes as is. However, decoding
+// the transfer encoding and then re-encoding it again is very likely to modify
+// the original message. The modification will be trivial, but it won't preserve
+// the original message for round-trip modification with minimal changes.
+//
+// If the transfer encoding is decoded in this third phase, rendering the
+// message with WriteTo() will perform new encoding of the data and write
+// freshly encoded data to the destination writer. However, if you read the data
+// using the io.Reader, you will receive un-encoded bytes.
+//
+// Errors at any point in the process may lead to a completely failed parse,
+// especially those involving ErrLargeHeader or ErrLargePart. However, whenever
+// possible, the partially parsed message object will be returned.
+//
+// The original io.Reader provided may or may not be completely read upon
+// return. This is true whether an error has occurred or not. If you either read
+// all the message body contents of all sub-parts or use the WriteTo() method on
+// the returned message object, the io.Reader will be completely consumed.
 func Parse(r io.Reader, opts ...ParseOption) (Generic, error) {
 	pr := defaultParser.clone()
 	for _, opt := range opts {
@@ -283,6 +363,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	// returns the parts as tokens, but the prefix and suffix, it captures
 	// itself in the prefix/suffix vars.
 	sc := bufio.NewScanner(msg.Reader)
+	sc.Buffer(make([]byte, pr.chunkSize), pr.maxPartLen)
 	var prefix, suffix []byte
 	mode := modeStart
 	awaitingPrefix := true
@@ -375,11 +456,20 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	// This function will recover the original message if we get an error
 	// parsing a sub-part.
 	parts := make([][]byte, 0, 10)
-	originalMessage := func() *Opaque {
+	originalMessage := func() (*Opaque, error) {
 		// finish accumulating the parts and find the suffix (if any)
 		for sc.Scan() {
 			part := sc.Bytes()
 			parts = append(parts, part)
+		}
+
+		if err := sc.Err(); err != nil {
+			if errors.Is(err, bufio.ErrTooLong) {
+				return nil, ErrLargePart
+			} else {
+				// TODO Can this ever happen and, if so, how should we handle it?
+				return nil, err
+			}
 		}
 
 		r := &bytes.Buffer{}
@@ -396,7 +486,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 		return &Opaque{
 			Header: msg.Header,
 			Reader: r,
-		}
+		}, nil
 	}
 
 	// All returned tokens are parts
@@ -408,15 +498,27 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 		// parse each part as a simple message first
 		opMsg, err := pr.parseToOpaque(bytes.NewReader(part))
 		if err != nil {
-			return originalMessage(), err
+			orig, _ := originalMessage()
+			return orig, err
 		}
 
 		msg, err := pr.parse(opMsg, depth-1)
 		if err != nil {
-			return originalMessage(), err
+			orig, _ := originalMessage()
+			return orig, err
 		}
 
 		msgParts = append(msgParts, msg)
+	}
+
+	if err := sc.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			return nil, ErrLargePart
+		} else {
+			// TODO Can this ever happen and, if so, how should we handle it?
+			orig, _ := originalMessage()
+			return orig, err
+		}
 	}
 
 	return &Multipart{
