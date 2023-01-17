@@ -124,6 +124,13 @@ func WithMaxDepth(maxDepth int) ParseOption {
 
 // WithoutMultipart is a ParseOption that will not allow parsing of any
 // multipart messages. The message returned from Parse() will always be *Opaque.
+//
+// You should use this option if all you are interested in is the top-level
+// headers. For large email messages, use of this option can grant extreme
+// improvements to memory performance. This is because this option prevents any
+// multipart processing, which means the header will be read, parsed, and stored
+// in memory. However, only a single chunk of the body will have been read. The
+// rest of the input io.Reader is left unread.
 func WithoutMultipart() ParseOption {
 	return func(pr *parser) { pr.maxDepth = 0 }
 }
@@ -144,7 +151,19 @@ func WithUnlimitedRecursion() ParseOption {
 // found. If the header/body split is found, it returns the location of the
 // split (including the split newlines) and the line break to use with the
 // header as a slice of bytes.
-func searchForSplit(buf []byte) (pos int, crlf []byte) {
+func searchForSplit(buf []byte, subpart bool) (pos int, crlf []byte) {
+	if subpart {
+		// if the header is empty, the first char might be a line break, indicating
+		// an empty header, right? It happens.
+		for _, s := range splits {
+			if testPos := bytes.Index(buf, s[0:len(s)/2]); testPos == 0 {
+				pos = testPos + len(s)/2
+				crlf = s[0 : len(s)/2]
+				return
+			}
+		}
+	}
+
 	// Find the split between header/body
 	pos = -1
 	for _, s := range splits {
@@ -154,7 +173,6 @@ func searchForSplit(buf []byte) (pos int, crlf []byte) {
 			return
 		}
 	}
-
 	return
 }
 
@@ -162,7 +180,7 @@ func searchForSplit(buf []byte) (pos int, crlf []byte) {
 // splitHeadFromBody will detect the index of the split between the message
 // header and the message body as well as the line break the email is using. It
 // returns both.
-func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, error) {
+func (pr *parser) splitHeadFromBody(r io.Reader, subpart bool) ([]byte, []byte, io.Reader, error) {
 	p := make([]byte, pr.chunkSize)
 	buf := &bytes.Buffer{}
 	searched := 0
@@ -189,12 +207,39 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 		}
 
 		// check the tail of the buffer for end of header
-		pos, crlf := searchForSplit(buf.Bytes()[searched:])
+		pos, crlf := searchForSplit(buf.Bytes()[searched:], subpart)
 		if pos >= 0 {
-			// we found the split, return the data
+			// we found the split, header is bytes up to the split
 			hdr := make([]byte, pos)
-			_, _ = buf.Read(hdr)
-			return hdr, crlf, &remainder{buf.Bytes(), r}, nil
+			_, err = buf.Read(hdr)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+
+			// the rest is the body
+			var body io.Reader
+			if _, isBytesReader := r.(*bytes.Reader); isBytesReader {
+				// We treat bytes.Reader special because this is what we use
+				// internally to parse each part of a multipart message. This
+				// will pull the data out of the bytes.Reader and attach it to
+				// the end of the byte.Buffer we've been building.
+				_, err = buf.ReadFrom(r)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				// Without this, the header bytes will still be in the buffer.
+				// This will cause those bytes to be discarded, which will
+				// improve memory performance somewhat.
+				// TODO Should we improve memory performance like this?
+				body = bytes.NewReader(buf.Bytes())
+			} else {
+				// If it's something else, we will leave the remainder unread
+				// as we must be reading an original input io.Reader. By not
+				// consuming it, we can improve the memory performance of
+				// Opaque message.
+				body = &remainder{buf.Bytes(), r}
+			}
+			return hdr, crlf, body, nil
 		}
 
 		// No split found and EOF? Let's break out and then we'll process as if
@@ -205,6 +250,9 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 
 		// The last 3 bytes might be the prefix to the split point
 		searched = buf.Len() - 3
+		if searched < 0 {
+			searched = 0
+		}
 	}
 
 	// If we're here, we were unable to find a header/body split. We will just
@@ -222,8 +270,8 @@ func (pr *parser) splitHeadFromBody(r io.Reader) ([]byte, []byte, io.Reader, err
 }
 
 // parseOpaque turns a reader into an Opaque.
-func (pr *parser) parseToOpaque(r io.Reader) (*Opaque, error) {
-	hdr, crlf, body, err := pr.splitHeadFromBody(r)
+func (pr *parser) parseToOpaque(r io.Reader, subpart bool) (*Opaque, error) {
+	hdr, crlf, body, err := pr.splitHeadFromBody(r, subpart)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +354,7 @@ func Parse(r io.Reader, opts ...ParseOption) (Generic, error) {
 		opt(pr)
 	}
 
-	msg, err := pr.parseToOpaque(r)
+	msg, err := pr.parseToOpaque(r, false)
 	if err != nil {
 		return msg, err
 	}
@@ -345,13 +393,16 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 	// dealing with the first, we will also look for the newline before the
 	// found boundary to ensure the prefix is captured correctly.
 	//
-	// For the purpose of capturing content, the newlines before and after the
-	// boundary belong to the boundary. Otherwise, we'd have some ambiguity that
-	// would make it difficult to carefully round-trip a message with zero byte
-	// changes.
+	// Newline handling is nuanced in order to preserve the original message for
+	// round-tripping. The newline before the start boundary (if any) belongs to
+	// the prefix. The newline after the final boundary (if any) belongs to the
+	// suffix. The newlines before and after the middle boundaries belong to the
+	// boundary and are not included with the part (because they have to be
+	// there or message parsing does not work).
 	sb := []byte(fmt.Sprintf("--%s%s", pv.Boundary(), msg.Break()))
 	mb := []byte(fmt.Sprintf("%s--%s%s", msg.Break(), pv.Boundary(), msg.Break()))
 	eb := []byte(fmt.Sprintf("%s--%s--%s", msg.Break(), pv.Boundary(), msg.Break()))
+	fb := []byte(fmt.Sprintf("%s--%s--", msg.Break(), pv.Boundary()))
 
 	const (
 		modeStart = iota
@@ -385,6 +436,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 
 						// either way, move on to modeMiddle
 						mode = modeMiddle
+						err = scanner.ErrContinue
 					}
 					// else, we don't have enough data to know if we've got a
 					// zero-length prefix yet or not.
@@ -401,7 +453,9 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 						if awaitingPrefix {
 							// this is the first boundary, so the input so far is
 							// the prefix
-							prefix = data[:ix]
+							ps := data[:ix+1]
+							prefix = make([]byte, len(ps))
+							copy(prefix, ps)
 							awaitingPrefix = false
 						} else {
 							// this is a subsequent boundary, so the input is a part
@@ -428,12 +482,23 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 
 					// if we are here, we know that atEOF is true
 					if ix := bytes.Index(data, eb); ix >= 0 {
-						// we found the final \n--boundary--\n string:
+						// we found the end \n--boundary--\n string:
 						// |-> capture the suffix, which is everything after the
-						// |   boundary
+						// |   boundary (including the line ending, which is why
+						// |   we use len(fb) here and not len(eb), that is
+						// |   deliberate.
 						// |-> capture the token to return as the final part
 						token = data[:ix]
-						suffix = data[ix+len(eb):]
+						ss := data[ix+len(fb):]
+						suffix = make([]byte, len(ss))
+						copy(suffix, ss)
+					} else if ix := bytes.Index(data, fb); ix == len(data)-len(fb) {
+						// we found the final \n--boundary-- string at the actual
+						// end of input (no final line break)
+						// |-> there's no suffix, not even a newline
+						// |-> capture the token to return as the final part
+						token = data[:ix]
+						suffix = []byte{}
 					} else {
 						// bummer, we have no final boundary, so we'll just treat
 						// the rest of the data as the final part and record that
@@ -467,7 +532,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 			if errors.Is(err, bufio.ErrTooLong) {
 				return nil, ErrLargePart
 			} else {
-				// TODO Can this ever happen and, if so, how should we handle it?
+				// TODO Can this ever happen? If so, how should we handle it?
 				return nil, err
 			}
 		}
@@ -496,7 +561,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 		parts = append(parts, part)
 
 		// parse each part as a simple message first
-		opMsg, err := pr.parseToOpaque(bytes.NewReader(part))
+		opMsg, err := pr.parseToOpaque(bytes.NewReader(part), true)
 		if err != nil {
 			orig, _ := originalMessage()
 			return orig, err

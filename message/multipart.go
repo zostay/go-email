@@ -86,12 +86,16 @@ type Multipart struct {
 	//
 	// Some special semantics:
 	//
-	// * if prefix is nil, then the email consists of no internal boundaries
+	// * If prefix is nil, then the email consists of no internal boundaries
 	// (though, it may have a final boundary). When round-tripping, no initial
-	// boundary will be output.
+	// boundary will be output. The prefix MUST end in a newline if it is
+	// anything but the empty string or else the message produced will not be
+	// correct.
 	//
-	// * if suffix is nil, then the email lacks a final boundary. When
-	// round-tripping, no final boundary will be output.
+	// * If suffix is nil, then the email lacks a final boundary. When
+	// round-tripping, no final boundary will be output. The suffix MUST start
+	// with a newline if it is anything but the empty string or else the messae
+	// will not be correct.
 	prefix, suffix []byte
 
 	// parts holds this layer's parts
@@ -120,6 +124,13 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	n := hn
+
+	pn, err := w.Write(mm.prefix)
+	n += int64(pn)
+	if err != nil {
+		return n, err
+	}
+
 	if len(mm.parts) > 0 {
 		first := true
 		for _, part := range mm.parts {
@@ -146,8 +157,16 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 			}
 		}
 
-		bn, err := fmt.Fprintf(w, "%s--%s--%s", br, boundary, br)
+		bn, err := fmt.Fprintf(w, "%s--%s--", br, boundary)
 		n += int64(bn)
+		if err != nil {
+			return n, err
+		}
+	}
+
+	sn, err := w.Write(mm.suffix)
+	n += int64(sn)
+	if err != nil {
 		return n, err
 	}
 

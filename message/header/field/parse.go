@@ -45,6 +45,11 @@ type Lines []Line
 // but all other characters are treated as non-spaces. This is in keeping with
 // RFC 5322.)
 func ParseLines(m, lb []byte) (Lines, error) {
+	if len(m) <= 2 {
+		// too short to be a header, just return empty
+		return nil, nil
+	}
+
 	h := make(Lines, 0, len(m)/80)
 	var err *BadStartError
 	for _, line := range bytes.SplitAfter(m, lb) {
