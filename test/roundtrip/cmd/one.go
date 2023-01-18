@@ -28,7 +28,9 @@ func RunOne(cmd *cobra.Command, args []string) {
 	}
 	defer func() { _ = msgFile.Close() }()
 
-	m, err := message.Parse(msgFile, message.WithUnlimitedRecursion())
+	m, err := message.Parse(msgFile,
+		message.WithUnlimitedRecursion(),
+		message.WithMaxPartLength(message.DefaultMaxPartLength*1_000))
 	if err != nil {
 		panic(err)
 	}

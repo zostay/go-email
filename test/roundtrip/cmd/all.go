@@ -106,12 +106,14 @@ func CheckAll(cmd *cobra.Command, args []string) {
 		}
 		defer func() { _ = msgFile.Close() }()
 
-		opt := message.WithUnlimitedRecursion()
+		var opts [2]message.ParseOption
+		opts[0] = message.WithUnlimitedRecursion()
 		if opaqueParse {
-			opt = message.WithoutMultipart()
+			opts[0] = message.WithoutMultipart()
 		}
+		opts[1] = message.WithMaxPartLength(message.DefaultMaxPartLength * 1_000)
 
-		m, err := message.Parse(msgFile, opt)
+		m, err := message.Parse(msgFile, opts[:]...)
 		if err != nil {
 			logEntry(path, "FailParse", err.Error())
 			return nil
