@@ -209,11 +209,14 @@ func (pr *parser) splitHeadFromBody(r io.Reader, subpart bool) ([]byte, []byte, 
 		// check the tail of the buffer for end of header
 		pos, crlf := searchForSplit(buf.Bytes()[searched:], subpart)
 		if pos >= 0 {
+			pos += searched
 			// we found the split, header is bytes up to the split
 			hdr := make([]byte, pos)
-			_, err = buf.Read(hdr)
-			if err != nil {
-				return nil, nil, nil, err
+			for hdrRead, n := 0, 0; hdrRead < pos; hdrRead += n {
+				n, err = buf.Read(hdr[hdrRead:])
+				if err != nil {
+					return nil, nil, nil, err
+				}
 			}
 
 			// the rest is the body
