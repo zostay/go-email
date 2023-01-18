@@ -89,6 +89,11 @@ func CheckAll(cmd *cobra.Command, args []string) {
 			return nil
 		}
 
+		// skip hidden files (assuming *nix)
+		if d.Name()[0] == '.' {
+			return nil
+		}
+
 		if err != nil {
 			logEntry(path, "WalkErr", err.Error())
 			return nil
