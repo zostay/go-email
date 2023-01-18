@@ -158,6 +158,9 @@ func (b *Buffer) prepareForMultipartOutput() {
 // It will also check to see if the Content-type boundary is set and set it to
 // something random using mime.GenerateBound() automatically. This boundary
 // will then be used when joining the parts together during serialization.
+//
+// After this method is called, the Buffer should be disposed of and no longer
+// used.
 func (b *Buffer) Opaque() *Opaque {
 	switch b.Mode() {
 	case ModeOpaque:
@@ -197,6 +200,9 @@ func (b *Buffer) Opaque() *Opaque {
 // automatically encoded, you actually want to call Opaque() and then WriteTo()
 // on the returned object will perform encoding. This method is for indicating
 // that you have already performed the required encoding.
+//
+// After this method is called, the Buffer should be disposed of and no longer
+// used.
 func (b *Buffer) OpaqueAlreadyEncoded() *Opaque {
 	msg := b.Opaque()
 	if msg != nil {
@@ -240,6 +246,9 @@ func (b *Buffer) OpaqueAlreadyEncoded() *Opaque {
 //
 // If the BufferMode is ModeMultipart, the Header and collected parts will be
 // returned in the returned *Multipart.
+//
+// After this method is called, the Buffer should be disposed of and no longer
+// used.
 func (b *Buffer) Multipart() (*Multipart, error) {
 	b.prepareForMultipartOutput()
 	switch b.Mode() {
