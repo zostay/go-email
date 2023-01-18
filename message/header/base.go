@@ -119,11 +119,16 @@ func (h *Base) ListFields() []*field.Field {
 // WriteTo will write the contents of the header to the given io.Writer.
 func (h *Base) WriteTo(w io.Writer) (int64, error) {
 	total := int64(0)
-	// bw := bufio.NewWriter(w)
 	for _, f := range h.fields {
 		if f.Raw != nil {
 			// when Raw is present, write it as-is
 			n, err := w.Write(f.Bytes())
+			total += int64(n)
+			if err != nil {
+				return total, err
+			}
+
+			n, err = w.Write(h.lbr.Bytes())
 			total += int64(n)
 			if err != nil {
 				return total, err
