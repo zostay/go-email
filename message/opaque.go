@@ -10,7 +10,13 @@ import (
 // Opaque is the base-level email message interface. It is simply a header
 // and a message body, very similar to the net/mail message implementation.
 type Opaque struct {
+	// Header will contain the header of the message. A top-level message must
+	// have several headers to be correct. A message part should have one or
+	// more headers as well.
 	header.Header
+
+	// Reader will contain the body content of the message. If the content is
+	// zero bytes long, then Reader should be set to nil.
 	io.Reader
 
 	// encoded tracks whether the body has had the content-transfer-encoding
@@ -39,17 +45,24 @@ func (m *Opaque) WriteTo(w io.Writer) (int64, error) {
 		defer func() { _ = tw.Close() }()
 	}
 
-	hn, err := m.Header.WriteTo(w)
+	total, err := m.Header.WriteTo(w)
 	if err != nil {
-		return hn, err
+		return total, err
 	}
 
 	if tw != nil {
 		w = tw
 	}
 
-	bn, err := io.Copy(w, m.Reader)
-	return hn + bn, err
+	if m.Reader != nil {
+		bn, err := io.Copy(w, m.Reader)
+		total += bn
+		if err != nil {
+			return total, err
+		}
+	}
+
+	return total, nil
 }
 
 // IsMultipart always returns false.

@@ -233,7 +233,6 @@ func (pr *parser) splitHeadFromBody(r io.Reader, subpart bool) ([]byte, []byte, 
 				// Without this, the header bytes will still be in the buffer.
 				// This will cause those bytes to be discarded, which will
 				// improve memory performance somewhat.
-				// TODO Should we improve memory performance like this?
 				body = bytes.NewReader(buf.Bytes())
 			} else {
 				// If it's something else, we will leave the remainder unread
@@ -264,12 +263,12 @@ func (pr *parser) splitHeadFromBody(r io.Reader, subpart bool) ([]byte, []byte, 
 	for _, s := range splits {
 		crlf := s[0 : len(s)/2]
 		if bytes.Contains(buf.Bytes(), crlf) {
-			return buf.Bytes(), crlf, &bytes.Buffer{}, nil
+			return buf.Bytes(), crlf, nil, nil
 		}
 	}
 
 	// Or the ultimate fallback is...
-	return buf.Bytes(), []byte("\x0d"), &bytes.Buffer{}, nil
+	return buf.Bytes(), []byte("\x0d"), nil, nil
 }
 
 // parseOpaque turns a reader into an Opaque.

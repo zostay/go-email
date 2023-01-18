@@ -132,16 +132,14 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	if len(mm.parts) > 0 {
-		first := true
+		hadContent := false
 		for _, part := range mm.parts {
-			if !first {
+			if hadContent {
 				bn, err := fmt.Fprint(w, br)
 				n += int64(bn)
 				if err != nil {
 					return n, err
 				}
-			} else {
-				first = false
 			}
 
 			bn, err := fmt.Fprintf(w, "--%s%s", boundary, br)
@@ -149,6 +147,9 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 			if err != nil {
 				return n, err
 			}
+
+			// only insert a newline if there are some bytes in here...
+			hadContent = part.IsMultipart() || part.GetReader() != nil
 
 			pn, err := part.WriteTo(w)
 			n += pn
