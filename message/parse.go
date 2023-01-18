@@ -34,10 +34,6 @@ const (
 
 // Errors that occur during parsing.
 var (
-	// ErrNoBoundary is returned by Parse when the boundary parameter is not set
-	// on the Content-type field of the message header.
-	ErrNoBoundary = errors.New("the boundary parameter is missing from Content-type")
-
 	// ErrLargeHeader is returned by Parse when the header is longer than the
 	// configured WithMaxHeaderLength option (or the default,
 	// DefaultMaxHeaderLength).
@@ -384,7 +380,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 
 	// if the boundary is missing, don't parse it and return an error
 	if pv.Boundary() == "" {
-		return msg, ErrNoBoundary
+		return msg, nil
 	}
 
 	// The initial boundaries are like --boundary and final boundary is like
