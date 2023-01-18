@@ -157,10 +157,12 @@ func (mm *Multipart) WriteTo(w io.Writer) (int64, error) {
 			}
 		}
 
-		bn, err := fmt.Fprintf(w, "%s--%s--", br, boundary)
-		n += int64(bn)
-		if err != nil {
-			return n, err
+		if mm.suffix != nil {
+			bn, err := fmt.Fprintf(w, "%s--%s--", br, boundary)
+			n += int64(bn)
+			if err != nil {
+				return n, err
+			}
 		}
 	}
 
