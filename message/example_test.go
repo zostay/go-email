@@ -37,12 +37,10 @@ func ExampleBuffer_multipart_buffer() {
 
 	txtPart := &message.Buffer{}
 	txtPart.SetMediaType("text/plain")
-	txtPart.SetPresentation("attachment")
 	_, _ = fmt.Fprintln(txtPart, "Hello *World*!")
 
 	htmlPart := &message.Buffer{}
 	htmlPart.SetMediaType("text/html")
-	txtPart.SetPresentation("attachment")
 	_, _ = fmt.Fprintln(htmlPart, "Hello <b>World</b>!")
 
 	mm.Add(message.MultipartAlternative(txtPart.Opaque(), htmlPart.Opaque()))
@@ -71,7 +69,6 @@ func Example_readme_synopsis_1() {
 
 	// update the keywords of the new message
 	if kws, err := m.GetHeader().GetKeywords(); err == nil && len(kws) > 0 {
-
 		for _, kw := range kws {
 			if kw == "Snuffle" {
 				out := &message.Buffer{}
@@ -180,8 +177,8 @@ func Example_readme_synopsis_3() {
 	// Build the top-level message from the parts.
 	main := &message.Buffer{}
 	main.SetSubject("My resume")
-	main.SetTo("recruiter@example.com")
-	main.SetFrom("me@example.com")
+	_ = main.SetTo("recruiter@example.com")
+	_ = main.SetFrom("me@example.com")
 	main.SetMediaType("multipart/mixed")
 	main.Add(
 		message.MultipartAlternative(html.Opaque(), text.Opaque()),
