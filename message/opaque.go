@@ -2,6 +2,8 @@ package message
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/zostay/go-email/v2/message/header"
 	"github.com/zostay/go-email/v2/message/transfer"
@@ -105,4 +107,28 @@ func (m *Opaque) GetReader() io.Reader {
 // GetParts always returns nil and ErrNotMultipart.
 func (m *Opaque) GetParts() []Part {
 	return nil
+}
+
+// AttachmentFile is a constructor that will create an Opaque from the given
+// filename and MIME type. This will read the given file path from the disk,
+// make that filename the name of an attachment, and return it. It will return
+// an error if there's a problem reading the file from the disk.
+//
+// The last argument is optional and is the transfer encoding to use. Use
+// transfer.None if you do not want to set a transfer encoding.
+func AttachmentFile(fn, mt, te string) (*Opaque, error) {
+	m := &Opaque{}
+	f, err := os.Open(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	m.Reader = f
+	m.SetMediaType(mt)
+	_ = m.SetFilename(filepath.Base(fn))
+	if te != transfer.None {
+		m.SetTransferEncoding(te)
+	}
+
+	return m, nil
 }

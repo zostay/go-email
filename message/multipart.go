@@ -200,3 +200,23 @@ func (mm *Multipart) GetReader() io.Reader {
 func (mm *Multipart) GetParts() []Part {
 	return mm.parts
 }
+
+// MultipartAlternative returns a Multipart with a Content-type header set to
+// multipart/alternative and the given parts attached.
+func MultipartAlternative(parts ...Part) *Multipart {
+	m := &Multipart{
+		parts: parts,
+	}
+	m.SetMediaType("multipart/alternative")
+	return m
+}
+
+// MultipartMixed returns a Multipart with a Content-type header set to
+// multipart/mixed and the given parts attached.
+func MultipartMixed(parts ...Part) *Multipart {
+	m := &Multipart{
+		parts: parts,
+	}
+	m.SetMediaType("multipart/mixed")
+	return m
+}
