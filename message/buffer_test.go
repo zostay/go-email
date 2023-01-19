@@ -44,8 +44,7 @@ Content-type: multipart/alternative; boundary=testing
 Content-type: text/html
 
 Test message.
---testing--
-`
+--testing--`
 
 	buf := &message.Buffer{}
 
@@ -64,7 +63,7 @@ Test message.
 		return nil, expect, err
 	}
 	_, _ = fmt.Fprintln(buf)
-	_, _ = fmt.Fprintln(buf, "--testing--")
+	_, _ = fmt.Fprint(buf, "--testing--")
 
 	return buf, expect, nil
 }
@@ -77,8 +76,7 @@ Content-type: multipart/alternative; boundary=testing
 Content-type: text/html
 
 Test message.
---testing--
-`
+--testing--`
 
 	buf := &message.Buffer{}
 
@@ -124,8 +122,7 @@ Content-type: multipart/alternative; boundary=testing
 Content-type: text/html
 
 Test message.
---testing--
-`
+--testing--`
 
 	out := &bytes.Buffer{}
 	n, err := m.WriteTo(out)

@@ -179,7 +179,7 @@ func (b *Buffer) Opaque() *Opaque {
 				_, _ = part.WriteTo(buf)
 				_, _ = fmt.Fprint(buf, b.Break())
 			}
-			_, _ = fmt.Fprintf(buf, "--%s--%s", boundary, b.Break())
+			_, _ = fmt.Fprintf(buf, "--%s--", boundary)
 		}
 
 		return &Opaque{
