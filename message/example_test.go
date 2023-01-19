@@ -140,6 +140,8 @@ func Example_readme_synopsis_2() {
 				panic(err)
 			}
 		}
+
+		return nil
 	}
 
 	msg, err := os.Open("input.msg")
