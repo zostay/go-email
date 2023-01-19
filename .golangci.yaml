@@ -1,0 +1,30 @@
+---
+run:
+  concurrency: 4
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - depguard
+    - errorlint
+    - errname
+    - exhaustive
+    - exportloopref
+    - gocritic
+    - godot
+    - gofmt
+    - gosec
+    - misspell
+    - nolintlint
+    - paralleltest
+    - prealloc
+    - predeclared
+    - tparallel
+    - unparam
+    - whitespace
