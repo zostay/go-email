@@ -1,0 +1,15 @@
+---
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+    - uses: actions/checkout@v3
+    - run: go mod download
+    - run: go build -race ./...
+    - run: go test -race -v ./...
