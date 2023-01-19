@@ -35,9 +35,6 @@ func ExampleBuffer_multipart_buffer() {
 	mm.SetSubject("Fancy message")
 	mm.SetMediaType("multipart/mixed")
 
-	altPart := &message.Buffer{}
-	mm.SetMediaType("multipart/alternative")
-
 	txtPart := &message.Buffer{}
 	txtPart.SetMediaType("text/plain")
 	txtPart.SetPresentation("attachment")
@@ -48,16 +45,14 @@ func ExampleBuffer_multipart_buffer() {
 	txtPart.SetPresentation("attachment")
 	_, _ = fmt.Fprintln(htmlPart, "Hello <b>World</b>!")
 
-	altPart.Add(txtPart.Opaque(), htmlPart.Opaque())
+	mm.Add(message.MultipartAlternative(txtPart.Opaque(), htmlPart.Opaque()))
 
-	imgAttach := &message.Buffer{}
-	imgAttach.SetMediaType("image/jpeg")
-	imgAttach.SetPresentation("attachment")
-	_ = imgAttach.SetFilename("image.jpg")
-	img, _ := os.Open("image.jpg")
-	_, _ = io.Copy(imgAttach, img)
-
-	mm.Add(altPart.Opaque(), imgAttach.Opaque())
+	imgAttach, _ := message.AttachmentFile(
+		"image.jpg",
+		"image/jpeg",
+		transfer.Base64,
+	)
+	mm.Add(imgAttach)
 
 	_, _ = mm.Opaque().WriteTo(os.Stdout)
 }
