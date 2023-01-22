@@ -26,6 +26,25 @@ type Field struct {
 	*Raw
 }
 
+// Clone makes a deep copy of the field and returns it.
+func (f *Field) Clone() *Field {
+	var raw *Raw
+	if f.Raw != nil {
+		raw = &Raw{
+			field: f.Raw.field,
+			colon: f.Raw.colon,
+		}
+	}
+
+	return &Field{
+		Base: Base{
+			name: f.Base.name,
+			body: f.Base.body,
+		},
+		Raw: raw,
+	}
+}
+
 // New constructs a new field with no original value.
 func New(name, body string) *Field {
 	return &Field{Base{name, body}, nil}

@@ -22,6 +22,20 @@ type Base struct {
 	fields []*field.Field
 }
 
+// Clone creates a deep copy of the header object and returns it.
+func (h *Base) Clone() *Base {
+	fs := make([]*field.Field, len(h.fields))
+	for i, f := range h.fields {
+		fs[i] = f.Clone()
+	}
+
+	return &Base{
+		lbr:    h.lbr,
+		vf:     h.vf,
+		fields: fs,
+	}
+}
+
 // initBase initializes the Break and fields values lazily.
 func (h *Base) initBase() {
 	if h.lbr == "" {

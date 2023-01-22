@@ -3,6 +3,7 @@ WIP
  * Bugfix: Base64 transfer encoding inserts line breaks at column 76 now.
  * Bugfix: AttachmentFile now sets Content-disposition to attachment and
    sets the filename parameter correctly.
+ * Add Clone() method to field.Field, header.Base, and header.Header
  * More test coverage for transfer encoding support.
  * More test coverage for message.Opaque features.
 

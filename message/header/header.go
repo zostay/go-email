@@ -80,6 +80,20 @@ type Header struct {
 	valueCache map[string]any
 }
 
+// Clone returns a deep copy of the header object.
+func (h *Header) Clone() *Header {
+	// the value cache objects are immutable, so they may be copied as-is
+	vc := make(map[string]any, len(h.valueCache))
+	for k, v := range h.valueCache {
+		vc[k] = v
+	}
+
+	return &Header{
+		Base:       *h.Base.Clone(),
+		valueCache: vc,
+	}
+}
+
 // getValue retrieves the cached value. The first value is the cached value
 // (which may be nil). The second value is a boolean that returns true if the
 // cache value was set.
