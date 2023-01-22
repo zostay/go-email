@@ -1,0 +1,37 @@
+WIP
+
+ * Bugfix: Base64 transfer encoding inserts line breaks at column 76 now.
+ * Bugfix: AttachmentFile now sets Content-disposition to attachment and
+   sets the filename parameter correctly.
+ * More test coverage for transfer encoding support.
+ * More test coverage for message.Opaque features.
+
+v2.0.2  2023-01-19
+
+ * Docfix: Made some additional correction to examples in the docs.
+
+v2.0.1  2023-01-18
+
+ * Docfix: Fixed a missing return in an example in the docs.
+
+v2.0.0  2023-01-18
+
+ * Major rewrite of the original. This is the first official, tagged release.
+ * Provides support for parsing via message.Parse()
+ * Containers for messages are message.Opaque for any kind of message or message
+   part and message.Multipart for MIME multipart messages and parts.
+ * Provide message.Buffer for creating new messages.
+ * The header package provides high- and mid-level access to email message
+   headers.
+ * The field package provides low-level access to email message header fields.
+ * The transfer package provides transfer encoding support.
+ * The encoding package enables full charset support (at the cost of a much
+   larger compiled binary).
+ * The param package provides support for parameterized header field bodies as
+   are used for Content-type and Content-disposition headers.
+ * The walker package provides experimental support for iterating through
+   message parts.
+
+v1.0.0  2022-12-05
+
+ * Unofficial tagged release.
