@@ -126,6 +126,10 @@ func AttachmentFile(fn, mt, te string) (*Opaque, error) {
 	m.Reader = f
 	m.SetMediaType(mt)
 	_ = m.SetFilename(filepath.Base(fn))
+
+	m.SetPresentation("attachment")
+	_ = m.SetFilename(filepath.Base(fn))
+
 	if te != transfer.None {
 		m.SetTransferEncoding(te)
 	}
