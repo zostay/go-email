@@ -46,27 +46,16 @@ func (nw *newlineWriter) Write(b []byte) (int, error) {
 	return n, nil
 }
 
-func (nw *newlineWriter) Close() error {
-	_, err := nw.w.Write(nw.lbr)
-	if wc, isCloser := nw.w.(io.Closer); isCloser {
-		err := wc.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return err
-}
-
 // NewBase64Encoder will translate all bytes written to the returned
 // io.WriteCloser into base64 encoding and write those to the give io.Writer.
 func NewBase64Encoder(w io.Writer) io.WriteCloser {
-	return &writer{
-		base64.NewEncoder(base64.StdEncoding, &newlineWriter{
-			every: defaultBase64LineLength,
-			lbr:   defaultBase64LineBreak,
-			w:     w,
-		}), true,
+	nw := &newlineWriter{
+		every: defaultBase64LineLength,
+		lbr:   defaultBase64LineBreak,
+		w:     w,
 	}
+	bw := base64.NewEncoder(base64.StdEncoding, nw)
+	return &writer{bw, bw}
 }
 
 // NewBase64Decoder will translate all bytes read from the given io.Reader as

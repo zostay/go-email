@@ -9,10 +9,8 @@ import (
 // io.WriteCloser into quoted-printable form and write them to the given
 // io.Writer.
 func NewQuotedPrintableEncoder(w io.Writer) io.WriteCloser {
-	return &writer{
-		quotedprintable.NewWriter(w),
-		true,
-	}
+	qpw := quotedprintable.NewWriter(w)
+	return &writer{qpw, qpw}
 }
 
 // NewQuotedPrintableDecoder will read bytes from the given io.Reader and return

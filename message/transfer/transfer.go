@@ -15,20 +15,6 @@ const (
 	Base64          = "base64"           // bytes will be transformed between base64 and binary data
 )
 
-// writer is an internal type to make as-is writers work properly.
-type writer struct {
-	io.Writer
-	performClose bool
-}
-
-// Close will close the nested writer if performClose is true.
-func (w *writer) Close() error {
-	if c, isCloser := w.Writer.(io.Closer); w.performClose && isCloser {
-		return c.Close()
-	}
-	return nil
-}
-
 // Transcoding is a pair of functions that can be used to transform to and from
 // a transfer encoding.
 type Transcoding struct {
@@ -68,7 +54,7 @@ var Transcodings = map[string]Transcoding{
 func ApplyTransferEncoding(h *header.Header, w io.Writer) io.WriteCloser {
 	cte, err := h.GetTransferEncoding()
 	if err != nil {
-		return &writer{w, false}
+		return &writer{w, nil}
 	}
 
 	tc, hasCode := Transcodings[cte]
@@ -76,7 +62,7 @@ func ApplyTransferEncoding(h *header.Header, w io.Writer) io.WriteCloser {
 		return tc.Encoder(w)
 	}
 
-	return &writer{w, false}
+	return &writer{w, nil}
 }
 
 // ApplyTransferDecoding returns an io.Reader that will modify incoming bytes
