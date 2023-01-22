@@ -451,7 +451,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 						if awaitingPrefix {
 							// this is the first boundary, so the input so far is
 							// the prefix
-							ps := data[:ix+1]
+							ps := data[:ix+len(msg.Break())]
 							prefix = make([]byte, len(ps))
 							copy(prefix, ps)
 							awaitingPrefix = false
