@@ -3,9 +3,12 @@ WIP
  * Bugfix: Base64 transfer encoding inserts line breaks at column 76 now.
  * Bugfix: AttachmentFile now sets Content-disposition to attachment and
    sets the filename parameter correctly.
+ * Bugfix: Junk at the start of the message is more recoverable than it was. The
+   message parsed without junk will be returned with the field.BadStartError.
  * Add Clone() method to field.Field, header.Base, and header.Header
  * More test coverage for transfer encoding support.
  * More test coverage for message.Opaque features.
+ * More test coverage for message.Parse features.
 
 v2.0.2  2023-01-19
 

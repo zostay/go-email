@@ -1,6 +1,8 @@
 package header
 
 import (
+	"errors"
+
 	"github.com/zostay/go-email/v2/message/header/field"
 )
 
@@ -13,7 +15,12 @@ import (
 // is something you would like to change.
 func Parse(m []byte, lb Break) (*Header, error) {
 	lines, err := field.ParseLines(m, lb.Bytes())
-	if err != nil {
+
+	var badStartErr *field.BadStartError // recoverable
+	var finalErr error
+	if errors.As(err, &badStartErr) {
+		finalErr = badStartErr
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -31,5 +38,5 @@ func Parse(m []byte, lb Break) (*Header, error) {
 		valueCache: nil,
 	}
 
-	return h, nil
+	return h, finalErr
 }

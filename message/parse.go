@@ -9,6 +9,7 @@ import (
 
 	"github.com/zostay/go-email/v2/internal/scanner"
 	"github.com/zostay/go-email/v2/message/header"
+	"github.com/zostay/go-email/v2/message/header/field"
 	"github.com/zostay/go-email/v2/message/transfer"
 )
 
@@ -275,7 +276,11 @@ func (pr *parser) parseToOpaque(r io.Reader, subpart bool) (*Opaque, error) {
 	}
 
 	head, err := header.Parse(hdr, header.Break(crlf))
-	if err != nil {
+	var badStartErr *field.BadStartError // recoverable
+	var finalErr error
+	if errors.As(err, &badStartErr) {
+		finalErr = badStartErr
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -283,7 +288,7 @@ func (pr *parser) parseToOpaque(r io.Reader, subpart bool) (*Opaque, error) {
 		body = transfer.ApplyTransferDecoding(head, body)
 	}
 
-	return &Opaque{*head, body, !pr.decode}, nil
+	return &Opaque{*head, body, !pr.decode}, finalErr
 }
 
 // Parse will consume input from the given reader and return a Generic message
@@ -451,7 +456,7 @@ func (pr *parser) parse(msg *Opaque, depth int) (Generic, error) {
 						if awaitingPrefix {
 							// this is the first boundary, so the input so far is
 							// the prefix
-							ps := data[:ix+1]
+							ps := data[:ix+len(msg.Break())]
 							prefix = make([]byte, len(ps))
 							copy(prefix, ps)
 							awaitingPrefix = false
