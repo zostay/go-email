@@ -1,4 +1,4 @@
-WIP
+v2.0.3  2023-01-22
 
  * Bugfix: Base64 transfer encoding inserts line breaks at column 76 now.
  * Bugfix: AttachmentFile now sets Content-disposition to attachment and
