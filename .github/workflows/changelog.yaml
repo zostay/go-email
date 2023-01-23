@@ -16,5 +16,4 @@ jobs:
           if [[ "${GITHUB_REF:0:20}" == "refs/heads/release-v" ]]; then
             echo "LINT_CHANGELOG_OPT=-r" >> "$GITHUB_ENV"
           fi
-      - run: find /home/runner/work/go-email/go-email/local/lib/perl5 -ls
       - run: scripts/lint-changelog "$LINT_CHANGELOG_OPT"
