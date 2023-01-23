@@ -9,8 +9,6 @@ jobs:
       - uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: '5.36'
-          install-modules-with: cpanm
-          install-modules-args: --verbose
           install-modules: SemVer
       - uses: actions/checkout@v3
       - run: |
