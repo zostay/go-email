@@ -1,0 +1,19 @@
+---
+on:
+  push:
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.36'
+          install-modules-with: cpanm
+          install-modules: SemVer
+      - uses: actions/checkout@v3
+      - run: |
+          if [[ "${GITHUB_REF:0:20}" == "refs/heads/release-v" ]]; then
+            echo "LINT_CHANGELOG_OPT=-r" >> "$GITHUB_ENV"
+          fi
+      - run: scripts/lint-changelog "$LINT_CHANGELOG_OPT"
