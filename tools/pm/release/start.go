@@ -126,7 +126,7 @@ func (p *Process) FixupChangelog() {
 	for s.Scan() {
 		line := s.Text()
 		if line == "WIP" || line == "WIP  TBD" {
-			_, _ = fmt.Fprintf(w, "%s  %s\n", p.Version, p.Today)
+			_, _ = fmt.Fprintf(w, "v%s  %s\n", p.Version, p.Today)
 		} else {
 			_, _ = fmt.Fprintln(w, line)
 		}
