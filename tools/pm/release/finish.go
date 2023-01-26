@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v49/github"
 
 	"github.com/zostay/go-email/v2/tools/pm/changes"
@@ -76,7 +75,7 @@ func (p *Process) MergePullRequest(ctx context.Context) {
 // TagRelease creates and pushes a tag for the newly merged release on master.
 func (p *Process) TagRelease() {
 	err := p.wc.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName(p.TargetBranch),
+		Branch: p.TargetBranchRefName(),
 	})
 	if err != nil {
 		p.Chokef("unable to switch to %s branch: %v", p.TargetBranch, err)
@@ -95,10 +94,9 @@ func (p *Process) TagRelease() {
 
 	p.ForCleanup(func() { _ = p.repo.DeleteTag(p.Tag) })
 
-	tagRef := config.RefSpec(fmt.Sprintf("refs/tags/%s:refs/tags/%s", p.Tag, p.Tag))
 	err = p.repo.Push(&git.PushOptions{
 		RemoteName: "origin",
-		RefSpecs:   []config.RefSpec{tagRef},
+		RefSpecs:   []config.RefSpec{p.TagRefSpec()},
 	})
 	if err != nil {
 		p.Chokef("unable to push tags to origin: %v", err)
@@ -107,7 +105,7 @@ func (p *Process) TagRelease() {
 	p.ForCleanup(func() {
 		_ = p.remote.Push(&git.PushOptions{
 			RemoteName: "origin",
-			RefSpecs:   []config.RefSpec{tagRef},
+			RefSpecs:   []config.RefSpec{p.TagRefSpec()},
 			Prune:      true,
 		})
 	})

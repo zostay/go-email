@@ -46,8 +46,7 @@ func (p *Process) CheckGitCleanliness() {
 		p.Chokef("unable to find HEAD: %v", err)
 	}
 
-	searchRef := fmt.Sprintf("refs/heads/%s", p.TargetBranch)
-	if headRef.Name() != plumbing.ReferenceName(searchRef) {
+	if headRef.Name() != p.TargetBranchRefName() {
 		p.Chokef("you must checkout %s to release", p.TargetBranch)
 	}
 
@@ -58,7 +57,7 @@ func (p *Process) CheckGitCleanliness() {
 
 	var masterRef *plumbing.Reference
 	for _, ref := range remoteRefs {
-		if ref.Name() == plumbing.ReferenceName(searchRef) {
+		if ref.Name() == p.TargetBranchRefName() {
 			masterRef = ref
 			break
 		}
@@ -99,21 +98,19 @@ func (p *Process) MakeReleaseBranch() {
 		p.Chokef("unable to retrieve the HEAD ref: %v", err)
 	}
 
-	refName := plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", p.Branch))
 	err = p.wc.Checkout(&git.CheckoutOptions{
 		Hash:   headRef.Hash(),
-		Branch: refName,
+		Branch: p.BranchRefName(),
 		Create: true,
 	})
 	if err != nil {
 		p.Chokef("unable to checkout branch %s: %v", p.Branch, err)
 	}
 
-	p.ForCleanup(func() { _ = p.repo.Storer.RemoveReference(refName) })
+	p.ForCleanup(func() { _ = p.repo.Storer.RemoveReference(p.BranchRefName()) })
 	p.ForCleanup(func() {
-		refName := plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", p.TargetBranch))
 		_ = p.wc.Checkout(&git.CheckoutOptions{
-			Branch: refName,
+			Branch: p.TargetBranchRefName(),
 		})
 	})
 }
@@ -177,7 +174,7 @@ func (p *Process) AddAndCommit() {
 // PushReleaseBranch pushes the release branch to github for release testing.
 func (p *Process) PushReleaseBranch() {
 	releaseBranchRef := config.RefSpec(
-		fmt.Sprintf("refs/heads/%s:refs/heads/%s", p.Branch, p.Branch))
+		fmt.Sprintf("%s:%s", p.BranchRefName(), p.BranchRefName()))
 	err := p.repo.Push(&git.PushOptions{
 		RemoteName: "origin",
 		RefSpecs:   []config.RefSpec{releaseBranchRef},

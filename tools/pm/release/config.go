@@ -1,6 +1,12 @@
 package release
 
-import "github.com/coreos/go-semver/semver"
+import (
+	"fmt"
+
+	"github.com/coreos/go-semver/semver"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+)
 
 type Config struct {
 	// Version is the semantic version of the release being processed.
@@ -34,4 +40,32 @@ var GoEmailConfig = Config{
 	Project:   "go-email",
 
 	TargetBranch: "master",
+}
+
+func ref(t, n string) string {
+	return fmt.Sprintf("refs/%s/%s", t, n)
+}
+
+func (c *Config) BranchRef() string {
+	return ref("heads", c.Branch)
+}
+
+func (c *Config) BranchRefName() plumbing.ReferenceName {
+	return plumbing.ReferenceName(c.BranchRef())
+}
+
+func (c *Config) TargetBranchRef() string {
+	return ref("heads", c.TargetBranch)
+}
+
+func (c *Config) TargetBranchRefName() plumbing.ReferenceName {
+	return plumbing.ReferenceName(c.TargetBranchRef())
+}
+
+func (c *Config) TagRef() string {
+	return ref("tags", c.Tag)
+}
+
+func (c *Config) TagRefSpec() config.RefSpec {
+	return config.RefSpec(c.TagRef())
 }
