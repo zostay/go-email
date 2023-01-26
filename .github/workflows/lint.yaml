@@ -3,7 +3,7 @@ on:
   push:
 
 jobs:
-  changelog:
+  changelog-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v3
@@ -19,7 +19,7 @@ jobs:
           fi
       - run: go run ./tools/pm changelog lint "$LINT_CHANGELOG_OPT"
 
-  golang:
+  golang-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v3
