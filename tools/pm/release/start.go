@@ -14,6 +14,30 @@ import (
 	"github.com/zostay/go-email/v2/tools/pm/changes"
 )
 
+var ignoreStatus = map[string]struct{}{
+	".session.vim": {},
+}
+
+// IsDirty returns true if we consider the tree dirty. We do not consider
+// Untracked to dirty the directory and we also ignore some filenames that are
+// in the global .gitignore and not in the local .gitignore.
+func IsDirty(status git.Status) bool {
+	for fn, fstat := range status {
+		if _, ignorable := ignoreStatus[fn]; ignorable {
+			continue
+		}
+
+		if fstat.Worktree != git.Unmodified && fstat.Worktree != git.Untracked {
+			return true
+		}
+
+		if fstat.Staging != git.Unmodified && fstat.Staging != git.Untracked {
+			return true
+		}
+	}
+	return false
+}
+
 // CheckGitCleanliness ensures that the current git repository is clean and that
 // we are on the correct branch from which to trigger a release.
 func (p *Process) CheckGitCleanliness() {
@@ -49,7 +73,7 @@ func (p *Process) CheckGitCleanliness() {
 		p.Chokef("unable to check working copy status: %v", err)
 	}
 
-	if !stat.IsClean() {
+	if IsDirty(stat) {
 		p.Choke("your working copy is dirty")
 	}
 }
