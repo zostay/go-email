@@ -11,7 +11,7 @@ import (
 
 var (
 	lintChangelogCmd = &cobra.Command{
-		Use:   "lint-changelog",
+		Use:   "lint",
 		Short: "Check the changelog file for problems",
 		Args:  cobra.NoArgs,
 		Run:   LintChangelog,
