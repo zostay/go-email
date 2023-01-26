@@ -16,4 +16,4 @@ jobs:
           else
             echo "LINT_CHANGELOG_OPT=-p" >> "$GITHUB_ENV"
           fi
-      - run: go run ./tools/pm changes lint "$LINT_CHANGELOG_OPT"
+      - run: go run ./tools/pm changelog lint "$LINT_CHANGELOG_OPT"
