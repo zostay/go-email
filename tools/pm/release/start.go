@@ -14,6 +14,8 @@ import (
 	"github.com/zostay/go-email/v2/tools/pm/changes"
 )
 
+// CheckGitCleanliness ensures that the current git repository is clean and that
+// we are on the correct branch from which to trigger a release.
 func (p *Process) CheckGitCleanliness() {
 	headRef, err := p.repo.Head()
 	if err != nil {
@@ -51,6 +53,7 @@ func (p *Process) CheckGitCleanliness() {
 	}
 }
 
+// LintChangelog performs a check to ensure the changelog is ready for release.
 func (p *Process) LintChangelog() {
 	changelog, err := os.Open(p.Changelog)
 	if err != nil {
@@ -64,6 +67,7 @@ func (p *Process) LintChangelog() {
 	}
 }
 
+// MakeReleaseBranch creates the branch that will be used to manage the release.
 func (p *Process) MakeReleaseBranch() {
 	err := p.repo.CreateBranch(&config.Branch{
 		Name:   p.Branch,
@@ -77,6 +81,7 @@ func (p *Process) MakeReleaseBranch() {
 	p.ForCleanup(func() { _ = p.repo.DeleteBranch(p.Branch) })
 }
 
+// FixupChangelog alters the changelog to prepare it for release.
 func (p *Process) FixupChangelog() {
 	r, err := os.Open(p.Changelog)
 	if err != nil {
@@ -116,6 +121,8 @@ func (p *Process) FixupChangelog() {
 	p.ToAdd(p.Changelog)
 }
 
+// AddAndCommit adds changes made as part of the release process to the release
+// branch.
 func (p *Process) AddAndCommit() {
 	for _, fn := range p.addFiles {
 		_, err := p.wc.Add(fn)
@@ -130,6 +137,7 @@ func (p *Process) AddAndCommit() {
 	}
 }
 
+// PushReleaseBranch pushes the release branch to github for release testing.
 func (p *Process) PushReleaseBranch() {
 	err := p.repo.Push(&git.PushOptions{})
 	if err != nil {
@@ -137,6 +145,9 @@ func (p *Process) PushReleaseBranch() {
 	}
 }
 
+// CreateGithubPullRequest creates the PR on github for monitoring the test
+// results for release testing. This will also be used to merge the release
+// branch when testing passes.
 func (p *Process) CreateGithubPullRequest(ctx context.Context) {
 	_, _, err := p.gh.PullRequests.Create(ctx, p.Owner, p.Project, &github.NewPullRequest{
 		Title: github.String("Release v" + p.Version.String()),

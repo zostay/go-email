@@ -12,6 +12,7 @@ import (
 	"github.com/zostay/go-email/v2/tools/pm/changes"
 )
 
+// CheckReadyForMerge ensures that all the required tests are passing.
 func (p *Process) CheckReadyForMerge(ctx context.Context) {
 	bp, _, err := p.gh.Repositories.GetBranchProtection(ctx, p.Owner, p.Project, "master")
 	if err != nil {
@@ -42,6 +43,7 @@ func (p *Process) CheckReadyForMerge(ctx context.Context) {
 	}
 }
 
+// MergePullRequest merges the PR into master.
 func (p *Process) MergePullRequest(ctx context.Context) {
 	prs, _, err := p.gh.PullRequests.List(ctx, p.Owner, p.Project, &github.PullRequestListOptions{})
 	if err != nil {
@@ -66,6 +68,7 @@ func (p *Process) MergePullRequest(ctx context.Context) {
 	}
 }
 
+// TagRelease creates and pushes a tag for the newly merged release on master.
 func (p *Process) TagRelease() {
 	err := p.wc.Checkout(&git.CheckoutOptions{
 		Branch: "master",
@@ -105,6 +108,7 @@ func (p *Process) TagRelease() {
 	})
 }
 
+// CreateRelease creates a release on github for the release.
 func (p *Process) CreateRelease(ctx context.Context) {
 	cr, err := changes.ExtractSection(p.Changelog, p.Version.String())
 	if err != nil {
