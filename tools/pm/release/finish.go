@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v49/github"
 
 	"github.com/zostay/go-email/v2/tools/pm/changes"
@@ -14,7 +15,7 @@ import (
 
 // CheckReadyForMerge ensures that all the required tests are passing.
 func (p *Process) CheckReadyForMerge(ctx context.Context) {
-	bp, _, err := p.gh.Repositories.GetBranchProtection(ctx, p.Owner, p.Project, "master")
+	bp, _, err := p.gh.Repositories.GetBranchProtection(ctx, p.Owner, p.Project, p.TargetBranch)
 	if err != nil {
 		p.Chokef("unable to get branches %s: %v", p.Branch, err)
 	}
@@ -71,15 +72,15 @@ func (p *Process) MergePullRequest(ctx context.Context) {
 // TagRelease creates and pushes a tag for the newly merged release on master.
 func (p *Process) TagRelease() {
 	err := p.wc.Checkout(&git.CheckoutOptions{
-		Branch: "master",
+		Branch: plumbing.ReferenceName(p.TargetBranch),
 	})
 	if err != nil {
-		p.Chokef("unable to switch to master branch: %v", err)
+		p.Chokef("unable to switch to %s branch: %v", p.TargetBranch, err)
 	}
 
 	headRef, err := p.repo.Head()
 	if err != nil {
-		p.Chokef("unable to get HEAD ref of master branch: %v", err)
+		p.Chokef("unable to get HEAD ref of %s branch: %v", p.TargetBranch, err)
 	}
 
 	head := headRef.Hash()

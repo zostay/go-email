@@ -10,7 +10,7 @@ import (
 
 var (
 	startReleaseCmd = &cobra.Command{
-		Use:   "start-release <version>",
+		Use:   "start <version>",
 		Short: "Start a release",
 		Args:  cobra.ExactArgs(1),
 		RunE:  StartRelease,
@@ -20,7 +20,7 @@ var (
 func StartRelease(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	process, err := release.NewProcess(ctx, args[0])
+	process, err := release.NewProcess(ctx, args[0], MakeReleaseConfig())
 	if err != nil {
 		return err
 	}

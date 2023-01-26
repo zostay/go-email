@@ -14,29 +14,16 @@ import (
 )
 
 type Process struct {
-	Version *semver.Version
-	Branch  string
-	Tag     string
-	Today   string
+	Config
 
 	gh     *github.Client
 	repo   *git.Repository
 	remote *git.Remote
 	wc     *git.Worktree
 
-	Changelog string
-	Owner     string
-	Project   string
-
 	cleanupActions []func()
 
 	addFiles []string
-}
-
-var stdProcess = Process{
-	Changelog: "Changes",
-	Owner:     "zostay",
-	Project:   "go-email",
 }
 
 func (p *Process) ToAdd(fn string) {
@@ -71,8 +58,13 @@ func (p *Process) Chokef(f string, args ...interface{}) {
 	p.Choke(fmt.Sprintf(f, args...))
 }
 
-func initializeProcess(ctx context.Context) (*Process, error) {
-	p := stdProcess
+func initializeProcess(
+	ctx context.Context,
+	cfg *Config,
+) (*Process, error) {
+	p := &Process{
+		Config: *cfg,
+	}
 
 	err := p.setupGithubClient(ctx)
 	if err != nil {
@@ -80,11 +72,11 @@ func initializeProcess(ctx context.Context) (*Process, error) {
 	}
 	p.SetupGitRepo()
 
-	return &p, nil
+	return p, nil
 }
 
-func NewProcess(ctx context.Context, v string) (*Process, error) {
-	p, err := initializeProcess(ctx)
+func NewProcess(ctx context.Context, v string, cfg *Config) (*Process, error) {
+	p, err := initializeProcess(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -100,8 +92,8 @@ func NewProcess(ctx context.Context, v string) (*Process, error) {
 	return p, nil
 }
 
-func NewProcessContinuation(ctx context.Context) (*Process, error) {
-	p, err := initializeProcess(ctx)
+func NewProcessContinuation(ctx context.Context, cfg *Config) (*Process, error) {
+	p, err := initializeProcess(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -22,8 +22,9 @@ func (p *Process) CheckGitCleanliness() {
 		p.Chokef("unable to find HEAD: %v", err)
 	}
 
-	if headRef.Name() != "refs/heads/master" {
-		p.Choke("you must checkout master to release")
+	searchRef := fmt.Sprintf("refs/heads/%s", p.TargetBranch)
+	if headRef.Name() != plumbing.ReferenceName(searchRef) {
+		p.Chokef("you must checkout %s to release", p.TargetBranch)
 	}
 
 	remoteRefs, err := p.remote.List(&git.ListOptions{})
@@ -33,7 +34,7 @@ func (p *Process) CheckGitCleanliness() {
 
 	var masterRef *plumbing.Reference
 	for _, ref := range remoteRefs {
-		if ref.Name() == "refs/heads/master" {
+		if ref.Name() == plumbing.ReferenceName(searchRef) {
 			masterRef = ref
 			break
 		}
@@ -152,7 +153,7 @@ func (p *Process) CreateGithubPullRequest(ctx context.Context) {
 	_, _, err := p.gh.PullRequests.Create(ctx, p.Owner, p.Project, &github.NewPullRequest{
 		Title: github.String("Release v" + p.Version.String()),
 		Head:  github.String(p.Branch),
-		Base:  github.String("master"),
+		Base:  github.String(p.TargetBranch),
 		Body:  github.String(fmt.Sprintf("Pull request to release v%s of go-email.", p.Version)),
 	})
 	if err != nil {

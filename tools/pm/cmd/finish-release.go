@@ -10,7 +10,7 @@ import (
 
 var (
 	finishReleaseCmd = &cobra.Command{
-		Use:   "finish-release",
+		Use:   "finish",
 		Short: "complete the release process",
 		Args:  cobra.NoArgs,
 		RunE:  FinishRelease,
@@ -20,7 +20,7 @@ var (
 func FinishRelease(_ *cobra.Command, _ []string) error {
 	ctx := context.Background()
 
-	process, err := release.NewProcessContinuation(ctx)
+	process, err := release.NewProcessContinuation(ctx, MakeReleaseConfig())
 	if err != nil {
 		return err
 	}
