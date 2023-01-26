@@ -1,12 +1,10 @@
 WIP  TBD
 
- * Deprecation: ModeOpaque is now named ModeSingle and will be removed in a
-   future release.
  * Add the Buffer.SetMultipart method for setting the message.BufferMode
    of a message.Buffer to message.ModeMultipart and setting the capacity of the
    internal parts slice.
- * Add the Buffer.SetSingle method for setting the message.BufferMode of a
-   message.Buffer to message.ModeSingle.
+ * Add the Buffer.SetOpaque method for setting the message.BufferMode of a
+   message.Buffer to message.ModeOpaque.
  * Add a linter to check changelog correctness.
  * Add a linter to check for bad patterns in golang.
  * Add tools to manage the release process.
