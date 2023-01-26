@@ -32,6 +32,7 @@ func ExtractSection(fn string, vstring string) (io.Reader, error) {
 		line := sc.Text()
 		if strings.HasPrefix(line, vprefix) {
 			started = true
+			continue
 		}
 
 		if !started {

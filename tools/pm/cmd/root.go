@@ -10,7 +10,7 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(lintChangelogCmd)
+	rootCmd.AddCommand(changelogCmd)
 	rootCmd.AddCommand(releaseCmd)
 }
 

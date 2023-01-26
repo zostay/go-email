@@ -38,7 +38,7 @@ func (p *Process) CheckReadyForMerge(ctx context.Context) {
 
 	for k, v := range passage {
 		if !v {
-			p.Chokef("cannot merge release branch because it failed check %q", k)
+			p.Chokef("cannot merge release branch because it has not passed check %q", k)
 		}
 	}
 }
