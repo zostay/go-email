@@ -1,6 +1,8 @@
 WIP  TBD
 
- * Adding tools to manage the release process.
+ * Add a linter to check changelog correctness.
+ * Add a linter to check for bad patterns in golang.
+ * Add tools to manage the release process.
 
 v2.0.3  2023-01-22
 

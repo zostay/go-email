@@ -3,13 +3,14 @@ on:
   push:
 
 jobs:
-  changelog:
+  changelog-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v3
         with:
           go-version: 1.19
       - uses: actions/checkout@v3
+      - run: go mod download
       - run: |
           if [[ "${GITHUB_REF:0:20}" == "refs/heads/release-v" ]]; then
             echo "LINT_CHANGELOG_OPT=-r" >> "$GITHUB_ENV"
@@ -17,3 +18,15 @@ jobs:
             echo "LINT_CHANGELOG_OPT=-p" >> "$GITHUB_ENV"
           fi
       - run: go run ./tools/pm changelog lint "$LINT_CHANGELOG_OPT"
+
+  golang-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - uses: actions/checkout@v3
+      - run: go mod download
+      - uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.50.1
