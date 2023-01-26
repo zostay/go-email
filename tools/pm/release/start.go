@@ -97,7 +97,7 @@ func (p *Process) MakeReleaseBranch() {
 	err := p.repo.CreateBranch(&config.Branch{
 		Name:   p.Branch,
 		Remote: "origin",
-		Merge:  plumbing.ReferenceName("refs/head/" + p.Branch),
+		Merge:  plumbing.ReferenceName("refs/heads/" + p.Branch),
 	})
 	if err != nil {
 		p.Chokef("unable to create release branch %s: %v", p.Branch, err)
