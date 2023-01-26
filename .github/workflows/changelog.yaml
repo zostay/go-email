@@ -6,14 +6,14 @@ jobs:
   changelog:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: shogo82148/actions-setup-perl@v1
+      - uses: actions/setup-go@v3
         with:
-          perl-version: '5.36'
-          install-modules-with: cpm
-          install-modules: SemVer
+          go-version: 1.19
+      - uses: actions/checkout@v3
       - run: |
           if [[ "${GITHUB_REF:0:20}" == "refs/heads/release-v" ]]; then
             echo "LINT_CHANGELOG_OPT=-r" >> "$GITHUB_ENV"
+          else
+            echo "LINT_CHANGELOG_OPT=-p" >> "$GITHUB_ENV"
           fi
-      - run: scripts/lint-changelog "$LINT_CHANGELOG_OPT"
+      - run: go run ./tools/pm changes lint "$LINT_CHANGELOG_OPT"
