@@ -27,9 +27,10 @@ func StartRelease(cmd *cobra.Command, args []string) error {
 
 	process.SetupGitRepo()
 	process.CheckGitCleanliness()
-	process.LintChangelog()
+	process.LintChangelog(false)
 	process.MakeReleaseBranch()
 	process.FixupChangelog()
+	process.LintChangelog(true)
 	process.AddAndCommit()
 	process.PushReleaseBranch()
 	process.CreateGithubPullRequest(ctx)
