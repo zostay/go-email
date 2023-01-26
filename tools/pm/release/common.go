@@ -76,6 +76,7 @@ func initializeProcess(
 }
 
 func (p *Process) completeInitialization(v string) error {
+	var err error
 	p.Version, err = semver.NewVersion(v)
 	if err != nil {
 		return err
