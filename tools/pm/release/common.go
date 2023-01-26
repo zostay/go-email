@@ -61,8 +61,8 @@ func (p *Process) Cleanup() {
 }
 
 func (p *Process) Choke(msg string) {
-	_, _ = fmt.Fprintf(os.Stderr, "Failed: %s", msg)
-	_, _ = fmt.Fprintf(os.Stderr, "Cancelling release.")
+	_, _ = fmt.Fprintf(os.Stderr, "Failed: %s\n", msg)
+	_, _ = fmt.Fprintln(os.Stderr, "Cancelling release.")
 	p.Cleanup()
 	os.Exit(1)
 }
@@ -130,7 +130,7 @@ func NewProcessContinuation(ctx context.Context) (*Process, error) {
 func (p *Process) setupGithubClient(ctx context.Context) error {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return fmt.Errorf("GITHUB_TOKEN environment variable must be set")
+		return fmt.Errorf("GITHUB_TOKEN environment variable is missing")
 	}
 
 	ts := oauth2.StaticTokenSource(
