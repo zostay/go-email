@@ -145,7 +145,7 @@ func TestBuffer_Write(t *testing.T) {
 	assert.Equal(t, 33, n)
 	assert.NoError(t, err)
 
-	assert.Equal(t, message.ModeOpaque, buf.Mode())
+	assert.Equal(t, message.ModeSingle, buf.Mode())
 
 	assert.Panics(t, func() {
 		buf.Add(makePart())
