@@ -87,7 +87,9 @@ func (p *Process) TagRelease() {
 	}
 
 	head := headRef.Hash()
-	_, err = p.repo.CreateTag(p.Tag, head, &git.CreateTagOptions{})
+	_, err = p.repo.CreateTag(p.Tag, head, &git.CreateTagOptions{
+		Message: fmt.Sprintf("Release tag for v%s", p.Version.String()),
+	})
 	if err != nil {
 		p.Chokef("unable to tag release %s: %v", p.Tag, err)
 	}
