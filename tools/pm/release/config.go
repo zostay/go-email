@@ -1,7 +1,8 @@
 package release
 
 import (
-	"fmt"
+	"path"
+	"strings"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/go-git/go-git/v5/config"
@@ -43,7 +44,11 @@ var GoEmailConfig = Config{
 }
 
 func ref(t, n string) string {
-	return fmt.Sprintf("refs/%s/%s", t, n)
+	return path.Join("refs", t, n)
+}
+
+func refSpec(r string) config.RefSpec {
+	return config.RefSpec(strings.Join([]string{r, r}, ":"))
 }
 
 func (c *Config) BranchRef() string {
@@ -52,6 +57,10 @@ func (c *Config) BranchRef() string {
 
 func (c *Config) BranchRefName() plumbing.ReferenceName {
 	return plumbing.ReferenceName(c.BranchRef())
+}
+
+func (c *Config) BranchRefSpec() config.RefSpec {
+	return refSpec(c.BranchRef())
 }
 
 func (c *Config) TargetBranchRef() string {
@@ -67,5 +76,5 @@ func (c *Config) TagRef() string {
 }
 
 func (c *Config) TagRefSpec() config.RefSpec {
-	return config.RefSpec(c.TagRef())
+	return refSpec(c.TagRef())
 }
