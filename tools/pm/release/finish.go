@@ -12,6 +12,24 @@ import (
 	"github.com/zostay/go-email/v2/tools/pm/changes"
 )
 
+// CaptureChangesInfo loads the bullets for the changelog section relevant to
+// this release into the process configuration for use when creating the release
+// later.
+func (p *Process) CaptureChangesInfo() {
+	vstring := "v" + p.Version.String()
+	cr, err := changes.ExtractSection(p.Changelog, vstring)
+	if err != nil {
+		p.Chokef("unable to get log of changes: %v", err)
+	}
+
+	chgs, err := io.ReadAll(cr)
+	if err != nil {
+		p.Chokef("unable to read log of changes: %v", err)
+	}
+
+	p.ChangesInfo = string(chgs)
+}
+
 // CheckReadyForMerge ensures that all the required tests are passing.
 func (p *Process) CheckReadyForMerge(ctx context.Context) {
 	bp, _, err := p.gh.Repositories.GetBranchProtection(ctx, p.Owner, p.Project, p.TargetBranch)
@@ -115,24 +133,11 @@ func (p *Process) TagRelease() {
 
 // CreateRelease creates a release on github for the release.
 func (p *Process) CreateRelease(ctx context.Context) {
-	vstring := "v" + p.Version.String()
-	cr, err := changes.ExtractSection(p.Changelog, vstring)
-	if err != nil {
-		p.Chokef("unable to get log of changes: %v", err)
-	}
-
-	chgs, err := io.ReadAll(cr)
-	if err != nil {
-		p.Chokef("unable to read log of changes: %v", err)
-	}
-
-	chgStr := string(chgs)
 	releaseName := fmt.Sprintf("Release v%s", p.Version)
-
-	_, _, err = p.gh.Repositories.CreateRelease(ctx, p.Owner, p.Project, &github.RepositoryRelease{
+	_, _, err := p.gh.Repositories.CreateRelease(ctx, p.Owner, p.Project, &github.RepositoryRelease{
 		TagName:              github.String(p.Tag),
 		Name:                 github.String(releaseName),
-		Body:                 github.String(chgStr),
+		Body:                 github.String(p.ChangesInfo),
 		Draft:                github.Bool(false),
 		Prerelease:           github.Bool(false),
 		GenerateReleaseNotes: github.Bool(false),

@@ -25,6 +25,7 @@ func FinishRelease(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
+	process.CaptureChangesInfo()
 	process.CheckReadyForMerge(ctx)
 	process.MergePullRequest(ctx)
 	process.TagRelease()

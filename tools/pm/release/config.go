@@ -33,6 +33,10 @@ type Config struct {
 
 	// TargetBranch is the branch we are merging into (usually master).
 	TargetBranch string
+
+	// ChangesInfo is the bullets in the change log to put into the release
+	// body.
+	ChangesInfo string
 }
 
 var GoEmailConfig = Config{
