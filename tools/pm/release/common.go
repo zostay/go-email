@@ -75,19 +75,28 @@ func initializeProcess(
 	return p, nil
 }
 
+func (p *Process) completeInitialization(v string) error {
+	p.Version, err = semver.NewVersion(v)
+	if err != nil {
+		return err
+	}
+	p.Branch = "release-v" + p.Version.String()
+	p.Tag = "v" + p.Version.String()
+	p.Today = time.Now().Format("2006-01-02")
+
+	return nil
+}
+
 func NewProcess(ctx context.Context, v string, cfg *Config) (*Process, error) {
 	p, err := initializeProcess(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	p.Version, err = semver.NewVersion(v)
+	err = p.completeInitialization(v)
 	if err != nil {
 		return nil, err
 	}
-	p.Branch = "release-v" + p.Version.String()
-	p.Tag = "v" + p.Version.String()
-	p.Today = time.Now().Format("2006-01-02")
 
 	return p, nil
 }
@@ -109,12 +118,10 @@ func NewProcessContinuation(ctx context.Context, cfg *Config) (*Process, error) 
 	}
 
 	v := string(headRef.Name()[len(releasePrefix):])
-	p.Version, err = semver.NewVersion(v)
+	err = p.completeInitialization(v)
 	if err != nil {
 		return nil, err
 	}
-	p.Branch = "release-v" + p.Version.String()
-	p.Today = time.Now().Format("2006-01-02")
 
 	return p, nil
 }
