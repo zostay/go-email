@@ -100,24 +100,20 @@ func (p *Process) MakeReleaseBranch() {
 	}
 
 	refName := plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", p.Branch))
-	ref := plumbing.NewHashReference(refName, headRef.Hash())
-	err = p.repo.Storer.SetReference(ref)
-	if err != nil {
-		p.Chokef("unable to create branch %s: %v", p.Branch, err)
-	}
-
-	p.ForCleanup(func() { _ = p.repo.Storer.RemoveReference(ref.Name()) })
-
 	err = p.wc.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName(p.Branch),
+		Hash:   headRef.Hash(),
+		Branch: refName,
+		Create: true,
 	})
 	if err != nil {
 		p.Chokef("unable to checkout branch %s: %v", p.Branch, err)
 	}
 
+	p.ForCleanup(func() { _ = p.repo.Storer.RemoveReference(refName) })
 	p.ForCleanup(func() {
+		refName := plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", p.TargetBranch))
 		_ = p.wc.Checkout(&git.CheckoutOptions{
-			Branch: plumbing.ReferenceName(p.TargetBranch),
+			Branch: refName,
 		})
 	})
 }
