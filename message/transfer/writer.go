@@ -2,7 +2,7 @@ package transfer
 
 import "io"
 
-// writer is an internal helper to make wrapping easier
+// writer is an internal helper to make wrapping easier.
 type writer struct {
 	io.Writer
 	io.Closer
