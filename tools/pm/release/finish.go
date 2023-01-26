@@ -115,7 +115,8 @@ func (p *Process) TagRelease() {
 
 // CreateRelease creates a release on github for the release.
 func (p *Process) CreateRelease(ctx context.Context) {
-	cr, err := changes.ExtractSection(p.Changelog, p.Version.String())
+	vstring := "v" + p.Version.String()
+	cr, err := changes.ExtractSection(p.Changelog, vstring)
 	if err != nil {
 		p.Chokef("unable to get log of changes: %v", err)
 	}
