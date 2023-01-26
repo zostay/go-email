@@ -107,6 +107,19 @@ func (p *Process) MakeReleaseBranch() {
 	}
 
 	p.ForCleanup(func() { _ = p.repo.Storer.RemoveReference(ref.Name()) })
+
+	err = p.wc.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName(p.Branch),
+	})
+	if err != nil {
+		p.Chokef("unable to checkout branch %s: %v", p.Branch, err)
+	}
+
+	p.ForCleanup(func() {
+		_ = p.wc.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.ReferenceName(p.TargetBranch),
+		})
+	})
 }
 
 // FixupChangelog alters the changelog to prepare it for release.
