@@ -10,9 +10,17 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
+type CheckMode int
+
+const (
+	CheckStandard CheckMode = 0 + iota
+	CheckPreRelease
+	CheckRelease
+)
+
 type Linter struct {
-	r       io.Reader
-	release bool
+	r    io.Reader
+	mode CheckMode
 }
 
 type Failure struct {
@@ -41,8 +49,8 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("Change log linter check failed:\n%s", e.Failures.String())
 }
 
-func NewLinter(r io.Reader, releaseCheck bool) *Linter {
-	return &Linter{r, releaseCheck}
+func NewLinter(r io.Reader, mode CheckMode) *Linter {
+	return &Linter{r, mode}
 }
 
 type checkStatus struct {
@@ -117,13 +125,18 @@ func (l *Linter) checkLine(
 			status.Fail(lineNumber, "WIP found after line 1")
 		}
 
-		if l.release {
+		if l.mode == CheckRelease {
 			status.Fail(lineNumber, "Found WIP line during release")
 		}
 
 		status.previousLine = lineNumber
 
 		return
+	}
+
+	// we shouldn't get here if the first line is a WIP line
+	if l.mode == CheckPreRelease && lineNumber == 1 {
+		status.Fail(lineNumber, "WIP not found during pre-release check")
 	}
 
 	if m := versionHeading.FindStringSubmatch(line); m != nil {

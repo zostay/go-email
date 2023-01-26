@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/zostay/go-email/v2/tools/pm/changes"
 	"github.com/zostay/go-email/v2/tools/pm/release"
 )
 
@@ -27,10 +28,10 @@ func StartRelease(cmd *cobra.Command, args []string) error {
 
 	process.SetupGitRepo()
 	process.CheckGitCleanliness()
-	process.LintChangelog(false)
+	process.LintChangelog(changes.CheckPreRelease)
 	process.MakeReleaseBranch()
 	process.FixupChangelog()
-	process.LintChangelog(true)
+	process.LintChangelog(changes.CheckRelease)
 	process.AddAndCommit()
 	process.PushReleaseBranch()
 	process.CreateGithubPullRequest(ctx)

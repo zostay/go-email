@@ -79,13 +79,13 @@ func (p *Process) CheckGitCleanliness() {
 }
 
 // LintChangelog performs a check to ensure the changelog is ready for release.
-func (p *Process) LintChangelog(release bool) {
+func (p *Process) LintChangelog(mode changes.CheckMode) {
 	changelog, err := os.Open(p.Changelog)
 	if err != nil {
 		p.Chokef("unable to open Changes file: %v", err)
 	}
 
-	linter := changes.NewLinter(changelog, release)
+	linter := changes.NewLinter(changelog, mode)
 	err = linter.Check()
 	if err != nil {
 		p.Chokef("%v", err)

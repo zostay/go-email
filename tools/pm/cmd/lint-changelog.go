@@ -17,11 +17,13 @@ var (
 		Run:   LintChangelog,
 	}
 
-	isRelease bool
+	isRelease    bool
+	isPreRelease bool
 )
 
 func init() {
-	lintChangelogCmd.Flags().BoolVarP(&isRelease, "release", "r", false, "verify the changelog is ready for release")
+	lintChangelogCmd.Flags().BoolVarP(&isRelease, "release", "r", false, "verify that there's no WIP section")
+	lintChangelogCmd.Flags().BoolVarP(&isPreRelease, "pre-release", "p", false, "verify that the WIP section looks good")
 }
 
 func LintChangelog(_ *cobra.Command, _ []string) {
@@ -31,7 +33,17 @@ func LintChangelog(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	linter := changes.NewLinter(changelog, isRelease)
+	var mode changes.CheckMode
+	switch {
+	case isRelease:
+		mode = changes.CheckRelease
+	case isPreRelease:
+		mode = changes.CheckPreRelease
+	default:
+		mode = changes.CheckStandard
+	}
+
+	linter := changes.NewLinter(changelog, mode)
 	err = linter.Check()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
