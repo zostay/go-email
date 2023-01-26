@@ -53,10 +53,14 @@ func (p *Process) MergePullRequest(ctx context.Context) {
 
 	prId := 0
 	for _, pr := range prs {
-		if pr.Head.GetLabel() == p.Branch {
+		if pr.Head.GetRef() == p.Branch {
 			prId = pr.GetNumber()
 			break
 		}
+	}
+
+	if prId == 0 {
+		p.Chokef("cannot find pull request for branch %s", p.Branch)
 	}
 
 	m, _, err := p.gh.PullRequests.Merge(ctx, p.Owner, p.Project, prId, "Merging release branch.", &github.PullRequestOptions{})
