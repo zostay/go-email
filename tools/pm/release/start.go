@@ -94,16 +94,19 @@ func (p *Process) LintChangelog(release bool) {
 
 // MakeReleaseBranch creates the branch that will be used to manage the release.
 func (p *Process) MakeReleaseBranch() {
-	err := p.repo.CreateBranch(&config.Branch{
-		Name:   p.Branch,
-		Remote: "origin",
-		Merge:  plumbing.ReferenceName("refs/heads/" + p.Branch),
-	})
+	headRef, err := p.repo.Head()
 	if err != nil {
-		p.Chokef("unable to create release branch %s: %v", p.Branch, err)
+		p.Chokef("unable to retrieve the HEAD ref: %v", err)
 	}
 
-	p.ForCleanup(func() { _ = p.repo.DeleteBranch(p.Branch) })
+	refName := plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", p.Branch))
+	ref := plumbing.NewHashReference(refName, headRef.Hash())
+	err = p.repo.Storer.SetReference(ref)
+	if err != nil {
+		p.Chokef("unable to create branch %s: %v", p.Branch, err)
+	}
+
+	p.ForCleanup(func() { _ = p.repo.Storer.RemoveReference(ref.Name()) })
 }
 
 // FixupChangelog alters the changelog to prepare it for release.
