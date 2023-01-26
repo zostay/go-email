@@ -164,10 +164,23 @@ func (p *Process) AddAndCommit() {
 
 // PushReleaseBranch pushes the release branch to github for release testing.
 func (p *Process) PushReleaseBranch() {
-	err := p.repo.Push(&git.PushOptions{})
+	releaseBranchRef := config.RefSpec(
+		fmt.Sprintf("refs/heads/%s:refs/heads/%s", p.Branch, p.Branch))
+	err := p.repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+		RefSpecs:   []config.RefSpec{releaseBranchRef},
+	})
 	if err != nil {
 		p.Chokef("error pushing changes to github: %v", err)
 	}
+
+	p.ForCleanup(func() {
+		_ = p.remote.Push(&git.PushOptions{
+			RemoteName: "origin",
+			RefSpecs:   []config.RefSpec{releaseBranchRef},
+			Prune:      true,
+		})
+	})
 }
 
 // CreateGithubPullRequest creates the PR on github for monitoring the test
