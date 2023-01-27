@@ -302,3 +302,18 @@ func TestBuffer_Multipart_FromOpaqueMultipart(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expect, buf.String())
 }
+
+func TestBuffer_OpaqueMultipleCopies(t *testing.T) {
+	t.Parallel()
+
+	s, expect, err := makeSimple()
+	assert.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		buf := &bytes.Buffer{}
+		op := s.Opaque()
+		_, err = op.WriteTo(buf)
+		assert.NoErrorf(t, err, "no error #%d", i)
+		assert.Equalf(t, []byte(expect), buf.Bytes(), "expected buffer #%d", i)
+	}
+}

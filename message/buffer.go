@@ -189,9 +189,10 @@ func (b *Buffer) prepareForMultipartOutput() {
 func (b *Buffer) Opaque() *Opaque {
 	switch b.Mode() {
 	case ModeOpaque:
+		r := bytes.NewReader(b.buf.Bytes())
 		return &Opaque{
 			Header: b.Header,
-			Reader: b.buf,
+			Reader: r,
 		}
 	case ModeMultipart:
 		b.prepareForMultipartOutput()
@@ -207,9 +208,10 @@ func (b *Buffer) Opaque() *Opaque {
 			_, _ = fmt.Fprintf(buf, "--%s--", boundary)
 		}
 
+		r := bytes.NewReader(buf.Bytes())
 		return &Opaque{
 			Header: b.Header,
-			Reader: buf,
+			Reader: r,
 		}
 	case ModeUnset:
 		panic(ErrModeUnset)
@@ -278,7 +280,8 @@ func (b *Buffer) Multipart() (*Multipart, error) {
 	b.prepareForMultipartOutput()
 	switch b.Mode() {
 	case ModeOpaque:
-		msg := &Opaque{b.Header, b.buf, false}
+		r := bytes.NewReader(b.buf.Bytes())
+		msg := &Opaque{b.Header, r, false}
 		pr := defaultParser.clone()
 		WithoutRecursion()(pr)
 		gmsg, err := pr.parse(msg, 0)
