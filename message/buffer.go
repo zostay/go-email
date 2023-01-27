@@ -73,6 +73,38 @@ type Buffer struct {
 	encoded bool
 }
 
+// NewBuffer returns a buffer copied from the given message.Part. It will have a
+// message.BufferMode set to either message.ModeOpaque or message.ModeMultipart
+// based upon the return value of the IsMultipart() of the part. This will walk
+// through all parts in the message part tree and convert them all to buffers.
+// This will read the contents of all the Opaque objects in the process.
+//
+// This returns an error if there's an error while copying the data from an
+// Opaque part to the Buffer.
+func NewBuffer(part Part) (*Buffer, error) {
+	buf := &Buffer{
+		Header: *part.GetHeader().Clone(),
+	}
+
+	if part.IsMultipart() {
+		for _, part := range part.GetParts() {
+			pbuf, err := NewBuffer(part)
+			if err != nil {
+				return nil, err
+			}
+			buf.Add(pbuf)
+		}
+	} else {
+		buf.SetEncoded(part.IsEncoded())
+		_, err := io.Copy(buf, part.GetReader())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return buf, nil
+}
+
 // Mode returns a constant that indicates what mode the Buffer is in. Until a
 // modification method is called, this will return ModeUnset. Once a
 // modification method is called, it will return ModeOpaque if the Buffer has
