@@ -54,7 +54,7 @@ func ExampleAndTransform() {
 	}
 }
 
-func ExampleAndProcess() {
+func ExampleAndProcessOpaque() {
 	var fileCount = 0
 	isUnsafeExt := func(c rune) bool {
 		return !unicode.IsLetter(c) && !unicode.IsDigit(c)
@@ -81,7 +81,7 @@ func ExampleAndProcess() {
 		panic(err)
 	}
 
-	err = walk.AndProcess(func(part message.Part, _ []message.Part) error {
+	err = walk.AndProcessOpaque(func(part message.Part, _ []message.Part) error {
 		h := part.GetHeader()
 
 		presentation, err := h.GetPresentation()

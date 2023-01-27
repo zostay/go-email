@@ -47,3 +47,35 @@ func andProcess(
 
 	return nil
 }
+
+// AndProcessOpaque is identical to AndProcess(), except that the Processor
+// function is only applied to parts that are not multipart.
+func AndProcessOpaque(
+	processor Processor,
+	msg message.Part,
+) error {
+	return AndProcess(
+		func(part message.Part, parents []message.Part) error {
+			if part.IsMultipart() {
+				return nil
+			}
+			return processor(part, parents)
+		}, msg,
+	)
+}
+
+// AndProcessMultipart is identical to AndProcess(), except that the processor
+// function is only applied to parts that are multipart.
+func AndProcessMultipart(
+	processor Processor,
+	msg message.Part,
+) error {
+	return AndProcess(
+		func(part message.Part, parents []message.Part) error {
+			if !part.IsMultipart() {
+				return nil
+			}
+			return processor(part, parents)
+		}, msg,
+	)
+}
