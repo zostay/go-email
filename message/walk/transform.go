@@ -1,28 +1,10 @@
 package walk
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/zostay/go-email/v2/message"
 )
-
-// BadTransformationError is used when transformation needs to fail with an
-// error.
-type BadTransformationError struct {
-	Cause   error
-	Message string
-}
-
-// Error returns the error message describing the bad transformation.
-func (b *BadTransformationError) Error() string {
-	return fmt.Sprintf("%s: %v", b.Message, b.Cause)
-}
-
-// Unwrap returns the error that caused the bad transformation.
-func (b *BadTransformationError) Unwrap() error {
-	return b.Cause
-}
 
 // Transformer is a callback that can be passed to the AndTransform() function
 // to transform a message and its sub-parts into a new message.
