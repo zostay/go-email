@@ -1,4 +1,4 @@
-WIP  TBD
+v2.1.0  2023-01-27
 
  * Deprecation: The OpaqueAlreadyEncoded() method should no longer be used.
    Instead, call SetEncoded(true) on a mesage.Buffer and then call Opaque() to
