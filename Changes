@@ -1,5 +1,16 @@
 WIP  TBD
 
+ * Deprecation: The OpaqueAlreadyEncoded() method should no longer be used.
+   Instead, call SetEncoded(true) on a mesage.Buffer and then call Opaque() to
+   achive the same result.
+ * Calls to message.Buffer's Opaque() and Multipart() methods are now guaranteed
+   to work if called repeatedly.
+ * Add the Buffer.SetMultipart method for setting the message.BufferMode
+   of a message.Buffer to message.ModeMultipart and setting the capacity of the
+   internal parts slice.
+ * It is now possible to use message.Buffer as a message.Part directly.
+ * Add the Buffer.SetOpaque method for setting the message.BufferMode of a
+   message.Buffer to message.ModeOpaque.
  * Add a linter to check changelog correctness.
  * Add a linter to check for bad patterns in golang.
  * Add tools to manage the release process.

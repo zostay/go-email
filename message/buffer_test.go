@@ -3,7 +3,6 @@ package message_test
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,12 +10,11 @@ import (
 	"github.com/zostay/go-email/v2/message"
 )
 
-func makePart() *message.Opaque {
-	op := &message.Opaque{
-		Reader: strings.NewReader("Test message."),
-	}
-	op.SetMediaType("text/html")
-	return op
+func makePart() *message.Buffer {
+	buf := &message.Buffer{}
+	buf.SetMediaType("text/html")
+	_, _ = fmt.Fprintf(buf, "Test message.")
+	return buf
 }
 
 func makeSimple() (*message.Buffer, string, error) {
@@ -301,4 +299,34 @@ func TestBuffer_Multipart_FromOpaqueMultipart(t *testing.T) {
 	assert.Equal(t, int64(len(expect)), n)
 	assert.NoError(t, err)
 	assert.Equal(t, expect, buf.String())
+}
+
+func TestBuffer_OpaqueMultipleCopies(t *testing.T) {
+	t.Parallel()
+
+	s, expect, err := makeSimple()
+	assert.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		buf := &bytes.Buffer{}
+		op := s.Opaque()
+		_, err = op.WriteTo(buf)
+		assert.NoErrorf(t, err, "no error #%d", i)
+		assert.Equalf(t, []byte(expect), buf.Bytes(), "expected buffer #%d", i)
+	}
+}
+
+func TestBuffer_MultipartMultipleCopies(t *testing.T) {
+	t.Parallel()
+
+	s, expect, err := makeMultipart()
+	assert.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		buf := &bytes.Buffer{}
+		op := s.Opaque()
+		_, err = op.WriteTo(buf)
+		assert.NoErrorf(t, err, "no error #%d", i)
+		assert.Equalf(t, []byte(expect), buf.Bytes(), "expected buffer #%d", i)
+	}
 }
