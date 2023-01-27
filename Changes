@@ -3,6 +3,16 @@ v2.1.0  2023-01-27
  * Deprecation: The OpaqueAlreadyEncoded() method should no longer be used.
    Instead, call SetEncoded(true) on a mesage.Buffer and then call Opaque() to
    achive the same result.
+ * Deprecation: The contents of the walker are deprecated and will be removed in
+   a future release. Use the features of the walk package instead.
+ * Add the walk package.
+ * Add walk.AndTransform and walk.Transformer to handle walking a message part
+   tree with the goal of message transformation.
+ * Add the walk.TransCopyPart function to help with message transformation.
+ * Add walk.AndProcess and walk.Processor to handle walking a message part tree
+   with the goal of generic message processing.
+ * Add walk.AndProcessSingle to process single parts of a message.
+ * Add walk.AndProcessMultipart to process multipart parts of a message.
  * Calls to message.Buffer's Opaque() and Multipart() methods are now guaranteed
    to work if called repeatedly.
  * Add the Buffer.SetMultipart method for setting the message.BufferMode
