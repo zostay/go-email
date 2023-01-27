@@ -177,10 +177,22 @@ func (b *Buffer) initParts(capacity int) error {
 // to call this function after already calling Write() or using this object as
 // an io.Writer.
 func (b *Buffer) Add(msgs ...Part) {
-	if err := b.initParts(0); err != nil {
+	if err := b.initParts(len(msgs)); err != nil {
 		panic(err)
 	}
 	b.parts = append(b.parts, msgs...)
+}
+
+// AddBuffers is a convenience method identical to Add(), but accepts
+// message.Buffer objects instead. This will panic if you attempt to call this
+// function after already calling Write() or using this object as an io.Writer.
+func (b *Buffer) AddBuffers(msgs ...*Buffer) {
+	if err := b.initParts(len(msgs)); err != nil {
+		panic(err)
+	}
+	for _, msg := range msgs {
+		b.parts = append(b.parts, msg)
+	}
 }
 
 // Write implements io.Writer so you can write the message to this buffer. This
