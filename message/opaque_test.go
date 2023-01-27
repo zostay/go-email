@@ -96,7 +96,8 @@ func TestOpaque_TransferEncodingDecoded(t *testing.T) {
 	// This is actually wrong since the data created by makeSimpleWithEncoding
 	// is not encoded. However, we just want to test that no encoding is
 	// performed if we all OpaqueAlreadyEncoded.
-	m := buf.OpaqueAlreadyEncoded()
+	buf.SetEncoded(true)
+	m := buf.Opaque()
 
 	assert.Equal(t, &m.Header, m.GetHeader())
 

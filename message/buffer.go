@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/zostay/go-email/v2/message/header"
 )
@@ -67,8 +68,9 @@ var (
 // to about them in the documentation of those methods.
 type Buffer struct {
 	header.Header
-	parts []Part
-	buf   *bytes.Buffer
+	parts   []Part
+	buf     *bytes.Buffer
+	encoded bool
 }
 
 // Mode returns a constant that indicates what mode the Buffer is in. Until a
@@ -105,6 +107,15 @@ func (b *Buffer) SetOpaque() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// SetEncoded sets the encoded flag for this Buffer. If this Buffer has a
+// BufferMode of ModeMultipart, this setting is without meaning. If it is
+// ModeOpaque, then whatever value this has will be set as the IsEncoded() flag
+// of the returned Opaque message. We assume the data written to the io.Writer
+// is decoded by default.
+func (b *Buffer) SetEncoded(e bool) {
+	b.encoded = e
 }
 
 func (b *Buffer) initBuffer() error {
@@ -191,8 +202,9 @@ func (b *Buffer) Opaque() *Opaque {
 	case ModeOpaque:
 		r := bytes.NewReader(b.buf.Bytes())
 		return &Opaque{
-			Header: b.Header,
-			Reader: r,
+			Header:  b.Header,
+			Reader:  r,
+			encoded: b.encoded,
 		}
 	case ModeMultipart:
 		b.prepareForMultipartOutput()
@@ -230,6 +242,9 @@ func (b *Buffer) Opaque() *Opaque {
 //
 // After this method is called, the Buffer should be disposed of and no longer
 // used.
+//
+// Deprecated: Use SetEncoded to perform this task instead. This will ignore
+// the encoded flag entirely.
 func (b *Buffer) OpaqueAlreadyEncoded() *Opaque {
 	msg := b.Opaque()
 	if msg != nil {
@@ -306,4 +321,69 @@ func (b *Buffer) Multipart() (*Multipart, error) {
 		panic(ErrModeUnset)
 	}
 	panic("unknown error")
+}
+
+// IsMultipart returns true if Mode() returns ModeMultipart. It returns false if
+// Mode() returns ModeOpaque. It will panic otherwise.
+func (b *Buffer) IsMultipart() bool {
+	switch b.Mode() {
+	case ModeOpaque:
+		return false
+	case ModeMultipart:
+		return true
+	case ModeUnset:
+		panic("buffer is neither Opaque or Multipart")
+	}
+	panic("unknown error")
+}
+
+// IsEncoded returns whether the bytes of this Buffer are already encoded or
+// not. This will panic if Mode() is ModeUnset.
+func (b *Buffer) IsEncoded() bool {
+	if b.IsMultipart() {
+		return false
+	}
+	return b.encoded
+}
+
+// GetHeader returns the header associated with this Buffer.
+func (b *Buffer) GetHeader() *header.Header {
+	return &b.Header
+}
+
+// GetReader returns the internal buffer as an io.Reader. This may be called
+// multiple times. However, if the Mode() is BufferUnset, this will panic.
+func (b *Buffer) GetReader() io.Reader {
+	switch b.Mode() {
+	case ModeOpaque:
+		return bytes.NewReader(b.buf.Bytes())
+	case ModeMultipart:
+		return nil
+	case ModeUnset:
+		panic("mode is unset, but should be opaque")
+	}
+	panic("unknown error")
+}
+
+// GetParts returns the parts set on this buffer. This will panic if Mode() is
+// BufferUnset.
+func (b *Buffer) GetParts() []Part {
+	switch b.Mode() {
+	case ModeOpaque:
+		return nil
+	case ModeMultipart:
+		return b.parts
+	case ModeUnset:
+		panic("mod is unset, but should be multipart")
+	}
+	panic("unknown error")
+}
+
+// WriteTo writes the buffer to the given writer. This will panic if Mode() is
+// BufferUnset.
+func (b *Buffer) WriteTo(w io.Writer) (int64, error) {
+	if b.Mode() == ModeUnset {
+		panic("mode is unset")
+	}
+	return b.Opaque().WriteTo(w)
 }
