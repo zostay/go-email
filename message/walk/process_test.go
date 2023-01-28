@@ -61,6 +61,8 @@ CCgRMODoseFElx0tCvxYIEAAAwkWRggIADs=
 --__boundary-one__--`
 
 func TestAndProcess(t *testing.T) {
+	t.Parallel()
+
 	m, err := message.Parse(strings.NewReader(complexMsg))
 	assert.NoError(t, err)
 
@@ -113,4 +115,107 @@ func TestAndProcess(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []int{1, 3, 2, 0, 0, 0, 0, 0, 0, 0}, counts)
+}
+
+func TestAndProcessOpaque(t *testing.T) {
+	t.Parallel()
+
+	m, err := message.Parse(strings.NewReader(complexMsg))
+	assert.NoError(t, err)
+
+	counts := make([]int, 10)
+	err = walk.AndProcessOpaque(
+		func(part message.Part, parents []message.Part) error {
+			count := counts[len(parents)]
+			if len(parents) == 1 && count == 0 {
+				assert.False(t, part.IsMultipart())
+
+				fn, err := part.GetHeader().GetFilename()
+				assert.NoError(t, err)
+				assert.Equal(t, "micro.pdf", fn)
+			} else if len(parents) == 1 && count == 1 {
+				assert.False(t, part.IsMultipart())
+
+				fn, err := part.GetHeader().GetFilename()
+				assert.NoError(t, err)
+				assert.Equal(t, "att-1.gif", fn)
+			} else if len(parents) == 2 && count == 0 {
+				assert.False(t, part.IsMultipart())
+
+				mt, err := part.GetHeader().GetMediaType()
+				assert.NoError(t, err)
+				assert.Equal(t, "text/html", mt)
+			} else if len(parents) == 2 && count == 1 {
+				assert.False(t, part.IsMultipart())
+
+				mt, err := part.GetHeader().GetMediaType()
+				assert.NoError(t, err)
+				assert.Equal(t, "text/plain", mt)
+			} else {
+				assert.Fail(t, "Unexpected part processed")
+			}
+
+			counts[len(parents)]++
+			return nil
+		}, m,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []int{0, 2, 2, 0, 0, 0, 0, 0, 0, 0}, counts)
+}
+
+func TestAndProcessMultipart(t *testing.T) {
+	t.Parallel()
+
+	m, err := message.Parse(strings.NewReader(complexMsg))
+	assert.NoError(t, err)
+
+	counts := make([]int, 10)
+	err = walk.AndProcessMultipart(
+		func(part message.Part, parents []message.Part) error {
+			count := counts[len(parents)]
+			if len(parents) == 0 && count == 0 {
+				assert.True(t, part.IsMultipart())
+				assert.Len(t, part.GetParts(), 3)
+
+				s, err := part.GetHeader().GetSubject()
+				assert.NoError(t, err)
+				assert.Equal(t, "Hello World", s)
+			} else if len(parents) == 1 && count == 0 {
+				assert.True(t, part.IsMultipart())
+				assert.Len(t, part.GetParts(), 2)
+			} else {
+				assert.Fail(t, "Unexpected part processed")
+			}
+
+			counts[len(parents)]++
+			return nil
+		}, m,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []int{1, 1, 0, 0, 0, 0, 0, 0, 0, 0}, counts)
+}
+
+type testError struct{}
+
+func (testError) Error() string { return "I'm a little teapot." }
+
+func TestAndProcess_Error(t *testing.T) {
+	t.Parallel()
+
+	m, err := message.Parse(strings.NewReader(complexMsg))
+	assert.NoError(t, err)
+
+	runs := 0
+	err = walk.AndProcess(
+		func(part message.Part, parents []message.Part) error {
+			runs++
+			return testError{}
+		},
+		m,
+	)
+
+	assert.ErrorIs(t, err, testError{})
+	assert.Equal(t, 1, runs)
 }
