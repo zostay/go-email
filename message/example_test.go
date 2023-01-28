@@ -6,13 +6,9 @@ import (
 	"io"
 	"net/smtp"
 	"os"
-	"path/filepath"
-	"strings"
-	"unicode"
 
 	"github.com/zostay/go-email/v2/message"
 	"github.com/zostay/go-email/v2/message/transfer"
-	"github.com/zostay/go-email/v2/message/walker"
 )
 
 func ExampleOpaque_WriteTo() {
@@ -55,7 +51,7 @@ func ExampleBuffer_multipart_buffer() {
 	_, _ = mm.Opaque().WriteTo(os.Stdout)
 }
 
-func Example_readme_synopsis_1() {
+func Example_rewrite_keywords() {
 	msg, err := os.Open("input.msg")
 	if err != nil {
 		panic(err)
@@ -98,65 +94,7 @@ func Example_readme_synopsis_1() {
 	}
 }
 
-func Example_readme_synopsis_2() {
-	var fileCount = 0
-	isUnsafeExt := func(c rune) bool {
-		return !unicode.IsLetter(c) && !unicode.IsDigit(c)
-	}
-
-	outputSafeFilename := func(fn string) string {
-		safeExt := filepath.Ext(fn)
-		if strings.IndexFunc(safeExt, isUnsafeExt) > -1 {
-			safeExt = ".wasnotsafe" // check your input
-		}
-		fileCount++
-		return fmt.Sprintf("%d.%s", fileCount, safeExt)
-	}
-
-	var saveAttachments walker.Parts = func(depth, i int, part message.Part) error {
-		h := part.GetHeader()
-
-		presentation, err := h.GetPresentation()
-		if err != nil {
-			panic(err)
-		}
-
-		fn, err := h.GetFilename()
-		if err != nil {
-			panic(err)
-		}
-
-		if presentation == "attachment" && fn != "" {
-			of := outputSafeFilename(fn)
-			outMsg, err := os.Create(of)
-			if err != nil {
-				panic(err)
-			}
-			_, err = io.Copy(outMsg, part.GetReader())
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		return nil
-	}
-
-	msg, err := os.Open("input.msg")
-	if err != nil {
-		panic(err)
-	}
-
-	// we want to decode the transfer encoding to make sure we get the original
-	// binary values of the message contents when saving off attachments
-	m, err := message.Parse(msg, message.DecodeTransferEncoding())
-	if err != nil {
-		panic(err)
-	}
-
-	_ = saveAttachments.WalkOpaque(m)
-}
-
-func Example_readme_synopsis_3() {
+func Example_create_message() {
 	// Build a part that will be the attached document
 	resume, _ := message.AttachmentFile(
 		"resume.pdf",

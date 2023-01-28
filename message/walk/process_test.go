@@ -70,41 +70,42 @@ func TestAndProcess(t *testing.T) {
 	err = walk.AndProcess(
 		func(part message.Part, parents []message.Part) error {
 			count := counts[len(parents)]
-			if len(parents) == 0 && count == 0 {
+			switch {
+			case len(parents) == 0 && count == 0:
 				assert.True(t, part.IsMultipart())
 				assert.Len(t, part.GetParts(), 3)
 
 				s, err := part.GetHeader().GetSubject()
 				assert.NoError(t, err)
 				assert.Equal(t, "Hello World", s)
-			} else if len(parents) == 1 && count == 0 {
+			case len(parents) == 1 && count == 0:
 				assert.True(t, part.IsMultipart())
 				assert.Len(t, part.GetParts(), 2)
-			} else if len(parents) == 1 && count == 1 {
+			case len(parents) == 1 && count == 1:
 				assert.False(t, part.IsMultipart())
 
 				fn, err := part.GetHeader().GetFilename()
 				assert.NoError(t, err)
 				assert.Equal(t, "micro.pdf", fn)
-			} else if len(parents) == 1 && count == 2 {
+			case len(parents) == 1 && count == 2:
 				assert.False(t, part.IsMultipart())
 
 				fn, err := part.GetHeader().GetFilename()
 				assert.NoError(t, err)
 				assert.Equal(t, "att-1.gif", fn)
-			} else if len(parents) == 2 && count == 0 {
+			case len(parents) == 2 && count == 0:
 				assert.False(t, part.IsMultipart())
 
 				mt, err := part.GetHeader().GetMediaType()
 				assert.NoError(t, err)
 				assert.Equal(t, "text/html", mt)
-			} else if len(parents) == 2 && count == 1 {
+			case len(parents) == 2 && count == 1:
 				assert.False(t, part.IsMultipart())
 
 				mt, err := part.GetHeader().GetMediaType()
 				assert.NoError(t, err)
 				assert.Equal(t, "text/plain", mt)
-			} else {
+			default:
 				assert.Fail(t, "Unexpected part processed")
 			}
 
@@ -127,31 +128,32 @@ func TestAndProcessOpaque(t *testing.T) {
 	err = walk.AndProcessOpaque(
 		func(part message.Part, parents []message.Part) error {
 			count := counts[len(parents)]
-			if len(parents) == 1 && count == 0 {
+			switch {
+			case len(parents) == 1 && count == 0:
 				assert.False(t, part.IsMultipart())
 
 				fn, err := part.GetHeader().GetFilename()
 				assert.NoError(t, err)
 				assert.Equal(t, "micro.pdf", fn)
-			} else if len(parents) == 1 && count == 1 {
+			case len(parents) == 1 && count == 1:
 				assert.False(t, part.IsMultipart())
 
 				fn, err := part.GetHeader().GetFilename()
 				assert.NoError(t, err)
 				assert.Equal(t, "att-1.gif", fn)
-			} else if len(parents) == 2 && count == 0 {
+			case len(parents) == 2 && count == 0:
 				assert.False(t, part.IsMultipart())
 
 				mt, err := part.GetHeader().GetMediaType()
 				assert.NoError(t, err)
 				assert.Equal(t, "text/html", mt)
-			} else if len(parents) == 2 && count == 1 {
+			case len(parents) == 2 && count == 1:
 				assert.False(t, part.IsMultipart())
 
 				mt, err := part.GetHeader().GetMediaType()
 				assert.NoError(t, err)
 				assert.Equal(t, "text/plain", mt)
-			} else {
+			default:
 				assert.Fail(t, "Unexpected part processed")
 			}
 
@@ -174,17 +176,18 @@ func TestAndProcessMultipart(t *testing.T) {
 	err = walk.AndProcessMultipart(
 		func(part message.Part, parents []message.Part) error {
 			count := counts[len(parents)]
-			if len(parents) == 0 && count == 0 {
+			switch {
+			case len(parents) == 0 && count == 0:
 				assert.True(t, part.IsMultipart())
 				assert.Len(t, part.GetParts(), 3)
 
 				s, err := part.GetHeader().GetSubject()
 				assert.NoError(t, err)
 				assert.Equal(t, "Hello World", s)
-			} else if len(parents) == 1 && count == 0 {
+			case len(parents) == 1 && count == 0:
 				assert.True(t, part.IsMultipart())
 				assert.Len(t, part.GetParts(), 2)
-			} else {
+			default:
 				assert.Fail(t, "Unexpected part processed")
 			}
 
