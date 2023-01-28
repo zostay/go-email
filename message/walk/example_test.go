@@ -24,6 +24,7 @@ func ExampleAndTransform() {
 		panic(err)
 	}
 
+	// Strip PDFs from a message.
 	tmsgs, err := walk.AndTransform(
 		func(part message.Part, parents []message.Part) ([]*message.Buffer, error) {
 			mt, err := part.GetHeader().GetMessageID()
@@ -54,21 +55,22 @@ func ExampleAndTransform() {
 	}
 }
 
+var fileCount = 0
+
+func IsUnsafeExt(c rune) bool {
+	return !unicode.IsLetter(c) && !unicode.IsDigit(c)
+}
+
+func OutputSafeFilename(fn string) string {
+	safeExt := filepath.Ext(fn)
+	if strings.IndexFunc(safeExt, IsUnsafeExt) > -1 {
+		safeExt = ".wasnotsafe" // check your input
+	}
+	fileCount++
+	return fmt.Sprintf("%d.%s", fileCount, safeExt)
+}
+
 func ExampleAndProcessOpaque() {
-	var fileCount = 0
-	isUnsafeExt := func(c rune) bool {
-		return !unicode.IsLetter(c) && !unicode.IsDigit(c)
-	}
-
-	outputSafeFilename := func(fn string) string {
-		safeExt := filepath.Ext(fn)
-		if strings.IndexFunc(safeExt, isUnsafeExt) > -1 {
-			safeExt = ".wasnotsafe" // check your input
-		}
-		fileCount++
-		return fmt.Sprintf("%d.%s", fileCount, safeExt)
-	}
-
 	msg, err := os.Open("input.msg")
 	if err != nil {
 		panic(err)
@@ -81,6 +83,7 @@ func ExampleAndProcessOpaque() {
 		panic(err)
 	}
 
+	// Write out every attachment as a local file.
 	err = walk.AndProcessOpaque(func(part message.Part, _ []message.Part) error {
 		h := part.GetHeader()
 
@@ -95,7 +98,7 @@ func ExampleAndProcessOpaque() {
 		}
 
 		if presentation == "attachment" && fn != "" {
-			of := outputSafeFilename(fn)
+			of := OutputSafeFilename(fn)
 			outMsg, err := os.Create(of)
 			if err != nil {
 				panic(err)
