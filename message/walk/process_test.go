@@ -12,7 +12,7 @@ import (
 
 // special thanks to plinth:
 // https://stackoverflow.com/questions/17279712/what-is-the-smallest-possible-valid-pdf
-// (micro-PDF pulled from that link 2023-01-28)
+// The micro.pdf was pulled from that link 2023-01-28.
 const complexMsg = `To: sterling@example.com
 From: sterling@example.com
 Subject: Hello World
