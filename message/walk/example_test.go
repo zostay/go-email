@@ -159,7 +159,7 @@ func ExampleAndProcess_mark_evil() {
 		func(part message.Part, parents []message.Part, state []any) (any, error) {
 			buf := message.NewBlankBuffer(part)
 			if !part.IsMultipart() {
-				mt, err := part.GetHeader().GetMediaType()
+				mt, _ := part.GetHeader().GetMediaType()
 				if mt == "text/plain" {
 					_, _ = fmt.Fprint(buf, "This content is evil.\n\n")
 				} else if mt == "text/html" {
