@@ -188,6 +188,8 @@ func TestBuffer_Opaque_FromSimple(t *testing.T) {
 	r := m.GetReader()
 	assert.NotNil(t, r)
 
+	assert.Nil(t, m.GetParts())
+
 	buf := &bytes.Buffer{}
 	n, err := m.WriteTo(buf)
 	assert.Equal(t, int64(len(expect)), n)
@@ -219,6 +221,8 @@ func TestBuffer_Opaque_FromMultipart(t *testing.T) {
 
 	r := m.GetReader()
 	assert.NotNil(t, r)
+
+	assert.Nil(t, m.GetParts())
 
 	buf := &bytes.Buffer{}
 	n, err := m.WriteTo(buf)
@@ -329,4 +333,116 @@ func TestBuffer_MultipartMultipleCopies(t *testing.T) {
 		assert.NoErrorf(t, err, "no error #%d", i)
 		assert.Equalf(t, []byte(expect), buf.Bytes(), "expected buffer #%d", i)
 	}
+}
+
+func TestBuffer_SetMultipart(t *testing.T) {
+	t.Parallel()
+
+	buf := &message.Buffer{}
+	buf.SetMultipart(7)
+
+	assert.Equal(t, message.ModeMultipart, buf.Mode())
+	assert.True(t, buf.IsMultipart())
+
+	assert.Panics(t, func() {
+		_, _ = fmt.Fprintln(buf, "hello world")
+	})
+}
+
+func TestBuffer_SetOpaque(t *testing.T) {
+	t.Parallel()
+
+	buf := &message.Buffer{}
+	buf.SetOpaque()
+
+	assert.Equal(t, message.ModeOpaque, buf.Mode())
+	assert.False(t, buf.IsMultipart())
+
+	assert.Panics(t, func() {
+		buf.Add(nil)
+	})
+}
+
+func TestNewBuffer(t *testing.T) {
+	t.Parallel()
+
+	s, expect, err := makeMultipart()
+	assert.NoError(t, err)
+
+	buf, err := message.NewBuffer(s)
+	assert.NoError(t, err)
+
+	out := &bytes.Buffer{}
+	_, err = buf.WriteTo(out)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []byte(expect), out.Bytes())
+}
+
+func TestNewBlankBuffer(t *testing.T) {
+	t.Parallel()
+
+	s, _, err := makeMultipart()
+	assert.NoError(t, err)
+
+	const expect = `Subject: test multipart
+Content-type: multipart/alternative; boundary=testing
+
+`
+
+	buf := message.NewBlankBuffer(s)
+
+	out := &bytes.Buffer{}
+	_, err = buf.WriteTo(out)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []byte(expect), out.Bytes())
+}
+
+func TestBuffer_MultipartAsPart(t *testing.T) {
+	t.Parallel()
+
+	s, expect, err := makeMultipart()
+	assert.NoError(t, err)
+
+	assert.False(t, s.IsEncoded())
+	assert.True(t, s.IsMultipart())
+	assert.NotNil(t, s.GetHeader())
+	assert.Nil(t, s.GetReader())
+	assert.Len(t, s.GetParts(), 1)
+
+	out := &bytes.Buffer{}
+	_, err = s.WriteTo(out)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte(expect), out.Bytes())
+}
+
+func TestBuffer_OpaqueAsPart(t *testing.T) {
+	t.Parallel()
+
+	s, expect, err := makeSimple()
+	assert.NoError(t, err)
+
+	assert.False(t, s.IsEncoded())
+	assert.False(t, s.IsMultipart())
+	assert.NotNil(t, s.GetHeader())
+	assert.NotNil(t, s.GetReader())
+	assert.Nil(t, s.GetParts())
+
+	out := &bytes.Buffer{}
+	_, err = s.WriteTo(out)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte(expect), out.Bytes())
+}
+
+func TestBuffer_UnsetAsPart(t *testing.T) {
+	t.Parallel()
+
+	s := &message.Buffer{}
+
+	assert.Panics(t, func() { _ = s.IsEncoded() })
+	assert.Panics(t, func() { _ = s.IsMultipart() })
+	assert.NotNil(t, s.GetHeader())
+	assert.Panics(t, func() { _ = s.GetReader() })
+	assert.Panics(t, func() { _ = s.GetParts() })
 }
