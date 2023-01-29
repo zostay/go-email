@@ -5,12 +5,13 @@ WIP  TBD
  * Add the walk package.
  * Add walk.AndTransform and walk.Transformer to handle walking a message part
    tree with the goal of message transformation.
- * Add the walk.PartToBuffer function to help with message transformation.
  * Add walk.AndProcess and walk.Processor to handle walking a message part tree
    with the goal of generic message processing.
  * Add walk.AndProcessSingle to process single parts of a message.
  * Add walk.AndProcessMultipart to process multipart parts of a message.
  * Add message.NewBuffer to copy message.Part into a message.Buffer.
+ * Add message.NewBlankBuffer to copy message.Part into a message.Buffer, but
+   without body content or sub-parts.
  * Add (*message.Buffer).AddBuffers method for convenience.
 
 v2.1.0  2023-01-27

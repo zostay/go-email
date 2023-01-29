@@ -4,69 +4,44 @@ import (
 	"github.com/zostay/go-email/v2/message"
 )
 
-// Transformer is a callback that can be passed to the AndTransform() function
-// to transform a message and its sub-parts into a new message.
+// Transformer is a tool for aiding with advanced transformation of email. It is
+// the callback passed to walk.AndTransform().
 //
-// The Transformer is given a part to transform and the ancestry of the part. If
-// len(parents) is zero, then this is the top-level part (i.e., the top-level
-// part that AndTransform() was called upon, which might not be root message).
-// The parents are the original parents of the given original part, not the
-// transformed parents. The Transformer should only work to transform the part
-// given and not it's children. It will be called again to transform those after
-// it transforms the parent.
+// Each time it is called, the part parameter will refer to the part that is
+// being walked for transformation.
 //
-// The Transformer function must return zero or more message.Buffer objects or
-// an error.
+// The parents parameter will be set to the ancestors of the part. If parents
+// has zero length, then the part being transformed is the top-most part being
+// transformed (i.e., the one passed to walk.AndTransform() for transformation).
+// The elements of parents will always be message.Part objects that return true
+// from IsMultipart().
 //
-// When message.Buffer objects are returned, each object must return a
-// message.BufferMode other than message.ModeUnset (i.e., either
-// message.ModeOpaque or message.ModeMultipart). If the message.BufferMode of a
-// returned message.Buffer is message.ModeMultipart, it may be empty or have
-// parts already present but those parts must also be message.Buffer objects and
-// so on down the tree, or you may have unexpected results.
+// The state parameter will be an array that is the same length as parents. Each
+// element will be the stateInit value that was returned when the Transformer
+// was called on that parent part. If you are transforming the message into a
+// new complex message, you can use this to hold *message.Buffer or some other
+// object to manipulate further with sub-part transformations.
 //
-// If nothing is returned, transformation of children will continue on anyway.
-// Any transformed children will be attached to the nearest transformed
-// parent(s). If there is no such parent, they will be returned from
-// AndTransform(). IF multiple message.Buffer objects are returned, then any
-// children transformed will be attached to all of them that have a
-// message.BufferMode of message.ModeMultipart.
+// The stateInit value returned is used for two possible purposes. As mentioned
+// when describing state above, it will be used to initialize the index of state
+// that corresponds to the index of parents when the Transformer is called on a
+// multipart part. When parents is zero length, it will be used as the return
+// value from the call to walk.AndTransform().
 //
-// If an error is returned, it will result in AndTransform() failing with that
-// error.
+// If err is set to a non-nil value on return, the walk.AndTransform() function
+// will fail immediately with an error.
 type Transformer func(
 	part message.Part,
 	parents []message.Part,
 	state []any,
 ) (stateInit any, err error)
 
-// AndTransform will perform a transformation on the given message or message
-// part. This will process the message as is (i.e., if there's a message.Opaque
-// part whose bytes describe sub-parts, that message.Opaque part will be
-// processed was as a single item). The transformation is performed in
-// depth-first order. Each part in the message three will be transformed exactly
-// once.
+// AndTransform will walk each of the parts of the given message.Part in
+// depth-first order. The provided Transformer callback will be called for each
+// part.
 //
-// The parents will be transformed before the children. If a multipart message
-// part is transformed into an opaque part, then its children will not be
-// transformed. If a parent is transformed into a multipart and then all of its
-// children are skipped, it will also be skipped (empty multipart message parts
-// will not be created by this transformation).
-//
-// The given Transformer is expected to return zero or more message.Buffer
-// objects for each part transformed. Each returned message.Buffer must have its
-// message.BufferMode set to something other than message.ModeUnset. This
-// function will convert each returned message.Buffer to message.Opaque or
-// message.Multipart based upon the message.BufferMode. If multiple parts are
-// returned and len(parents) is non-zero, then multiple parts will be added to
-// the parent to replace the single part in the transformed message. If multiple
-// parts are returned and len(parents) is zero, then those parts will be
-// returned as multiple messages from this function.
-//
-// If the Transformer returns an error, this function will immediately fail with
-// that error.
-//
-// This function will return either a message or an error.
+// The return value from the top-most call to Transformer will be the result
+// returned from this function.
 func AndTransform(
 	transformer Transformer,
 	msg message.Part,
