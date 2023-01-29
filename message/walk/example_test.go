@@ -25,9 +25,14 @@ func ExampleAndTransform() {
 	}
 
 	// Strip PDFs from a message.
-	tmsgs, err := walk.AndTransform(
-		func(part message.Part, parents []message.Part) ([]*message.Buffer, error) {
-			mt, err := part.GetHeader().GetMessageID()
+	tmsg, err := walk.AndTransform(
+		func(part message.Part, parents []message.Part, state []any) (any, error) {
+			if part.IsMultipart() {
+				buf := message.NewBlankBuffer(part)
+				return buf, nil
+			}
+
+			mt, err := part.GetHeader().GetMediaType()
 			if err != nil {
 				return nil, err
 			}
@@ -36,7 +41,14 @@ func ExampleAndTransform() {
 				return nil, nil
 			}
 
-			return walk.PartToBuffer(part)
+			buf, err := message.NewBuffer(part)
+			if err != nil {
+				return nil, err
+			}
+
+			state[len(state)-1].(*message.Buffer).Add(buf)
+
+			return buf, nil
 		},
 		msg)
 	if err != nil {
@@ -49,7 +61,7 @@ func ExampleAndTransform() {
 	}
 	defer tw.Close()
 
-	_, err = tmsgs[0].WriteTo(tw)
+	_, err = tmsg.(message.Part).WriteTo(tw)
 	if err != nil {
 		panic(err)
 	}
@@ -111,6 +123,66 @@ func ExampleAndProcessOpaque() {
 
 		return nil
 	}, m)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExampleAndProcess_flatten() {
+	var m message.Generic
+	bufs := make([]*message.Buffer, 0, 10)
+	err := walk.AndProcess(
+		func(part message.Part, _ []message.Part) error {
+			var (
+				buf *message.Buffer
+				err error
+			)
+			if part.IsMultipart() {
+				buf = message.NewBlankBuffer(part)
+			} else {
+				buf, err = message.NewBuffer(part)
+				if err != nil {
+					return err
+				}
+			}
+			bufs = append(bufs, buf)
+			return nil
+		}, m)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExampleAndProcess_mark_evil() {
+	var m message.Generic
+	tm, err := walk.AndTransform(
+		func(part message.Part, parents []message.Part, state []any) (any, error) {
+			buf := message.NewBlankBuffer(part)
+			if !part.IsMultipart() {
+				mt, err := part.GetHeader().GetMediaType()
+				if mt == "text/plain" {
+					_, _ = fmt.Fprint(buf, "This content is evil.\n\n")
+				} else if mt == "text/html" {
+					_, _ = fmt.Fprint(buf, "This content is evil.<br><br>")
+				}
+
+				_, err = io.Copy(buf, part.GetReader())
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			pbuf := state[len(state)-1].(*message.Buffer)
+			pbuf.Add(buf)
+
+			return buf, nil
+		}, m)
+
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = tm.(message.Part).WriteTo(os.Stdout)
 	if err != nil {
 		panic(err)
 	}

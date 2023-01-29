@@ -11,7 +11,7 @@ import "github.com/zostay/go-email/v2/message"
 //
 // The Processor may return an error to cause message.AndProcess() to terminate
 // immediately and return that error.
-type Processor func(part message.Part, parents []message.Part) error
+type Processor func(part message.Part, parents []message.Part) (err error)
 
 // AndProcess will walk the message parts tree of a message (or a part of a
 // message) and call the given Processor function for each part found. It will

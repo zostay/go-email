@@ -1,8 +1,6 @@
 package walk
 
 import (
-	"io"
-
 	"github.com/zostay/go-email/v2/message"
 )
 
@@ -36,7 +34,11 @@ import (
 //
 // If an error is returned, it will result in AndTransform() failing with that
 // error.
-type Transformer func(part message.Part, parents []message.Part) ([]*message.Buffer, error)
+type Transformer func(
+	part message.Part,
+	parents []message.Part,
+	state []any,
+) (stateInit any, err error)
 
 // AndTransform will perform a transformation on the given message or message
 // part. This will process the message as is (i.e., if there's a message.Opaque
@@ -68,61 +70,33 @@ type Transformer func(part message.Part, parents []message.Part) ([]*message.Buf
 func AndTransform(
 	transformer Transformer,
 	msg message.Part,
-) ([]*message.Buffer, error) {
+) (any, error) {
 	parents := make([]message.Part, 0, 10)
-	return andTransform(transformer, msg, parents)
+	state := make([]any, 0, 10)
+	return andTransform(transformer, msg, parents, state)
 }
 
 func andTransform(
 	transformer Transformer,
 	part message.Part,
 	parents []message.Part,
-) ([]*message.Buffer, error) {
-	tParts, err := transformer(part, parents)
+	state []any,
+) (result any, err error) {
+	result, err = transformer(part, parents, state)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	if part.IsMultipart() {
-		allTSubParts := make([]*message.Buffer, 0, len(part.GetParts()))
 		parents = append(parents, part)
+		state = append(state, result)
 		for _, subPart := range part.GetParts() {
-			tSubParts, err := andTransform(transformer, subPart, parents)
+			_, err = andTransform(transformer, subPart, parents, state)
 			if err != nil {
-				return nil, err
+				return
 			}
-
-			allTSubParts = append(allTSubParts, tSubParts...)
-		}
-
-		if len(tParts) > 0 {
-			for _, tPart := range tParts {
-				tPart.AddBuffers(allTSubParts...)
-			}
-		} else {
-			return allTSubParts, nil
 		}
 	}
 
-	return tParts, nil
-}
-
-// PartToBuffer is a tool similar to message.BufferFrom(), with two
-// important differences. First, the return value matches the expected return
-// value of Transformer. Second, the message.BufferFrom() function copies an
-// object and all of its children recursively. This does not copy andy children
-// and only deals with the part itself if it's a multipart part.
-func PartToBuffer(orig message.Part) ([]*message.Buffer, error) {
-	cp := []*message.Buffer{
-		{Header: *orig.GetHeader().Clone()},
-	}
-
-	if !orig.IsMultipart() {
-		_, err := io.Copy(cp[0], orig.GetReader())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return cp, nil
+	return
 }
