@@ -1,4 +1,4 @@
-WIP  TBD
+v2.2.0  2023-01-30
 
  * Deprecation: The contents of the walker package are deprecated and will be 
    removed in a future release. Use the features of the walk package instead.
