@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/zostay/go-email/v2/tools/pm/changes"
+	"github.com/zostay/go-email/v2/tools/pm/release"
 )
 
 var (
@@ -27,7 +28,7 @@ func init() {
 }
 
 func LintChangelog(_ *cobra.Command, _ []string) {
-	changelog, err := os.Open("Changes")
+	changelog, err := os.Open(release.GoEmailConfig.Changelog)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to open Changes file: %v", err)
 		os.Exit(1)

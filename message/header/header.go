@@ -116,18 +116,36 @@ func (h *Header) setValue(name string, value any) {
 //
 // If the named field is not set in the header, it will return an empty string
 // with ErrNoSuchField. If there are multiple headers for the given named field,
-// it will return ErrManyFields.
+// it will return the first value found and return ErrManyFields.
 func (h *Header) Get(name string) (string, error) {
 	ixs := h.GetIndexesNamed(name)
 	if len(ixs) == 0 {
 		return "", ErrNoSuchField
 	}
 
+	b := h.GetField(ixs[0]).Body()
 	if len(ixs) > 1 {
-		return "", ErrManyFields
+		return b, ErrManyFields
 	}
 
-	return h.GetField(ixs[0]).Body(), nil
+	return b, nil
+}
+
+// ParseTime is a function that provides the time parsing used by GetTime() and
+// GetDate() to parse dates to be used on any field body. This will attempt to
+// parse the date using the format specified by RFC 5322 first and fallback to
+// parsing it in many other formats.
+//
+// It either returns a parsed time or the parse error.
+func ParseTime(body string) (time.Time, error) {
+	t, err := mail.ParseDate(body)
+	if err != nil {
+		t, err = dateparse.ParseAny(body)
+		if err != nil {
+			return t, err
+		}
+	}
+	return t, nil
 }
 
 // getTime parses the header body as a date and caches the result.
@@ -137,12 +155,9 @@ func (h *Header) getTime(name string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	t, err := mail.ParseDate(body)
+	t, err := ParseTime(body)
 	if err != nil {
-		t, err = dateparse.ParseAny(body)
-		if err != nil {
-			return t, err
-		}
+		return t, err
 	}
 
 	h.setValue(name, t)
@@ -172,6 +187,24 @@ func (h *Header) GetTime(name string) (time.Time, error) {
 	return t, nil
 }
 
+// ParseAddressList provides the same address parsing functionality build into
+// the GetAddressList() and GetAllAddressLists() and can be used to parse any
+// field body. It will attempt a strict parse of the email address list.
+// However, if that fails, an extremely lenient parsing will be attempted, which
+// might result in results that can only be described as "weird" in the effort
+// to provide some kind of result. It is so forgiving, it will return some kind
+// of value for any input.
+//
+// It will either return an addr.AddressList or an error describing the parse error.
+func ParseAddressList(body string) addr.AddressList {
+	al, err := addr.ParseEmailAddressList(body)
+	if err != nil {
+		al = parseEmailAddressList(body)
+	}
+
+	return al
+}
+
 // getAddressList will parse an addr.AddressList out of the field or return an
 // error. This falls back onto parseEmailAddressList() if
 // addr.ParseEmailAddrList() lets us down.
@@ -181,11 +214,7 @@ func (h *Header) getAddressList(name string) (addr.AddressList, error) {
 		return nil, err
 	}
 
-	al, err := addr.ParseEmailAddressList(body)
-	if err != nil {
-		al = parseEmailAddressList(body)
-	}
-
+	al := ParseAddressList(body)
 	h.setValue(name, al)
 
 	return al, nil
@@ -222,11 +251,7 @@ func (h *Header) getAllAddressLists(name string) ([]addr.AddressList, error) {
 
 	allAl := make([]addr.AddressList, 0, 10)
 	for _, b := range bs {
-		al, err := addr.ParseEmailAddressList(b)
-		if err != nil {
-			al = parseEmailAddressList(b)
-		}
-
+		al := ParseAddressList(b)
 		allAl = append(allAl, al)
 	}
 

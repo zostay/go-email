@@ -40,7 +40,7 @@ type Config struct {
 }
 
 var GoEmailConfig = Config{
-	Changelog: "Changes",
+	Changelog: "Changes.md",
 	Owner:     "zostay",
 	Project:   "go-email",
 
