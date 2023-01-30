@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/smtp"
 	"os"
+	"strings"
 
 	"github.com/zostay/go-email/v2/message"
 	"github.com/zostay/go-email/v2/message/transfer"
@@ -140,4 +141,38 @@ func Example_create_message() {
 	_, _ = mainMsg.WriteTo(w)
 	_ = w.Close()
 	_ = c.Quit()
+}
+
+func ExampleParse() {
+	r := strings.NewReader("Subject: test\n\nThis is a test.")
+	msg, err := message.Parse(r)
+	if err != nil {
+		panic(err)
+	}
+	// snip end
+
+	_, _ = msg.WriteTo(os.Stdout)
+}
+
+func ExampleParse_options() {
+	var r io.Reader
+	// snip start
+
+	// This will only parse to the 5th layer deep.
+	m, _ := message.Parse(r, message.WithMaxDepth(5))
+
+	// This will not parse even the first layer.
+	// This always returns an *message.Opaque object.
+	m, _ = message.Parse(r, message.WithoutMultipart()) // same as WithMaxDepth(0)
+
+	// This will parse the first layer, but no further. If the message is a
+	// multipart message it will be *message.Multipart but all sub-parts are
+	// guaranteed to be *message.Opaque. Otherwise, it may return *message.Opaque.
+	m, _ = message.Parse(r, message.WithoutRecursion()) // same as WithMaxDepth(1)
+
+	// Or you can turn off all limits and get everything...
+	m, _ = message.Parse(r, message.WithUnlimitedRecursion()) // same as WithMaxDepth(-1)
+	// snip end
+
+	_, _ = m.WriteTo(os.Stdout)
 }
