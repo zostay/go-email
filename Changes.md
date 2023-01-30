@@ -1,4 +1,4 @@
-WIP  TBD
+v2.3.0  2023-01-30
 
  * On `header.ErrManyFields` failure, `(*header.Header).Get()` now returns the value of the first field found with the error.
  * Add a `header.ParseTime()` function which provides the same time parsing facilities that `(*header.Header).GetTime()` and `(*header.Header).GetDate()` use.
