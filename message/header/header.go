@@ -187,6 +187,24 @@ func (h *Header) GetTime(name string) (time.Time, error) {
 	return t, nil
 }
 
+// ParseAddressList provides the same address parsing functionality build into
+// the GetAddressList() and GetAllAddressLists() and can be used to parse any
+// field body. It will attempt a strict parse of the email address list.
+// However, if that fails, an extremely lenient parsing will be attempted, which
+// might result in results that can only be described as "weird" in the effort
+// to provide some kind of result. It is so forgiving, it will return some kind
+// of value for any input.
+//
+// It will either return an addr.AddressList or an error describing the parse error.
+func ParseAddressList(body string) addr.AddressList {
+	al, err := addr.ParseEmailAddressList(body)
+	if err != nil {
+		al = parseEmailAddressList(body)
+	}
+
+	return al
+}
+
 // getAddressList will parse an addr.AddressList out of the field or return an
 // error. This falls back onto parseEmailAddressList() if
 // addr.ParseEmailAddrList() lets us down.
@@ -196,11 +214,7 @@ func (h *Header) getAddressList(name string) (addr.AddressList, error) {
 		return nil, err
 	}
 
-	al, err := addr.ParseEmailAddressList(body)
-	if err != nil {
-		al = parseEmailAddressList(body)
-	}
-
+	al := ParseAddressList(body)
 	h.setValue(name, al)
 
 	return al, nil
@@ -237,11 +251,7 @@ func (h *Header) getAllAddressLists(name string) ([]addr.AddressList, error) {
 
 	allAl := make([]addr.AddressList, 0, 10)
 	for _, b := range bs {
-		al, err := addr.ParseEmailAddressList(b)
-		if err != nil {
-			al = parseEmailAddressList(b)
-		}
-
+		al := ParseAddressList(b)
 		allAl = append(allAl, al)
 	}
 

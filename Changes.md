@@ -1,7 +1,8 @@
 WIP  TBD
 
  * On `header.ErrManyFields` failure, `(*header.Header).Get()` now returns the value of the first field found with the error.
- * Added `header.ParseTime()` method which provides the same time parsing facilities that `(*header.Header).GetTime()` and `(*header.Header).GetDate()` use.
+ * Add a `header.ParseTime()` function which provides the same time parsing facilities that `(*header.Header).GetTime()` and `(*header.Header).GetDate()` use.
+ * Add a `header.ParseAddressList()`function which provides the same `addr.AddressList` parsing facilities that are built in to the various address parsing methods of `header.Header`.
 
 v2.2.1  2023-01-30
 
