@@ -11,7 +11,7 @@ jobs:
           go-version: 1.19
       - uses: actions/checkout@v3
       - run: go mod download
-      - run: go mod install ./tools/pm
+      - run: go install ./tools/pm
       - run: pm template-file docs/README.md.tmpl README.test.md
       - run: diff README.md README.test.md
 
