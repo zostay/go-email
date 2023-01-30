@@ -166,7 +166,7 @@ func ExampleAndProcess_mark_evil() {
 					_, _ = fmt.Fprint(buf, "This content is evil.<br><br>")
 				}
 
-				_, err = io.Copy(buf, part.GetReader())
+				_, err := io.Copy(buf, part.GetReader())
 				if err != nil {
 					return nil, err
 				}
