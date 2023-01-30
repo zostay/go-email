@@ -131,6 +131,23 @@ func (h *Header) Get(name string) (string, error) {
 	return b, nil
 }
 
+// ParseTime is a function that provides the time parsing used by GetTime() and
+// GetDate() to parse dates to be used on any field body. This will attempt to
+// parse the date using the format specified by RFC 5322 first and fallback to
+// parsing it in many other formats.
+//
+// It either returns a parsed time or the parse error.
+func ParseTime(body string) (time.Time, error) {
+	t, err := mail.ParseDate(body)
+	if err != nil {
+		t, err = dateparse.ParseAny(body)
+		if err != nil {
+			return t, err
+		}
+	}
+	return t, nil
+}
+
 // getTime parses the header body as a date and caches the result.
 func (h *Header) getTime(name string) (time.Time, error) {
 	body, err := h.Get(name)
@@ -138,12 +155,9 @@ func (h *Header) getTime(name string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	t, err := mail.ParseDate(body)
+	t, err := ParseTime(body)
 	if err != nil {
-		t, err = dateparse.ParseAny(body)
-		if err != nil {
-			return t, err
-		}
+		return t, err
 	}
 
 	h.setValue(name, t)
