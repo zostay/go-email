@@ -1,12 +1,12 @@
 WIP  TBD
 
- * Deprecation: The contents of the walker are deprecated and will be removed in
-   a future release. Use the features of the walk package instead.
+ * Deprecation: The contents of the walker package are deprecated and will be 
+   removed in a future release. Use the features of the walk package instead.
  * Add the walk package.
- * Add walk.AndTransform and walk.Transformer to handle walking a message part
-   tree with the goal of message transformation.
  * Add walk.AndProcess and walk.Processor to handle walking a message part tree
    with the goal of generic message processing.
+ * Add walk.AndTransform and walk.Transformer to handle walking a message part
+   tree, which is a process tool that aids with message transformation.
  * Add walk.AndProcessSingle to process single parts of a message.
  * Add walk.AndProcessMultipart to process multipart parts of a message.
  * Add message.NewBuffer to copy message.Part into a message.Buffer.
