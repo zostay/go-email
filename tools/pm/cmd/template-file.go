@@ -26,6 +26,7 @@ var unindent = regexp.MustCompile(`(?ms)^    `)
 var snipMain = regexp.MustCompile(`(?ms)^func main\(\) \{$`)
 var snipStart = regexp.MustCompile(`(?ms)\s*// snip start$`)
 var snipEnd = regexp.MustCompile(`(?ms)^(?:}|\s*// snip end)$`)
+var nolint = regexp.MustCompile(`(?ms)//nolint.*?$`)
 
 func TemplateFile(_ *cobra.Command, args []string) {
 	infile, outfile := args[0], args[1]
@@ -85,6 +86,7 @@ func TemplateFile(_ *cobra.Command, args []string) {
 				s = s[:ixs[0]]
 			}
 
+			s = nolint.ReplaceAllString(s, "")
 			s = unindent.ReplaceAllString(s, "")
 			s = strings.TrimSpace(s)
 			return s, nil

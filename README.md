@@ -254,19 +254,22 @@ If you want to change how this multipart parsing is performed, there are a numbe
 
 ```go
 // This will only parse to the 5th layer deep.
-m, _ := message.Parse(r, message.WithMaxDepth(5))
+m, _ := message.Parse(r, message.WithMaxDepth(5)) 
 
 // This will not parse even the first layer.
 // This always returns an *message.Opaque object.
-m, _ = message.Parse(r, message.WithoutMultipart()) // same as WithMaxDepth(0)
+m, _ = message.Parse(r, message.WithoutMultipart()) 
+// ^^^ same as WithMaxDepth(0)
 
 // This will parse the first layer, but no further. If the message is a
 // multipart message it will be *message.Multipart but all sub-parts are
 // guaranteed to be *message.Opaque. Otherwise, it may return *message.Opaque.
-m, _ = message.Parse(r, message.WithoutRecursion()) // same as WithMaxDepth(1)
+m, _ = message.Parse(r, message.WithoutRecursion()) 
+// ^^^ same as WithMaxDepth(1)
 
 // Or you can turn off all limits and get everything...
-m, _ = message.Parse(r, message.WithUnlimitedRecursion()) // same as WithMaxDepth(-1)
+m, _ = message.Parse(r, message.WithUnlimitedRecursion())
+// ^^^ ame as WithMaxDepth(-1)
 ```
 
 The `message.WithoutMultipart()` option is especially useful if you only plan to work with the headers of the top-level message.
