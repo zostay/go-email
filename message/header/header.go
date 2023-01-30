@@ -16,7 +16,7 @@ import (
 var (
 	// ErrNoSuchField is returned by Header methods when the operation
 	// being performed failed because the header named does not exist.
-	ErrNoSuchField = errors.New("not such header field")
+	ErrNoSuchField = errors.New("no such header field")
 
 	// ErrNoSuchFieldParameter is returned by Header methods when the
 	// operation being performed failed because the header exists, but a
