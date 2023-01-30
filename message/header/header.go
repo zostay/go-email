@@ -116,18 +116,19 @@ func (h *Header) setValue(name string, value any) {
 //
 // If the named field is not set in the header, it will return an empty string
 // with ErrNoSuchField. If there are multiple headers for the given named field,
-// it will return ErrManyFields.
+// it will return the first value found and return ErrManyFields.
 func (h *Header) Get(name string) (string, error) {
 	ixs := h.GetIndexesNamed(name)
 	if len(ixs) == 0 {
 		return "", ErrNoSuchField
 	}
 
+	b := h.GetField(ixs[0]).Body()
 	if len(ixs) > 1 {
-		return "", ErrManyFields
+		return b, ErrManyFields
 	}
 
-	return h.GetField(ixs[0]).Body(), nil
+	return b, nil
 }
 
 // getTime parses the header body as a date and caches the result.
