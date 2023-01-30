@@ -12,6 +12,7 @@ var (
 func init() {
 	rootCmd.AddCommand(changelogCmd)
 	rootCmd.AddCommand(releaseCmd)
+	rootCmd.AddCommand(templateFileCmd)
 }
 
 func Execute() {

@@ -6,13 +6,10 @@ import (
 	"io"
 	"net/smtp"
 	"os"
-	"path/filepath"
 	"strings"
-	"unicode"
 
 	"github.com/zostay/go-email/v2/message"
 	"github.com/zostay/go-email/v2/message/transfer"
-	"github.com/zostay/go-email/v2/message/walker"
 )
 
 func ExampleOpaque_WriteTo() {
@@ -55,7 +52,7 @@ func ExampleBuffer_multipart_buffer() {
 	_, _ = mm.Opaque().WriteTo(os.Stdout)
 }
 
-func Example_readme_synopsis_1() {
+func Example_rewrite_keywords() {
 	msg, err := os.Open("input.msg")
 	if err != nil {
 		panic(err)
@@ -98,65 +95,7 @@ func Example_readme_synopsis_1() {
 	}
 }
 
-func Example_readme_synopsis_2() {
-	var fileCount = 0
-	isUnsafeExt := func(c rune) bool {
-		return !unicode.IsLetter(c) && !unicode.IsDigit(c)
-	}
-
-	outputSafeFilename := func(fn string) string {
-		safeExt := filepath.Ext(fn)
-		if strings.IndexFunc(safeExt, isUnsafeExt) > -1 {
-			safeExt = ".wasnotsafe" // check your input
-		}
-		fileCount++
-		return fmt.Sprintf("%d.%s", fileCount, safeExt)
-	}
-
-	var saveAttachments walker.Parts = func(depth, i int, part message.Part) error {
-		h := part.GetHeader()
-
-		presentation, err := h.GetPresentation()
-		if err != nil {
-			panic(err)
-		}
-
-		fn, err := h.GetFilename()
-		if err != nil {
-			panic(err)
-		}
-
-		if presentation == "attachment" && fn != "" {
-			of := outputSafeFilename(fn)
-			outMsg, err := os.Create(of)
-			if err != nil {
-				panic(err)
-			}
-			_, err = io.Copy(outMsg, part.GetReader())
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		return nil
-	}
-
-	msg, err := os.Open("input.msg")
-	if err != nil {
-		panic(err)
-	}
-
-	// we want to decode the transfer encoding to make sure we get the original
-	// binary values of the message contents when saving off attachments
-	m, err := message.Parse(msg, message.DecodeTransferEncoding())
-	if err != nil {
-		panic(err)
-	}
-
-	_ = saveAttachments.WalkOpaque(m)
-}
-
-func Example_readme_synopsis_3() {
+func Example_create_message() {
 	// Build a part that will be the attached document
 	resume, _ := message.AttachmentFile(
 		"resume.pdf",
@@ -202,4 +141,41 @@ func Example_readme_synopsis_3() {
 	_, _ = mainMsg.WriteTo(w)
 	_ = w.Close()
 	_ = c.Quit()
+}
+
+func ExampleParse() {
+	r := strings.NewReader("Subject: test\n\nThis is a test.")
+	msg, err := message.Parse(r)
+	if err != nil {
+		panic(err)
+	}
+	// snip end
+
+	_, _ = msg.WriteTo(os.Stdout)
+}
+
+func ExampleParse_options() {
+	var r io.Reader
+	// snip start
+
+	// This will only parse to the 5th layer deep.
+	m, _ := message.Parse(r, message.WithMaxDepth(5)) //nolint:ineffassign
+
+	// This will not parse even the first layer.
+	// This always returns an *message.Opaque object.
+	m, _ = message.Parse(r, message.WithoutMultipart()) //nolint:ineffassign
+	// ^^^ same as WithMaxDepth(0)
+
+	// This will parse the first layer, but no further. If the message is a
+	// multipart message it will be *message.Multipart but all sub-parts are
+	// guaranteed to be *message.Opaque. Otherwise, it may return *message.Opaque.
+	m, _ = message.Parse(r, message.WithoutRecursion()) //nolint:ineffassign
+	// ^^^ same as WithMaxDepth(1)
+
+	// Or you can turn off all limits and get everything...
+	m, _ = message.Parse(r, message.WithUnlimitedRecursion())
+	// ^^^ ame as WithMaxDepth(-1)
+	// snip end
+
+	_, _ = m.WriteTo(os.Stdout)
 }
