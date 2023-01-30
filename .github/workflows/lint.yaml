@@ -3,6 +3,18 @@ on:
   push:
 
 jobs:
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - uses: actions/checkout@v3
+      - run: go mod download
+      - run: go mod install ./tools/pm
+      - run: pm template-file docs/README.md.tmpl README.test.md
+      - run: diff README.md README.test.md
+
   changelog-lint:
     runs-on: ubuntu-latest
     steps:
