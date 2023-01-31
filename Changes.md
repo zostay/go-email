@@ -1,4 +1,4 @@
-WIP  TBD
+v2.3.1  2023-01-30
 
  * Bugfix: Handle another strange date I have come across in my sample data.
 
