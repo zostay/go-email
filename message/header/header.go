@@ -2,6 +2,7 @@ package header
 
 import (
 	"errors"
+	"fmt"
 	"net/mail"
 	"strings"
 	"time"
@@ -52,6 +53,13 @@ const (
 	Sender                  = "Sender"
 	Subject                 = "Subject"
 	To                      = "To"
+)
+
+// Even more custom date formats, built from those seen in the wild that the
+// usual parsers have trouble with.
+const (
+	// UnixDateWithEarlyYear is a weird one, eh?
+	UnixDateWithEarlyYear = "Mon Jan 02 15:04:05 2006 MST"
 )
 
 // Header wraps a Base, which does the actual storage and low-level field
@@ -139,13 +147,21 @@ func (h *Header) Get(name string) (string, error) {
 // It either returns a parsed time or the parse error.
 func ParseTime(body string) (time.Time, error) {
 	t, err := mail.ParseDate(body)
-	if err != nil {
-		t, err = dateparse.ParseAny(body)
-		if err != nil {
-			return t, err
-		}
+	if err == nil {
+		return t, nil
 	}
-	return t, nil
+
+	t, err = dateparse.ParseAny(body)
+	if err == nil {
+		return t, nil
+	}
+
+	t, err = time.Parse(UnixDateWithEarlyYear, body)
+	if err == nil {
+		return t, nil
+	}
+
+	return t, fmt.Errorf("time string %q cannot be parsed", body)
 }
 
 // getTime parses the header body as a date and caches the result.
