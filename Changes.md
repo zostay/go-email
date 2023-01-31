@@ -1,3 +1,7 @@
+WIP  TBD
+
+ * Bugfix: Handle another strange date I have come across in my sample data.
+
 v2.3.0  2023-01-30
 
  * On `header.ErrManyFields` failure, `(*header.Header).Get()` now returns the value of the first field found with the error.
